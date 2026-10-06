@@ -1,0 +1,10 @@
+{
+  "format": "cnc-process.techdata",
+  "version": "1.0",
+  "generated_at": "2026-10-06T08:00:00Z",
+  "units": { "time": "min" },
+  "items": [
+    { "order_no": "ZL-26-0412", "part_no": "NGK-TR-118", "part_rev": "C", "machine_id": "M-HARTFORD", "operation_id": "OP10", "nc_program": "TR118_OP10", "nc_rev": "03", "nx_time_min": 97, "machine_est_min": 112, "machine_actual_min": null, "updated_at": "2026-10-06T07:55:00Z" },
+    { "order_no": "ZL-26-0412", "part_no": "NGK-TR-118", "part_rev": "C", "machine_id": "M-HARTFORD", "operation_id": "OP10", "nc_program": "TR118_OP10", "nc_rev": "02", "nx_time_min": 120, "machine_est_min": 135, "machine_actual_min": 140, "updated_at": "2026-09-28T12:00:00Z" }
+  ]
+}

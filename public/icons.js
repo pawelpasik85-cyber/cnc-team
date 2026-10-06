@@ -1,0 +1,47 @@
+// Ikony SVG narysowane na potrzeby CNC Team (własne, bez zewnętrznych licencji). Obrys = currentColor.
+'use strict';
+const ICON_PATHS = {
+  cutter: '<path d="M10 2h4v6h-4z"/><path d="M9 8h6v11l-3 3-3-3z"/><path d="M9 11l6 2M9 14l6 2M9 17l5 2"/>',
+  spindle: '<path d="M5 3h14v6H5z"/><path d="M8 9h8l-1.5 6h-5z"/><path d="M11 15h2v6h-2z"/>',
+  part: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/><path d="M8 9.5l4 2.2 4-2.2"/>',
+  axes: '<path d="M6 18V4M6 18h14M6 18l-4 4"/><path d="M4 6l2-2 2 2M18 16l2 2-2 2"/><text x="9" y="7" font-size="5" stroke="none" fill="currentColor">Z</text><text x="16" y="15" font-size="5" stroke="none" fill="currentColor">X</text><text x="1" y="16" font-size="5" stroke="none" fill="currentColor">Y</text>',
+  nc: '<path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4"/><path d="M9 11h7M9 14h5M9 17h6"/><path d="M9 8V5l2 3V5"/>',
+  today: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h1M3 12h1M3 18h1"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-4 3.2-6 6.5-6s6 2 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4.2 1.7 4.5 5"/>',
+  exit: '<path d="M14 4H5v16h9"/><path d="M10 12h11M17 8l4 4-4 4"/>',
+  makeup: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 3v4h4"/><path d="M12 8v4l3 2"/>',
+  leave: '<rect x="3" y="7" width="18" height="13" rx="1"/><path d="M9 7V4h6v3M3 12h18"/>',
+  absence: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.6-4 3.5-6 7-6"/><path d="M15 17h6"/>',
+  medical: '<rect x="5" y="4" width="14" height="17" rx="1"/><path d="M9 4V2h6v2"/><path d="M9 11h6M9 15h4"/>',
+  care: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  force: '<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>',
+  family: '<circle cx="8" cy="7" r="3"/><circle cx="17" cy="10" r="2"/><path d="M3 21c.4-4 2.4-7 5-7s4.6 3 5 7M14 21c.3-3 1.4-5 3-5s2.7 2 3 5"/>',
+  event: '<path d="M12 3l2.6 5.5 6 .8-4.4 4.1 1.1 6L12 16.6 6.7 19.4l1.1-6L3.4 9.3l6-.8z"/>',
+  unpaid: '<circle cx="12" cy="12" r="9"/><path d="M7 12h10"/>',
+  blood: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>',
+  training: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/>',
+  summons: '<rect x="3" y="6" width="18" height="13" rx="1"/><path d="M3 7l9 6 9-6"/>',
+  military: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+  other: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/>',
+  project: '<path d="M3 6h7l2 2h9v12H3z"/><path d="M3 10h18"/>',
+  board: '<rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/><path d="M5 8h4M15 8h4"/>',
+  handover: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  report: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-7"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  print: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="1"/><path d="M6 14h12v7H6z"/>',
+  download: '<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>',
+  upload: '<path d="M12 15V3M7 8l5-5 5 5M4 20h16"/>',
+  theme: '<path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/>',
+  logout: '<path d="M10 4H4v16h6"/><path d="M14 12H21M18 9l3 3-3 3"/>',
+  check: '<path d="M4 12l5 5L20 6"/>',
+  block: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+};
+function icon(name, title) {
+  const p = ICON_PATHS[name] || ICON_PATHS.other;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ${title ? `role="img" aria-label="${title}"` : 'aria-hidden="true"'}>${title ? `<title>${title}</title>` : ''}${p}</svg>`;
+}
