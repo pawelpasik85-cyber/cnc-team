@@ -5,7 +5,7 @@ Prośba: przejrzyj krytycznie aplikację CNC Team pod kątem poprawności reguł
 ## Jak uruchomić
 Node.js ≥ 22.13, bez `npm install`:
 ```bash
-npm test                          # 29 testów
+npm test                          # 40 testów
 npm run seed -- --reset           # dane fikcyjne
 CNC_TODAY=2026-10-06 npm start    # http://127.0.0.1:3000, hasło demo: demo-cnc-2026 (kierownik / przelozony / adam)
 ```
@@ -33,7 +33,8 @@ Dokumentacja: `docs/RULES.md` (reguły + status weryfikacji prawnej), `docs/PERM
 7. **DST**: przypadki brzegowe w `localToUtc` i zmianach przez północ w nocy zmiany czasu.
 8. **Integralność**: brak transakcji wokół jakiejś złożonej operacji? Wyścigi przy równoległych żądaniach (jeden proces, SQLite `BEGIN IMMEDIATE`)?
 9. **Telefony (runda 1)**: `public/sw.js` — czy na pewno żadna odpowiedź `/api` nie trafia do pamięci telefonu? `docs/MOBILE.md` — czy instrukcja instalacji lokalnego CA i ostrzeżenie o http są wystarczające? `server/index.js` — tryb `start:siec` i wykrywanie certyfikatu.
-10. **Interfejs**: dostępność (kontrast, klawiatura, znaczenie nie tylko kolorem), czytelność dla kierownika.
+10. **Chmura (runda 2)**: `supabase/*.sql` — czy RLS i funkcje SECURITY DEFINER nie pozwalają pracownikowi na więcej niż własne dane? `server/domain/cloud.js` — kolejność próba na sucho → decyzja w chmurze → wpis lokalny; `buildPublications` — czy nic poufnego nie wycieka? `mobile/core.js` — kolejka offline i duplikaty.
+11. **Interfejs**: dostępność (kontrast, klawiatura, znaczenie nie tylko kolorem), czytelność dla kierownika.
 
 ## Co świadomie NIE zostało zrobione
 Brak CAM/analizy ścieżek/czasu obróbki; brak wynagrodzeń, zasiłków, potrąceń; brak wysyłki powiadomień poza aplikacją; brak integracji Entra/SharePoint/Teams (opis: `INTEGRATIONS.md`); brak automatycznego odczytu maszyn; brak wdrożenia.
@@ -46,3 +47,4 @@ Dla każdej uwagi: **waga** (krytyczna / istotna / drobna), **miejsce**, **opis 
 |---|---|---|
 | 0 | 2026-10-06 | Wersja 0.1 przygotowana do przeglądu; testy 26/26 |
 | 1 | 2026-10-06 | Dodano telefony: PWA, układ mobilny, tryb sieci firmowej, https; testy 29/29 |
+| 2 | 2026-10-06 | Aplikacja pracownika (PWA/APK) + Supabase, zgłoszenia i publikacje; testy 40/40, RLS 23/23. Od tej rundy recenzja GPT działa automatycznie przy każdym pushu (po dodaniu sekretu) |

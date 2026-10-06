@@ -42,12 +42,14 @@ VIEWS.raporty = async (main) => {
 VIEWS.ustawienia = async (main) => {
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const tab = q.get('t') || (isAdmin() ? 'firma' : 'konto');
-  const tabs = isAdmin() ? [['firma', 'Zasady firmy'], ['konta', 'Konta i role'], ['zmiany', 'Szablony zmian i święta'], ['typy', 'Typy zadań'], ['integracja', 'Wymiana z CNC Process'], ['historia', 'Historia zmian'], ['konto', 'Moje konto']] : [['konto', 'Moje konto']];
+  const tabs = isAdmin() ? [['firma', 'Zasady firmy'], ['chmura', 'Aplikacja pracowników'], ['konta', 'Konta i role'], ['zmiany', 'Szablony zmian i święta'], ['typy', 'Typy zadań'], ['integracja', 'Wymiana z CNC Process'], ['historia', 'Historia zmian'], ['konto', 'Moje konto']] : [['konto', 'Moje konto']];
   let body = '';
   if (tab === 'firma') {
     const settings = await api('/settings');
     body = `<section class="panel">${table([{ key: 'key', label: 'Klucz', fmt: v => `<span class="mono">${esc(v)}</span>` }, { key: 'value', label: 'Wartość' }, { key: 'description', label: 'Opis' }, { key: r => r, label: '', fmt: r => `<button class="link" data-set="${esc(r.key)}">Zmień</button>` }], settings)}</section>`;
     main.dataset.settings = JSON.stringify(settings);
+  } else if (tab === 'chmura') {
+    body = await cloudSettings();
   } else if (tab === 'konta') {
     const users = await api('/users');
     body = `<div class="toolbar">${btn('addUser', 'Nowe konto')}</div><section class="panel">${table([
@@ -79,6 +81,7 @@ VIEWS.ustawienia = async (main) => {
   main.innerHTML = head('Ustawienia', isAdmin() ? 'Konta, zasady firmy, katalogi i wymiana danych. Każda zmiana trafia do historii.' : 'Ustawienia konta.') +
     `<div class="tabs">${tabs.map(([id, l]) => `<button class="${tab === id ? 'active' : ''}" data-st="${id}">${esc(l)}</button>`).join('')}</div>${body}`;
   $$('[data-st]').forEach(b => b.onclick = () => { location.hash = `#/ustawienia?t=${b.dataset.st}`; });
+  if (tab === 'chmura') bindCloudSettings();
   $$('[data-set]').forEach(b => b.onclick = () => {
     const s = JSON.parse(main.dataset.settings).find(x => x.key === b.dataset.set);
     openForm({ title: `Ustawienie ${s.key}`, intro: `<p class="small">${esc(s.description || '')}</p>`, fields: [{ name: 'value', label: 'Wartość', value: s.value, wide: true }, { name: 'reason', label: 'Powód zmiany', wide: true }], submit: (v, idem) => post(`/settings/${s.key}`, v, idem, 'PUT') });

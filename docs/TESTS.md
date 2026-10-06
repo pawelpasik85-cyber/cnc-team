@@ -3,7 +3,7 @@
 ## Uruchomienie
 
 ```bash
-npm test                                   # 29 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
+npm test                                   # 40 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
 npm test -- --test-reporter=spec           # czytelny raport
 ```
 
@@ -21,6 +21,10 @@ python scripts/screenshots.py http://127.0.0.1:3000 docs/screenshots
 **29 / 29 zaliczonych, 0 błędów** (runda 1 — telefony). Skrypt zrzutów: 25 ekranów komputera + 8 ekranów telefonu (Pixel 7, 412×915), aktywny service worker, manifest `standalone` z 3 ikonami, „Brak błędów konsoli”. Tryb https sprawdzony ręcznie: certyfikat z `npm run make-cert` weryfikuje się względem lokalnego CA (`openssl verify`), logowanie przez https ustawia cookie `Secure`, manifest serwowany jako `application/manifest+json`.
 
 Kontrola, czy testy faktycznie wykrywają błędy: celowe wyłączenie blokady podwójnego rozliczenia (`exits.js`) oraz filtra „pracownik widzi tylko własne wyjścia” (`routes.js`) spowodowało niezaliczenie odpowiednich testów; po przywróceniu kodu — 26/26.
+
+### Runda 2 — aplikacja pracownika i chmura (6.10.2026)
+**40 / 40 zaliczonych.** Nowe: `test/cloud.test.js` (logowanie kierownika, synchronizacja, przyjęcie spóźnienia jako wyjście 40 min, odrzucenie z wyjaśnieniem, próba na sucho blokująca decyzję, odświeżenie sesji, brak sieci, publikacje bez danych poufnych) i `test/mobile-core.test.js` (walidacja, logowanie, kolejka offline bez duplikatów, własne saldo, kompletność zbudowanej strony) — na atrapie Supabase `test/fake-supabase.js`.
+Prawdziwa baza: `supabase/tests/rls_check.sql` — 23 sprawdzenia uprawnień, wszystkie zgodne (test wykrył i pozwolił poprawić błąd 42702 w `decide_report`). Zrzuty aplikacji pracownika (Pixel 7) z kolejką offline: `docs/screenshots/40…46-pracownik-*.png`, bez błędów konsoli.
 
 ## Pokrycie wymaganych scenariuszy
 

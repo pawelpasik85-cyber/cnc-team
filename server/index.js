@@ -40,7 +40,17 @@ function main() {
   const users = db.get('SELECT COUNT(*) n FROM users').n;
   const tls = loadTls();
   const scheme = tls ? 'https' : 'http';
-  createApp(db, { tls }).listen(PORT, HOST, () => {
+  const server = createApp(db, { tls });
+  // Synchronizacja z aplikacją pracowników: przy starcie i co 2 minuty, gdy kierownik jest zalogowany do chmury.
+  const SYNC_MS = Number(process.env.CNC_CLOUD_SYNC_MS || 120000);
+  let syncing = false;
+  const autoSync = async () => {
+    if (syncing || !server.cloud.session()) return;
+    syncing = true;
+    try { await server.cloud.sync('automatyczna'); } catch (e) { console.log(`Chmura: ${e.message}`); } finally { syncing = false; }
+  };
+  if (SYNC_MS > 0) { setTimeout(autoSync, 5000).unref(); setInterval(autoSync, SYNC_MS).unref(); }
+  server.listen(PORT, HOST, () => {
     console.log(`CNC Team: ${scheme}://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (baza: ${DB_FILE})`);
     if (HOST === '0.0.0.0') {
       const ips = lanAddresses();

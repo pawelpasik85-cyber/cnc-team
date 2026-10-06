@@ -125,7 +125,7 @@ test('zapis po restarcie: dane w pliku bazy, migracje nie są powtarzane', () =>
     const db2 = openDb(file);
     assert.equal(db2.get('SELECT minutes FROM private_exits WHERE id=?', ex.id).minutes, 90);
     assert.equal(db2.get('SELECT COUNT(*) n FROM schedule_entries').n, 7);
-    assert.equal(db2.get('SELECT COUNT(*) n FROM schema_migrations').n, 1);
+    assert.equal(db2.get('SELECT COUNT(*) n FROM schema_migrations').n, require('node:fs').readdirSync(require('node:path').join(__dirname, '..', 'server', 'migrations')).filter(f => f.endsWith('.sql')).length);
     assert.ok(db2.get(`SELECT 1 FROM audit_log WHERE entity='private_exit'`));
     db2.close();
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }

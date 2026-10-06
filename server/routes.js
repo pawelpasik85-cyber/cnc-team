@@ -336,6 +336,15 @@ function buildRoutes() {
   add('POST', '/integration/cnc-process/import', ({ db, user, raw, query }) => { requireAdmin(user); return I.importFromCncProcess(db, user, raw, { dryRun: query.dry_run === '1' }); }, { rawBody: true });
   add('GET', '/integration/imports', ({ db, user }) => { requireAdmin(user); return db.all('SELECT * FROM tech_imports ORDER BY id DESC'); });
 
+  // ---------- Chmura: aplikacja pracowników ----------
+  add('GET', '/cloud/status', ({ user, cloud }) => { requireAdmin(user); return cloud.status(); });
+  add('POST', '/cloud/login', async ({ user, cloud, body }) => { requireAdmin(user); return cloud.login(user, body); });
+  add('POST', '/cloud/logout', ({ user, cloud }) => { requireAdmin(user); cloud.logout(user); });
+  add('POST', '/cloud/sync', async ({ user, cloud }) => { requireAdmin(user); return cloud.sync('reczna'); });
+  add('GET', '/cloud/reports', ({ user, cloud, query }) => { requireAdmin(user); return cloud.listReports({ status: query.status }); });
+  add('POST', '/cloud/reports/:id/decide', async ({ user, cloud, params, body }) => { requireAdmin(user); return cloud.decide(user, params.id, body); });
+  add('GET', '/cloud/preview', ({ user, cloud }) => { requireAdmin(user); return cloud.buildPublications(); });
+
   // ---------- Ustawienia i historia ----------
   add('GET', '/settings', ({ db, user }) => { requireAdmin(user); return db.all('SELECT * FROM settings ORDER BY key'); });
   add('PUT', '/settings/:key', ({ db, user, params, body }) => {

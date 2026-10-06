@@ -42,6 +42,7 @@ function employeeForm(e = {}) {
       { name: 'competences', label: 'Kompetencje (oddzielone przecinkami)', value: (e.competences || []).join(', '), wide: true },
       { name: 'initial_settlement_note', label: 'Dane początkowe rozliczeń (z kadr)', type: 'textarea', value: e.initial_settlement_note, wide: true },
       { name: 'hr_reference', label: 'Referencja kadrowa (poufne)', value: e.hr_reference, wide: true },
+      { name: 'email', label: 'E-mail do aplikacji pracownika (zaproszenie)', type: 'email', value: e.email, wide: true },
       ...(e.id ? [{ name: 'reason', label: 'Powód zmiany', wide: true }] : []),
     ], submit: (v, idem) => {
       v.competences = (v.competences || '').split(',').map(s => s.trim()).filter(Boolean);

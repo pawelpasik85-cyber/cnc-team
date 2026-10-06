@@ -19,6 +19,19 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Historia zmian (audyt), konta, ustawienia firmy | ✔ | ✘ | ✘ |
 | Zmiana własnego hasła | ✔ | ✔ | ✔ |
 
+## Aplikacja pracownika (chmura)
+
+| Obszar | Kierownik (CNC Team) | Pracownik (aplikacja) | Bez konta |
+|---|---|---|---|
+| Złożenie / wycofanie zgłoszenia | ✘ | ✔ własne (wycofanie tylko nierozpatrzonego) | ✘ |
+| Zgłoszenia — odczyt | wszystkie | własne | ✘ |
+| Decyzja w sprawie zgłoszenia | ✔ jedna na zgłoszenie | ✘ | ✘ |
+| Grafik zespołu (etykiety ogólne) | ✔ | ✔ | ✘ |
+| Saldo i wyjścia, własne nieobecności | ✔ wszystkich | ✔ tylko własne | ✘ |
+| Zaproszenia | ✔ (tylko rola pracownik) | ✘ | ✘ |
+
+Egzekwowane w Supabase przez RLS i funkcje (`supabase/`), sprawdzone `supabase/tests/rls_check.sql`.
+
 Dodatkowo:
 - Brak sesji → 401 dla każdego API poza logowaniem.
 - Zapis bez nagłówka `X-CNC-Request: 1` → 403 (ochrona CSRF), także dla administratora.

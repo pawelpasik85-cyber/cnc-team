@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { HttpError, userFromSession } = require('./core');
 const { buildRoutes } = require('./routes');
+const { createCloud } = require('./domain/cloud');
 const T = require('./time');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -30,6 +31,7 @@ function compile(pattern) {
 // opts.tls = { cert, key } → serwer HTTPS (wymagany przez telefon dla pełnej aplikacji PWA); opts.secure → cookie z flagą Secure
 function createApp(db, opts = {}) {
   const secure = !!(opts.tls || opts.secure);
+  const cloud = createCloud(db, opts.cloud || {});
   const routes = buildRoutes().map(r => ({ ...r, ...compile(r.path) }));
 
   function send(res, status, body, headers = {}) {
@@ -92,7 +94,7 @@ function createApp(db, opts = {}) {
         const prev = db.get('SELECT status, response FROM idempotency_keys WHERE key=? AND user_id=?', String(idem), user.id);
         if (prev) return send(res, prev.status, prev.response, { 'Content-Type': 'application/json; charset=utf-8', 'Idempotent-Replay': 'true' });
       }
-      const ctx = { db, user, params, query: Object.fromEntries(url.searchParams), body, raw, req, res, cookies, secure };
+      const ctx = { db, user, params, query: Object.fromEntries(url.searchParams), body, raw, req, res, cookies, secure, cloud };
       const result = await route.handler(ctx);
       if (result && result.__raw) {
         return send(res, result.status || 200, result.body, result.headers);
@@ -112,7 +114,9 @@ function createApp(db, opts = {}) {
       send(res, 500, { error: 'Błąd serwera.' });
     }
   };
-  return opts.tls ? https.createServer(opts.tls, handler) : http.createServer(handler);
+  const server = opts.tls ? https.createServer(opts.tls, handler) : http.createServer(handler);
+  server.cloud = cloud;
+  return server;
 }
 
 module.exports = { createApp };

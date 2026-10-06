@@ -27,7 +27,11 @@ Konta demonstracyjne (hasło dla wszystkich: `demo-cnc-2026` — wyłącznie do 
 
 Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je tak, jak na zrzutach ekranu, uruchom serwer z `CNC_TODAY=2026-10-06` (Windows PowerShell: `$env:CNC_TODAY="2026-10-06"; npm start`). Bez tej zmiennej aplikacja używa bieżącej daty.
 
-## Telefony
+## Aplikacja pracownika (z domu, na telefonie)
+
+Pracownicy zgłaszają nieobecność, spóźnienie lub wyjście w aplikacji **CNC Team — pracownik**: https://pawelpasik85-cyber.github.io/cnc-team-app/ (strona i APK). Kierownik rozpatruje zgłoszenia w CNC Team → **Zgłoszenia pracowników**. Do chmury (Supabase) trafia tylko grafik, własne saldo i decyzje — szczegóły, uprawnienia i konfiguracja: **`docs/CLOUD.md`**.
+
+## Telefony (dostęp kierownika do CNC Team)
 
 Aplikacja działa na telefonach z przeglądarki i jako skrót / zainstalowana aplikacja na ekranie głównym (PWA); APK — po decyzji o hostingu. Szczegóły i instrukcja dla Androida i iPhone'a: **`docs/MOBILE.md`**.
 
@@ -63,7 +67,8 @@ Następnie w aplikacji: Ustawienia → Konta i role, Pracownicy, Kalendarz → G
 | `npm start` | Serwer aplikacji |
 | `npm run start:siec` | Serwer dostępny dla telefonów w sieci lokalnej |
 | `npm run make-cert` | Lokalny certyfikat HTTPS dla telefonów |
-| `npm test` | Testy automatyczne (29 scenariuszy) |
+| `npm test` | Testy automatyczne (40 scenariuszy) |
+| `node scripts/build-mobile.js` | Budowa aplikacji pracownika do `dist-mobile/` |
 | `npm run seed -- --reset` | Baza demonstracyjna od nowa (usuwa plik bazy!) |
 | `npm run init-admin` | Pierwsze konto administratora w pustej bazie |
 | `npm run backup [katalog]` | Kopia zapasowa — patrz `docs/BACKUP.md` |
@@ -75,6 +80,10 @@ server/            serwer HTTP, API, logika dziedzinowa
   migrations/      schemat bazy (migracje SQL)
   domain/          pracownicy, absencje, wyjścia, projekty, raporty, integracja
 public/            interfejs (HTML/CSS/JS bez frameworka), tokens.css — wspólne tokeny wyglądu
+mobile/            aplikacja pracownika (PWA; ta sama w APK)
+android-app/       powłoka Capacitor do budowy APK (tylko w GitHub Actions)
+supabase/          migracje i test uprawnień chmury
+.github/           budowa strony i APK, recenzja GPT przy każdym pushu
 scripts/           seed, init-admin, backup, zrzuty ekranów
 test/              testy (node:test)
 docs/              dokumentacja i zrzuty ekranów
@@ -90,6 +99,7 @@ docs/              dokumentacja i zrzuty ekranów
 - `docs/BACKUP.md` — kopia zapasowa i odtworzenie
 - `docs/LIMITATIONS.md` — znane ograniczenia
 - `docs/INTEGRATION_JSON.md` — format wymiany z CNC Process
+- `docs/CLOUD.md` — aplikacja pracownika, chmura, co jest wysyłane, konfiguracja
 - `docs/MOBILE.md` — telefony: skrót, pełna aplikacja (https), APK
 - `docs/DESIGN_TOKENS.md` — wygląd do odtworzenia w CNC Process
 - `docs/screenshots/` — zrzuty kluczowych ekranów

@@ -20,6 +20,9 @@
 - Widok do wydruku/PDF korzysta z funkcji drukowania przeglądarki („Zapisz jako PDF”).
 - Zrzuty ekranów wymagają opcjonalnego Pythona + Playwright (`scripts/screenshots.py`) — nie są potrzebne do działania aplikacji.
 
+## Aplikacja pracownika i chmura
+- Szczegóły i ryzyka: `docs/CLOUD.md` (dane na prywatnych kontach kierownika, usypianie darmowego projektu, synchronizacja tylko przy działającym CNC Team, brak powiadomień push o decyzji, odebranie dostępu przez SQL).
+
 ## Telefony
 - Dostęp tylko w sieci, w której jest komputer z aplikacją, i tylko gdy komputer jest włączony. Poza firmą — wymaga decyzji o hostingu/VPN.
 - Przez http (bez certyfikatu) telefon tworzy jedynie skrót do przeglądarki, a ruch nie jest szyfrowany. Pełna aplikacja wymaga https (lokalny CA z `make-cert` lub certyfikat firmowy).

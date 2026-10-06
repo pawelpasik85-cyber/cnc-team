@@ -11,6 +11,7 @@ const NAV = [
   ['zdarzenia', 'Lista zdarzeń', 'list', null],
   ['pracownicy', 'Pracownicy', 'users', null],
   ['wyjscia', 'Wyjścia i odrabianie', 'exit', null],
+  ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
   ['absencje', 'Urlopy i absencje', 'leave', 'view.leave.all'],
   ['projekty', 'Projekty i zadania', 'project', null],
   ['maszyny', 'Tablica maszyn', 'board', null],

@@ -26,7 +26,12 @@ function saveEmployee(db, user, body, id) {
     machine_ids: JSON.stringify(Array.isArray(body.machine_ids) ? body.machine_ids.map(String) : []),
     initial_settlement_note: reqStr(body.initial_settlement_note, 'Dane początkowe', { optional: true }),
     hr_reference: reqStr(body.hr_reference, 'Referencja kadrowa', { optional: true }),
+    email: reqStr(body.email, 'E-mail (aplikacja pracownika)', { optional: true, max: 120 }),
   };
+  if (data.email) {
+    data.email = data.email.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw bad('Niepoprawny adres e-mail.');
+  }
   if (!COLOR_RE.test(data.color)) throw bad('Kolor musi mieć postać #RRGGBB.');
   T.assertDate(data.employment_start);
   if (data.employment_end) T.assertDate(data.employment_end);
@@ -37,16 +42,16 @@ function saveEmployee(db, user, body, id) {
     if (id) {
       const old = C.employeeOrThrow(db, id);
       db.run(`UPDATE employees SET first_name=?, last_name=?, color=?, active=?, employment_start=?, employment_end=?,
-              competences=?, machine_ids=?, initial_settlement_note=?, hr_reference=? WHERE id=?`,
+              competences=?, machine_ids=?, initial_settlement_note=?, hr_reference=?, email=? WHERE id=?`,
       data.first_name, data.last_name, data.color, data.active, data.employment_start, data.employment_end,
-      data.competences, data.machine_ids, data.initial_settlement_note, data.hr_reference, id);
+      data.competences, data.machine_ids, data.initial_settlement_note, data.hr_reference, data.email, id);
       audit(db, user, 'employee', id, 'edycja', old, data, body.reason);
       return id;
     }
     const r = db.run(`INSERT INTO employees(first_name,last_name,color,active,employment_start,employment_end,competences,
-            machine_ids,initial_settlement_note,hr_reference,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            machine_ids,initial_settlement_note,hr_reference,email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     data.first_name, data.last_name, data.color, data.active, data.employment_start, data.employment_end,
-    data.competences, data.machine_ids, data.initial_settlement_note, data.hr_reference, T.nowIso());
+    data.competences, data.machine_ids, data.initial_settlement_note, data.hr_reference, data.email, T.nowIso());
     const newId = Number(r.lastInsertRowid);
     audit(db, user, 'employee', newId, 'utworzenie', null, data);
     return newId;
