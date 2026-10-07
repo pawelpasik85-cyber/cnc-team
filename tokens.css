@@ -1,0 +1,53 @@
+/* CNC Team — wspólne tokeny stylistyczne (do odtworzenia w CNC Process).
+   Opis zasad: docs/DESIGN_TOKENS.md. Zmieniaj wartości tutaj, nie w komponentach. */
+:root {
+  /* Kolory bazowe */
+  --c-graphite: #23282d;
+  --c-graphite-2: #2e353b;
+  --c-steel: #8a949e;
+  --c-steel-light: #dde2e6;
+  --c-paper: #f3f5f6;
+  --c-surface: #ffffff;
+  --c-ink: #1b1f23;
+  --c-ink-soft: #4d5760;
+  --c-line: #cfd6db;
+  --c-accent: #0f8b8d;          /* „chłodziwo” — akcent turkusowy */
+  --c-accent-ink: #ffffff;
+  --c-accent-soft: #dff1f1;
+  --c-info: #2563a8;
+  --c-warn: #b86e00;
+  --c-warn-soft: #fbefd9;
+  --c-danger: #b3261e;
+  --c-danger-soft: #f9e1df;
+  --c-ok: #2e7d4f;
+  --c-ok-soft: #e1f2e7;
+  --c-grid: rgba(35, 40, 45, 0.045);
+  --c-focus: #0f8b8d;
+
+  /* Typografia: DIN-podobny krój systemowy (Bahnschrift w Windows) */
+  --f-sans: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Cascadia Mono", "Consolas", "DejaVu Sans Mono", monospace; /* tylko numery programów NC i zleceń */
+  --fs-xs: 0.78rem; --fs-sm: 0.875rem; --fs-md: 1rem; --fs-lg: 1.25rem; --fs-xl: 1.6rem; --fs-xxl: 2.4rem;
+  --lh: 1.45;
+
+  /* Geometria */
+  --r-sm: 3px; --r-md: 6px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --rail-w: 220px;
+  --grid-step: 24px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-paper: #16191c; --c-surface: #1f2428; --c-ink: #e6eaed; --c-ink-soft: #a3adb6; --c-line: #353d44;
+    --c-steel-light: #2b3238; --c-accent: #2bb3b1; --c-accent-ink: #0d1213; --c-accent-soft: #163536;
+    --c-warn: #e0a243; --c-warn-soft: #3a2c14; --c-danger: #ef6b62; --c-danger-soft: #3b1d1b;
+    --c-ok: #5cbf86; --c-ok-soft: #173326; --c-info: #6ea8e8; --c-grid: rgba(220, 230, 235, 0.035); --c-graphite: #111417; --c-graphite-2: #1a1e22;
+  }
+}
+:root[data-theme="dark"] {
+  --c-paper: #16191c; --c-surface: #1f2428; --c-ink: #e6eaed; --c-ink-soft: #a3adb6; --c-line: #353d44;
+  --c-steel-light: #2b3238; --c-accent: #2bb3b1; --c-accent-ink: #0d1213; --c-accent-soft: #163536;
+  --c-warn: #e0a243; --c-warn-soft: #3a2c14; --c-danger: #ef6b62; --c-danger-soft: #3b1d1b;
+  --c-ok: #5cbf86; --c-ok-soft: #173326; --c-info: #6ea8e8; --c-grid: rgba(220, 230, 235, 0.035); --c-graphite: #111417; --c-graphite-2: #1a1e22;
+}
