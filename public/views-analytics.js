@@ -46,7 +46,8 @@ function renderMonth(d) {
     { key: id => erow(prev.by_employee, id).worked_min ?? 0, label: `Przepracowane ${prev.year_month}`, fmt: hShort },
     { key: id => erow(cur.by_employee, id).rework_min ?? 0, label: `Poprawki ${cur.year_month}`, fmt: hShort },
   ], emps, { empty: 'Brak wpisów czasu.' });
-  return `<div class="kpis">${tiles}</div>
+  const partialNote = d.partial ? `<p class="notice info">Miesiąc w toku: porównanie dni 1–${d.partial.until_day} z tym samym okresem rok wcześniej.</p>` : '';
+  return `${partialNote}<div class="kpis">${tiles}</div>
     <section class="panel">${chart}</section>
     <div class="cols-2"><section class="panel"><h3>Maszyny</h3>${machineTable}</section><section class="panel"><h3>Ludzie</h3>${empTable}</section></div>
     <section class="panel"><h3>Zakończone projekty</h3><p class="small">${plMonth(cur.year_month)}: ${cur.projects_done.map(p => `<span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}`).join(', ') || 'brak'}<br>
@@ -66,10 +67,11 @@ function renderYear(d, metric = 'worked_min') {
   const base = d.years[0].year;
   const totals = table([
     { key: kk => kk.label, label: 'Wskaźnik' },
-    ...d.years.map(y => ({ key: kk => kpiVal(y.totals[kk.key], kk.unit), label: String(y.year) })),
+    ...d.years.map(y => ({ key: kk => kpiVal(y.totals ? y.totals[kk.key] : null, kk.unit), label: String(y.year) })),
     ...d.delta_vs.map(dv => ({ key: kk => kk, label: `${base} wobec ${dv.year}`, fmt: kk => deltaChip(kk.key, dv.delta[kk.key], kk.unit) })),
   ], d.kpi);
-  return `<section class="panel">${chart}</section><section class="panel"><h3>Sumy roczne</h3>${totals}
+  const ytd = d.period && d.period.ytd ? `<p class="notice info">Rok w toku: sumy wszystkich lat liczone od 1 stycznia do ${esc(d.period.until.slice(3))}.${esc(d.period.until.slice(0, 2))}, żeby porównywać ten sam okres.</p>` : '';
+  return `<section class="panel">${chart}</section><section class="panel"><h3>Sumy roczne</h3>${ytd}${totals}
     <p class="small muted">Odchylenie od planu liczone z sum zakończonych zadań w roku. „Lepiej/gorzej” — mniej poprawek, blokad, nieobecności i nadgodzin oraz więcej zakończonych zadań to „lepiej”.</p></section>`;
 }
 
@@ -174,15 +176,17 @@ VIEWS.analiza = async (main) => {
   const tabsHtml = `<div class="tabs no-print">${tabs.map(([id, l]) => `<button class="${tab === id ? 'active' : ''}" data-at="${id}">${esc(l)}</button>`).join('')}</div>`;
   let body = '', tools = '';
   if (tab === 'miesiac') {
-    const ym = q.get('ym') || S.me.today.slice(0, 7);
+    const ymQ = q.get('ym') || '';
+    const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ymQ) && ymQ <= S.me.today.slice(0, 7) ? ymQ : S.me.today.slice(0, 7);
     const d = await api(`/analytics/month?ym=${ym}`);
     tools = `<label class="field no-print">Miesiąc<input type="month" id="amonth" value="${ym}"></label>
       <a class="btn no-print" href="/api/analytics/export.csv?kind=miesiac&ref=${ym}">${icon('download')}CSV</a><button id="aprint" class="no-print">${icon('print')}Drukuj / PDF</button><button id="asave" class="primary no-print">Zapisz jako raport</button>`;
     body = `<h2 class="print-title">${esc(plMonth(ym))} wobec ${esc(plMonth(d.previous.year_month))}</h2>${renderMonth(d)}`;
   } else if (tab === 'rok') {
-    const year = q.get('y') || S.me.today.slice(0, 4);
-    const compare = (q.get('c') || String(Number(year) - 1)).split(',').filter(Boolean);
-    const metric = q.get('m') || 'worked_min';
+    const yQ = q.get('y') || '';
+    const year = /^\d{4}$/.test(yQ) ? yQ : S.me.today.slice(0, 4);
+    const compare = (q.has('c') ? q.get('c') : String(Number(year) - 1)).split(',').filter(y => /^\d{4}$/.test(y) && y !== year);
+    const metric = /^[a-z_]+$/.test(q.get('m') || '') ? q.get('m') : 'worked_min';
     const d = await api(`/analytics/year?year=${year}&compare=${compare.join(',')}`);
     tools = `<label class="field no-print">Rok<select id="ayear">${d.available.map(y => `<option ${String(y) === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
       <fieldset class="field no-print years-pick"><legend>Porównaj z</legend>${d.available.filter(y => String(y) !== year).map(y => `<label class="inline"><input type="checkbox" value="${y}" ${compare.includes(String(y)) ? 'checked' : ''}> ${y}</label>`).join('') || '<span class="muted small">brak innych lat</span>'}</fieldset>
@@ -219,14 +223,18 @@ VIEWS.analiza = async (main) => {
 
 // Zapisany raport (migawka) — do druku / PDF
 VIEWS.raport = async (main, rest) => {
-  const r = await api(`/saved-reports/${Number(rest[0])}`);
+  const r = await api(`/saved-reports/${Number(String(rest[0]).split('?')[0])}`);
   let body = '';
   if (r.kind === 'miesiac') body = renderMonth(r.data);
-  else if (r.kind === 'rok') body = renderYear(r.data, 'worked_min');
+  else if (r.kind === 'rok') {
+    const mt = /^[a-z_]+$/.test(new URLSearchParams(location.hash.split('?')[1] || '').get('m') || '') ? new URLSearchParams(location.hash.split('?')[1]).get('m') : 'worked_min';
+    body = `<label class="field no-print">Wskaźnik na wykresie<select id="rmetric">${r.data.kpi.map(k => `<option value="${k.key}" ${k.key === mt ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select></label>${renderYear(r.data, mt)}`;
+  }
   else body = `<section class="panel">${processCharts(r.data.process)}</section><section class="panel"><h3>Podobne projekty</h3>${similarSection(r.data.similar, { editable: false })}</section>`;
   main.innerHTML = head(r.title, `Zapisano ${new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })} · ${esc(r.author || '')} · dane z chwili zapisu`,
     `<a class="btn no-print" href="#/analiza?t=raporty">‹ Raporty</a><button id="rprint" class="primary no-print">${icon('print')}Drukuj / PDF</button>`) +
     (r.note ? `<section class="panel note-box"><h3>Komentarz kierownika</h3><p style="white-space:pre-wrap">${esc(r.note)}</p></section>` : '') + body;
   bindCharts(main);
+  const rm = $('#rmetric'); if (rm) rm.onchange = () => { location.hash = `#/raport/${r.id}?m=${rm.value}`; };
   on('rprint', () => window.print());
 };

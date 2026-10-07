@@ -391,3 +391,6 @@ figure.chart figcaption { font-weight: 600; margin-bottom: 4px; }
   .h-cell.result, .dchip, .pa-act, .bar3d .fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .chart-box .tip { display: none; }
 }
+.plate .title h3 .model { font-weight: 500; font-size: var(--fs-sm); color: var(--c-ink-soft); margin-left: 4px; }
+.plate .holder { font-family: var(--f-mono); font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--m-soft); color: var(--m-ink); border: 1px solid var(--m-mid); }
+.plate .plate-data { margin: -4px 0 var(--sp-2); }

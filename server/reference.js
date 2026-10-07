@@ -76,8 +76,10 @@ function ensureReference(db) {
       carry, affects, debt, confirm, vis, label, `${basis}. ${LEGAL_NOTE}`, null, status, (i + 1) * 10);
     });
     TASK_TYPES.forEach(([code, name, phase, w], i) => db.run('INSERT OR IGNORE INTO task_types(code,name,phase,default_weight,active,sort) VALUES (?,?,?,?,1,?)', code, name, phase, w, (i + 1) * 10));
-    db.run(`INSERT OR IGNORE INTO machines(id,name,axes,control,model,notes,sort,active) VALUES ('M-HARTFORD','Hartford',3,'Heidenhain',NULL,'Dokładny model do uzupełnienia',1,1)`);
-    db.run(`INSERT OR IGNORE INTO machines(id,name,axes,control,model,notes,sort,active) VALUES ('M-GRIMME','Grimme',5,'Sinumerik',NULL,'Dokładny model do uzupełnienia',2,1)`);
+    db.run(`INSERT OR IGNORE INTO machines(id,name,axes,control,model,tool_holder,plate,notes,sort,active) VALUES ('M-HARTFORD','Hartford',3,'Heidenhain','HCMC-18','BT50',
+      'Zasilanie 380/415 V, 3 fazy, 50/60 Hz · moc 45 kVA · powietrze 6,5 kg/cm² (92 psi) · masa 16 000 kg',NULL,1,1)`);
+    db.run(`INSERT OR IGNORE INTO machines(id,name,axes,control,model,tool_holder,plate,notes,sort,active) VALUES ('M-GRIMME','Grimme',5,'Sinumerik','PSF-M 25/17','HSK40',
+      'Grimme SysTech · nr ser. 870 · rok 2013 · wrzeciono Classic 120 · napęd Siemens (SIE/HD), serwo · 230/400 V, 50 Hz · 30,2 kW',NULL,2,1)`);
     for (const m of db.all('SELECT id FROM machines')) db.run('INSERT OR IGNORE INTO machine_board(machine_id) VALUES (?)', m.id);
     if (!db.get('SELECT 1 FROM shift_templates')) {
       db.run(`INSERT INTO shift_templates(name,short,start_time,end_time,break_min) VALUES ('Zmiana I','I','06:00','14:00',0),('Zmiana II','II','14:00','22:00',0),('Zmiana III (nocna)','III','22:00','06:00',0)`);

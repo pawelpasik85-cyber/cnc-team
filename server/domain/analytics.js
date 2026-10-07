@@ -21,7 +21,7 @@ function projectMetrics(db, id) {
     FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ?`, id);
   const live = tasks.filter(t => t.status !== 'anulowane');
   const doneDates = live.filter(t => t.status === 'zakonczone' && t.completed_at).map(t => localDate(t.completed_at)).sort();
-  const start = p.start_date || agg.first || localDate(p.created_at);
+  const start = [p.start_date || agg.first || localDate(p.created_at), doneDates[0]].filter(Boolean).sort()[0];
   const allDone = live.length > 0 && live.every(t => t.status === 'zakonczone');
   const finish = allDone ? [doneDates[doneDates.length - 1], agg.last].filter(Boolean).sort().pop() : null;
   return {
@@ -47,20 +47,25 @@ function projectProcess(db, id) {
     .map(t => ({ date: localDate(t.completed_at), title: t.title, weight: t.weight })).sort((a, b) => a.date.localeCompare(b.date));
   const last = [m.finish_date, daily.length ? daily[daily.length - 1].d : null, completions.length ? completions[completions.length - 1].date : null, T.today()]
     .filter(Boolean).filter(d => m.finish_date ? d <= m.finish_date : true).sort().pop();
-  let from = m.start_date;
-  if (daily.length && daily[0].d < from) from = daily[0].d;
-  const to = m.finish_date || (last > from ? last : from);
-  const days = Math.min(400, dayDiff(from, to) + 1);
+  // zakres: od najwcześniejszego z (start, pierwszy wpis czasu, pierwsze zakończenie) do zakończenia projektu
+  const from = [m.start_date, daily.length ? daily[0].d : null, completions.length ? completions[0].date : null].filter(Boolean).sort()[0];
+  const to = [m.finish_date || last, from].filter(Boolean).sort().pop();
+  const total = dayDiff(from, to) + 1;
+  // długie projekty: punkt co tydzień (ostatni dzień zawsze), żeby wykres kończył się na pełnej sumie
+  const stepDays = total > 400 ? 7 : 1;
   const byDay = new Map(daily.map(r => [r.d, r]));
   const series = [];
-  let cum = 0, doneW = 0, ci = 0;
-  const span = m.due_date ? Math.max(1, dayDiff(m.start_date, m.due_date)) : null;
-  for (let i = 0; i < days; i++) {
-    const d = T.addDays(from, i);
-    const r = byDay.get(d);
-    cum += r ? r.w : 0;
+  let cum = 0, doneW = 0, ci = 0, di = 0;
+  // plan liniowy: dzień rozpoczęcia = 1/(n+1)… dzień terminu = 100% (oba końce liczone, jak czas trwania)
+  const span = m.due_date && m.start_date ? Math.max(0, dayDiff(m.start_date, m.due_date)) : null;
+  const dates = [];
+  for (let i = 0; i < total; i += stepDays) dates.push(T.addDays(from, i));
+  if (dates[dates.length - 1] !== to) dates.push(to);
+  for (const d of dates) {
+    while (di < daily.length && daily[di].d <= d) { cum += daily[di].w; di++; }
     while (ci < completions.length && completions[ci].date <= d) { doneW += completions[ci].weight; ci++; }
-    const planFrac = span ? Math.min(1, Math.max(0, dayDiff(m.start_date, d) / span)) : null;
+    const r = byDay.get(d);
+    const planFrac = span === null ? null : d < m.start_date ? 0 : Math.min(1, (dayDiff(m.start_date, d) + 1) / (span + 1));
     series.push({ date: d, worked_min: r ? r.w : 0, cum_min: cum, progress_pct: totalWeight ? Math.round((doneW / totalWeight) * 100) : null,
       plan_cum_min: m.planned_min && planFrac !== null ? Math.round(m.planned_min * planFrac) : null, plan_progress_pct: planFrac !== null ? Math.round(planFrac * 100) : null });
   }
@@ -68,7 +73,7 @@ function projectProcess(db, id) {
   const tasks = live.map(t => ({ id: t.id, title: t.title, type: t.type_name, phase: t.phase, status: t.status, planned_min: t.planned_min, worked_min: worked.get(t.id) || 0,
     completed_date: localDate(t.completed_at), diff_min: t.planned_min != null ? (worked.get(t.id) || 0) - t.planned_min : null }));
   const { tasks_rows, ...summary } = m;
-  return { summary, series, completions, tasks, complete: !!m.finish_date };
+  return { summary, series, completions, tasks, complete: !!m.finish_date, step_days: stepDays };
 }
 
 // ---------- Projekt: podobne zakończone projekty ----------
@@ -129,8 +134,11 @@ function monthRange(ym) {
 }
 const shiftYear = (ym, n) => `${Number(ym.slice(0, 4)) + n}${ym.slice(4)}`;
 
-function monthStats(db, ym) {
-  const { from, to } = monthRange(ym);
+// toDay: liczba dni od początku miesiąca (porównanie „do tego samego dnia” dla bieżącego miesiąca)
+function monthStats(db, ym, { toDay } = {}) {
+  const r0 = monthRange(ym);
+  const from = r0.from;
+  const to = toDay ? [`${ym}-${String(toDay).padStart(2, '0')}`, r0.to].sort()[0] : r0.to;
   const fromUtc = T.localToUtc(from, '00:00'), toUtc = T.localToUtc(T.addDays(to, 1), '00:00');
   const w = db.get(`SELECT COUNT(*) n, SUM(e.active_min) a, SUM(e.verify_min) v, SUM(e.rework_min) rw, SUM(e.blocked_min) bl, SUM(e.unassigned_min) un
     FROM task_time_entries e WHERE e.work_date BETWEEN ? AND ?`, from, to);
@@ -155,10 +163,12 @@ function monthStats(db, ym) {
   const abs = db.all(`SELECT a.start_date, a.end_date, a.minutes, c.code, c.pool_kind FROM absences a JOIN absence_categories c ON c.id = a.category_id
     WHERE a.status != 'anulowana' AND a.end_date >= ? AND a.start_date <= ?`, from, to);
   const absence = { urlop_min: 0, l4_min: 0, inne_min: 0, total_min: 0 };
+  // podział wpisu na przełomie miesięcy proporcjonalnie do dni roboczych (pn–pt)
+  const workdays = (a, b) => { let n = 0; for (let d = a; d <= b; d = T.addDays(d, 1)) { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w !== 0 && w !== 6) n++; } return n; };
   for (const a of abs) {
-    const total = dayDiff(a.start_date, a.end_date) + 1;
-    const inside = dayDiff(a.start_date < from ? from : a.start_date, a.end_date > to ? to : a.end_date) + 1;
-    const m = Math.round(a.minutes * Math.max(0, inside) / Math.max(1, total));
+    const total = workdays(a.start_date, a.end_date);
+    const inside = workdays(a.start_date < from ? from : a.start_date, a.end_date > to ? to : a.end_date);
+    const m = total ? Math.round((a.minutes * inside) / total) : (a.start_date >= from && a.start_date <= to ? a.minutes : 0);
     const key = a.pool_kind === 'wypoczynkowy' ? 'urlop_min' : a.code === 'L4' ? 'l4_min' : 'inne_min';
     absence[key] += m; absence.total_min += m;
   }
@@ -195,33 +205,53 @@ function deltas(cur, prev) {
 }
 
 function monthCompare(db, ym) {
-  const cur = monthStats(db, ym), prev = monthStats(db, shiftYear(ym, -1));
+  monthRange(ym);
+  const today = T.today();
+  if (ym > today.slice(0, 7)) throw bad('Ten miesiąc jeszcze się nie zaczął.');
+  // bieżący miesiąc porównywany z tym samym okresem (1…dziś) rok wcześniej — nie z pełnym miesiącem
+  const toDay = ym === today.slice(0, 7) ? Number(today.slice(8, 10)) : undefined;
+  const cur = monthStats(db, ym, { toDay }), prev = monthStats(db, shiftYear(ym, -1), { toDay });
   const kc = kpis(cur), kp = kpis(prev);
-  return { current: cur, previous: prev, kpi: KPI.map(([k, label, unit]) => ({ key: k, label, unit })), current_kpi: kc, previous_kpi: kp, delta: deltas(kc, kp) };
+  return { current: cur, previous: prev, partial: toDay ? { until_day: toDay } : null, kpi: KPI.map(([k, label, unit]) => ({ key: k, label, unit })), current_kpi: kc, previous_kpi: kp, delta: deltas(kc, kp) };
 }
 
 // ---------- Rok ----------
-function yearStats(db, year) {
+// untilMd: „MM-DD” — sumy od 1 stycznia do tego dnia (porównanie bieżącego roku z tym samym okresem lat poprzednich)
+function yearStats(db, year, { untilMd } = {}) {
   if (!/^\d{4}$/.test(String(year))) throw bad('Rok w formacie RRRR.');
+  const nowYm = T.today().slice(0, 7);
   const months = [];
   for (let m = 1; m <= 12; m++) {
     const ym = `${year}-${String(m).padStart(2, '0')}`;
     // miesiące przyszłe: brak danych (null), nie zero
-    if (ym > T.today().slice(0, 7)) { months.push({ year_month: ym, future: true, ...Object.fromEntries(KPI.map(([k]) => [k, null])) }); continue; }
+    if (ym > nowYm) { months.push({ year_month: ym, future: true, ...Object.fromEntries(KPI.map(([k]) => [k, null])) }); continue; }
     months.push({ year_month: ym, ...kpis(monthStats(db, ym)) });
   }
-  const totals = {};
-  for (const [k] of KPI) {
-    if (k === 'tasks_diff_pct') continue;
-    totals[k] = months.reduce((s, x) => s + (x[k] || 0), 0);
+  const lastMonth = untilMd ? Number(untilMd.slice(0, 2)) : 12;
+  const lastDay = untilMd ? Number(untilMd.slice(3, 5)) : undefined;
+  const parts = [];
+  for (let m = 1; m <= lastMonth; m++) {
+    const ym = `${year}-${String(m).padStart(2, '0')}`;
+    if (ym > nowYm) break;
+    parts.push(m === lastMonth && lastDay ? kpis(monthStats(db, ym, { toDay: lastDay })) : months[m - 1]);
   }
-  // odchylenie roczne liczone z sum, nie średnia procentów
-  const { from } = monthRange(`${year}-01`), { to } = monthRange(`${year}-12`);
-  const done = db.all(`SELECT t.planned_min, (SELECT SUM(${WORK}) FROM task_time_entries e WHERE e.task_id = t.id) w FROM tasks t
-    WHERE t.status = 'zakonczone' AND t.planned_min IS NOT NULL AND t.completed_at >= ? AND t.completed_at < ?`, T.localToUtc(from, '00:00'), T.localToUtc(T.addDays(to, 1), '00:00'));
-  const dp = done.reduce((s, t) => s + t.planned_min, 0), dw = done.reduce((s, t) => s + (t.w || 0), 0);
-  totals.tasks_diff_pct = dp ? Math.round(((dw - dp) / dp) * 100) : null;
+  let totals = null;
+  if (parts.length) {
+    totals = {};
+    for (const [k] of KPI) if (k !== 'tasks_diff_pct') totals[k] = parts.reduce((s, x) => s + (x[k] || 0), 0);
+    // odchylenie liczone z sum zakończonych zadań w okresie, nie średnia procentów
+    const from = `${year}-01-01`;
+    const to = untilMd ? [`${year}-${untilMd}`, T.lastDayOfMonth(`${year}-${untilMd.slice(0, 2)}`)].sort()[0] : `${year}-12-31`;
+    const done = db.all(`SELECT t.planned_min, (SELECT SUM(${WORK}) FROM task_time_entries e WHERE e.task_id = t.id) w FROM tasks t
+      WHERE t.status = 'zakonczone' AND t.planned_min IS NOT NULL AND t.completed_at >= ? AND t.completed_at < ?`, T.localToUtc(from, '00:00'), T.localToUtc(T.addDays(to, 1), '00:00'));
+    const dp = done.reduce((s, t) => s + t.planned_min, 0), dw = done.reduce((s, t) => s + (t.w || 0), 0);
+    totals.tasks_diff_pct = dp ? Math.round(((dw - dp) / dp) * 100) : null;
+  }
   return { year: Number(year), months, totals };
+}
+
+function cleanYears(list, base) {
+  return [...new Set((Array.isArray(list) ? list : String(list || '').split(',')).map(String).filter(y => /^\d{4}$/.test(y) && y !== String(base)))].slice(0, 4).map(Number);
 }
 
 function availableYears(db) {
@@ -232,10 +262,15 @@ function availableYears(db) {
 }
 
 function yearCompare(db, year, compare = []) {
-  const years = [Number(year), ...compare.map(Number).filter(y => y !== Number(year))].slice(0, 5);
-  const data = years.map(y => yearStats(db, y));
-  const base = data[0].totals;
-  return { kpi: KPI.map(([k, label, unit]) => ({ key: k, label, unit })), years: data, delta_vs: data.slice(1).map(d => ({ year: d.year, delta: deltas(base, d.totals) })), available: availableYears(db) };
+  if (!/^\d{4}$/.test(String(year))) throw bad('Rok w formacie RRRR.');
+  const years = [Number(year), ...cleanYears(compare, year)];
+  const today = T.today();
+  // bieżący rok: sumy wszystkich lat od 1 stycznia do dzisiejszego dnia (ten sam okres)
+  const untilMd = Number(year) === Number(today.slice(0, 4)) ? today.slice(5, 10) : undefined;
+  const data = years.map(y => yearStats(db, y, { untilMd }));
+  const base = data[0].totals || {};
+  return { kpi: KPI.map(([k, label, unit]) => ({ key: k, label, unit })), years: data, period: untilMd ? { ytd: true, until: untilMd } : null,
+    delta_vs: data.slice(1).map(d => ({ year: d.year, delta: deltas(base, d.totals || {}) })), available: availableYears(db) };
 }
 
 // ---------- Zapisane raporty ----------
@@ -243,7 +278,7 @@ const KIND_TITLE = { projekt: 'Przebieg projektu', miesiac: 'Miesiąc', rok: 'Ro
 function buildReportData(db, kind, ref, body = {}) {
   if (kind === 'projekt') return { process: projectProcess(db, ref), similar: similarProjects(db, ref) };
   if (kind === 'miesiac') return monthCompare(db, ref);
-  if (kind === 'rok') return yearCompare(db, ref, Array.isArray(body.compare) ? body.compare : []);
+  if (kind === 'rok') return yearCompare(db, ref, cleanYears(body.compare, ref));
   throw bad('Nieznany rodzaj raportu.');
 }
 function saveReport(db, user, body) {
@@ -255,7 +290,7 @@ function saveReport(db, user, body) {
   return db.tx(() => {
     const now = T.nowIso();
     const r = db.run(`INSERT INTO saved_reports(kind, ref, title, note, data, shared, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
-      kind, ref, title, note, JSON.stringify({ ...data, params: { compare: body.compare || [] } }), body.shared ? 1 : 0, user.id, now, now);
+      kind, ref, title, note, JSON.stringify({ ...data, params: { compare: kind === 'rok' ? cleanYears(body.compare, ref) : [] } }), body.shared ? 1 : 0, user.id, now, now);
     const id = Number(r.lastInsertRowid);
     audit(db, user, 'saved_report', id, 'utworzenie', null, { kind, ref, title, shared: !!body.shared }, note);
     return { id };
@@ -282,7 +317,7 @@ function updateReport(db, user, id, body) {
   db.tx(() => {
     db.run('UPDATE saved_reports SET title=?, note=?, shared=?, updated_at=? WHERE id=?', upd.title, upd.note, upd.shared, T.nowIso(), id);
     audit(db, user, 'saved_report', id, upd.shared !== r.shared ? (upd.shared ? 'udostepnienie' : 'cofniecie_udostepnienia') : 'edycja',
-      { title: r.title, note: r.note, shared: r.shared }, upd, body.reason);
+      { title: r.title, note: r.note, shared: r.shared }, upd, reqStr(body.reason, 'Powód', { optional: true, max: 500 }));
   });
   return { id };
 }

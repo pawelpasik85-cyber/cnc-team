@@ -165,17 +165,17 @@ function seedDemo(db) {
   P.changeTaskPlan(db, admin, t2, { planned_min: 300, reason: 'Zmiana zakresu: dodatkowe fazowania (decyzja klienta)' });
   P.updateTask(db, admin, t2, { status: 'zakonczone', result_confirmation: 'Program OP10 rev 03 wygenerowany i postprocesowany' });
   P.addTimeEntry(db, admin, { task_id: t3, employee_id: celina, work_date: '2026-10-05', active_min: 30, blocked_min: 45, cause: 'narzedzia' });
-  P.updateTask(db, admin, t3, { status: 'zablokowane', block_reason: 'Brak oprawki HSK dla freza Ø6' });
+  P.updateTask(db, admin, t3, { status: 'zablokowane', block_reason: 'Brak oprawki BT50-ER32 dla freza Ø6' });
   P.addTimeEntry(db, admin, { task_id: t6, employee_id: bartosz, work_date: '2026-10-02', active_min: 200 });
   P.updateTask(db, admin, t6, { status: 'zakonczone', result_confirmation: 'Mocowanie w imadle 5X zatwierdzone' });
   P.addExplanation(db, admin, t6, { explanation: 'Pierwszy detal w tej rodzinie — brak gotowego mocowania.', conclusion: 'Przygotować szablon mocowania dla rodziny wsporników.' });
 
-  P.updateBoard(db, admin, 'M-HARTFORD', { project_id: p1, stage: 'Weryfikacja programu OP10', assignee_id: celina, next_task_id: t3, next_program_status: 'w_przygotowaniu', block_reason: 'Brak oprawki HSK dla freza Ø6' });
+  P.updateBoard(db, admin, 'M-HARTFORD', { project_id: p1, stage: 'Weryfikacja programu OP10', assignee_id: celina, next_task_id: t3, next_program_status: 'w_przygotowaniu', block_reason: 'Brak oprawki BT50-ER32 dla freza Ø6' });
   P.updateBoard(db, admin, 'M-GRIMME', { project_id: p2, stage: 'Programowanie 5X', assignee_id: bartosz, next_program_status: 'brak', expected_end_date: '2026-10-09', expected_end_time: '14:00', expected_end_source: 'szacunek programisty' });
 
   P.createHandover(db, admin, { project_id: p1, machine_id: 'M-HARTFORD', from_employee_id: adam, to_employee_id: celina, shift_date: '2026-10-01',
     done_text: 'OP10: kieszenie zgrubnie i wykańczająco, postprocesor Heidenhain.', remaining_text: 'Weryfikacja kolizji oprawki przy ściance 3; fazowania.',
-    stopped_at_text: 'Operacja „FAZY_ZEW” — nie wygenerowano', tooling_notes: 'Frez Ø6 wymaga oprawki HSK — sprawdzić dostępność', checklist: ['Sprawdzić bazę Z na płycie', 'Porównać rev 03 z rysunkiem C'] });
+    stopped_at_text: 'Operacja „FAZY_ZEW” — nie wygenerowano', tooling_notes: 'Frez Ø6 wymaga oprawki BT50 z tulejką ER32 — sprawdzić dostępność', checklist: ['Sprawdzić bazę Z na płycie', 'Porównać rev 03 z rysunkiem C'] });
   P.addManualTechData(db, admin, p1, { operation_id: 'OP10', nx_time_min: 95, machine_est_min: 110 });
   seedHistory(db, admin, emps, tt);
 

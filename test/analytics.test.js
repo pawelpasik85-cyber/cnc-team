@@ -129,3 +129,27 @@ test('dostęp: analiza tylko dla kierownika; raport zapisany i udostępniony wid
     assert.equal((await adm('GET', '/analytics/month?ym=2026-10')).data.current_kpi.worked_min, 990);
   } finally { srv.close(); }
 });
+
+test('przegląd: bieżący miesiąc i rok porównywane do tego samego dnia; długi projekt próbkowany co tydzień do pełnej sumy', () => {
+  const w = world(); // dziś 2026-10-20
+  const m = A.monthCompare(w.db, '2026-10');
+  assert.deepEqual(m.partial, { until_day: 20 });
+  assert.equal(m.previous.to, '2025-10-20');
+  assert.throws(() => A.monthCompare(w.db, '2026-11'), /nie zaczął/);
+  assert.equal(A.monthCompare(w.db, '2026-09').partial, null);
+  const y = A.yearCompare(w.db, 2026, ['2025', '2025', 'x']);
+  assert.deepEqual(y.years.map(x => x.year), [2026, 2025], 'lata bez powtórzeń');
+  assert.deepEqual(y.period, { ytd: true, until: '10-20' });
+  const tt = Object.fromEntries(w.db.all('SELECT id, code FROM task_types').map(t => [t.code, t.id]));
+  const pid = P.saveProject(w.db, w.admin, { order_no: 'ZL-L', part_no: 'D', part_rev: 'A', start_date: '2025-01-01', due_date: '2026-06-01' });
+  const t = P.createTask(w.db, w.admin, { project_id: pid, type_id: tt.NX, title: 'długie', planned_min: 100 });
+  P.addTimeEntry(w.db, w.admin, { task_id: t, employee_id: w.e, work_date: '2025-01-02', active_min: 60 });
+  P.addTimeEntry(w.db, w.admin, { task_id: t, employee_id: w.e, work_date: '2026-09-01', active_min: 60 });
+  P.updateTask(w.db, w.admin, t, { status: 'zakonczone', result_confirmation: 'ok' });
+  w.db.run('UPDATE tasks SET completed_at=? WHERE id=?', '2026-09-01T10:00:00.000Z', t);
+  const pr = A.projectProcess(w.db, pid);
+  assert.equal(pr.step_days, 7);
+  assert.equal(pr.series[pr.series.length - 1].date, '2026-09-01');
+  assert.equal(pr.series[pr.series.length - 1].cum_min, 120, 'ostatni punkt = pełna suma');
+  assert.equal(pr.series[pr.series.length - 1].plan_progress_pct, 100);
+});

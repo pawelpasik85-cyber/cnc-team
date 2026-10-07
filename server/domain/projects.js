@@ -18,19 +18,20 @@ function saveMachine(db, user, body, id) {
   const d = {
     name: reqStr(body.name, 'Nazwa', { max: 60 }), axes: reqInt(body.axes, 'Osie', { min: 3, max: 9 }),
     control: reqStr(body.control, 'Sterowanie', { max: 60 }), model: reqStr(body.model, 'Model', { optional: true, max: 80 }),
+    tool_holder: reqStr(body.tool_holder, 'Oprawki narzędziowe', { optional: true, max: 40 }), plate: reqStr(body.plate, 'Dane z tabliczki', { optional: true, max: 500 }),
     notes: reqStr(body.notes, 'Uwagi', { optional: true }), sort: reqInt(body.sort ?? 0, 'Kolejność'), active: body.active === false ? 0 : 1,
   };
   return db.tx(() => {
     if (id) {
       const old = db.get('SELECT * FROM machines WHERE id=?', id);
       if (!old) throw notFound();
-      db.run('UPDATE machines SET name=?,axes=?,control=?,model=?,notes=?,sort=?,active=? WHERE id=?', d.name, d.axes, d.control, d.model, d.notes, d.sort, d.active, id);
+      db.run('UPDATE machines SET name=?,axes=?,control=?,model=?,tool_holder=?,plate=?,notes=?,sort=?,active=? WHERE id=?', d.name, d.axes, d.control, d.model, d.tool_holder, d.plate, d.notes, d.sort, d.active, id);
       audit(db, user, 'machine', id, 'edycja', old, d);
       return id;
     }
     const newId = reqStr(body.id, 'Identyfikator', { max: 40 });
     if (!ID_RE.test(newId)) throw bad('Identyfikator maszyny: litery, cyfry, . _ - /');
-    db.run('INSERT INTO machines(id,name,axes,control,model,notes,sort,active) VALUES (?,?,?,?,?,?,?,?)', newId, d.name, d.axes, d.control, d.model, d.notes, d.sort, d.active);
+    db.run('INSERT INTO machines(id,name,axes,control,model,tool_holder,plate,notes,sort,active) VALUES (?,?,?,?,?,?,?,?,?,?)', newId, d.name, d.axes, d.control, d.model, d.tool_holder, d.plate, d.notes, d.sort, d.active);
     db.run('INSERT OR IGNORE INTO machine_board(machine_id) VALUES (?)', newId);
     audit(db, user, 'machine', newId, 'utworzenie', null, d);
     return newId;

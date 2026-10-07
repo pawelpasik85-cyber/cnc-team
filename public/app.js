@@ -170,7 +170,8 @@ function plate(b) {
   const th = machineTheme(m);
   return `<article class="plate theme-${th} ${blocked ? 'blocked' : ''}">
     <div class="axes">${machineEmblem(th, 58)}<b>${m.axes}X</b><span>${esc(m.control)}</span></div>
-    <div class="body"><div class="title"><h3>${esc(m.name)}</h3><span class="muted small">${esc(m.model || 'model do uzupełnienia')}</span></div>
+    <div class="body"><div class="title"><h3>${esc(m.name)} <span class="model">${esc(m.model || 'model do uzupełnienia')}</span></h3>${m.tool_holder ? `<span class="holder" title="Oprawki narzędziowe">${esc(m.tool_holder)}</span>` : ''}</div>
+    ${m.plate ? `<p class="plate-data small muted">${esc(m.plate)}</p>` : ''}
     <dl>
       <dt>Projekt</dt><dd>${p ? `<a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span></a> ${esc(p.part_no)} rev ${esc(p.part_rev)}` : '<span class="muted">brak</span>'}</dd>
       <dt>Program NC</dt><dd>${p && p.nc_program ? `<span class="mono">${esc(p.nc_program)} · rev ${esc(p.nc_rev)}</span>` : '<span class="muted">brak danych</span>'}</dd>

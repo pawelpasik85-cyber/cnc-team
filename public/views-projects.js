@@ -193,7 +193,7 @@ VIEWS.maszyny = async (main) => {
   });
   $$('[data-machine]').forEach(btnEl => btnEl.onclick = () => {
     const m = board.find(x => x.machine.id === btnEl.dataset.machine).machine;
-    openForm({ title: `Maszyna ${m.id}`, fields: [{ name: 'name', label: 'Nazwa', value: m.name, required: true }, { name: 'axes', label: 'Liczba osi', type: 'number', value: m.axes, required: true }, { name: 'control', label: 'Sterowanie', value: m.control, required: true }, { name: 'model', label: 'Dokładny model', value: m.model }, { name: 'notes', label: 'Uwagi', value: m.notes, wide: true }, { name: 'sort', label: 'Kolejność', type: 'number', value: m.sort }],
+    openForm({ title: `Maszyna ${m.id}`, fields: [{ name: 'name', label: 'Nazwa', value: m.name, required: true }, { name: 'axes', label: 'Liczba osi', type: 'number', value: m.axes, required: true }, { name: 'control', label: 'Sterowanie', value: m.control, required: true }, { name: 'model', label: 'Dokładny model', value: m.model }, { name: 'tool_holder', label: 'Oprawki narzędziowe (np. BT50, HSK40)', value: m.tool_holder }, { name: 'plate', label: 'Dane z tabliczki znamionowej', value: m.plate, wide: true }, { name: 'notes', label: 'Uwagi', value: m.notes, wide: true }, { name: 'sort', label: 'Kolejność', type: 'number', value: m.sort }],
       submit: (v, idem) => post(`/machines/${encodeURIComponent(m.id)}`, v, idem, 'PUT').then(r => (loadBoot(), r)) });
   });
 };
