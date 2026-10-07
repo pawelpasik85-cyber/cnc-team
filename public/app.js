@@ -13,6 +13,7 @@ const NAV = [
   ['zdarzenia', 'Lista zdarzeń', 'list', null],
   ['pracownicy', 'Pracownicy', 'users', null],
   ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee()],
+  ['plan', 'Plan pracy', 'list', () => S.me && S.me.role !== 'guest'],
   ['wyjscia', 'Wyjścia i odrabianie', 'exit', null],
   ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
   ['absencje', 'Urlopy i absencje', 'leave', 'view.leave.all'],
@@ -80,8 +81,8 @@ function renderLogin() {
 function renderShell() {
   const roleName = { admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik', guest: 'Gość' }[S.me.role];
   const tabs = isGuest() ? [['status', 'Status', 'project']]
-    : isEmployee() ? [['dzisiaj', 'Dzisiaj', 'today'], ['zglos', 'Zgłoś', 'summons'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']]
-      : [['dzisiaj', 'Dzisiaj', 'today'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project'], ['maszyny', 'Maszyny', 'board']];
+    : isEmployee() ? [['dzisiaj', 'Dzisiaj', 'today'], ['plan', 'Polecenia', 'list'], ['zglos', 'Zgłoś', 'summons'], ['projekty', 'Projekty', 'project']]
+      : [['dzisiaj', 'Dzisiaj', 'today'], ['plan', 'Plan pracy', 'list'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']];
   const nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3])));
   $('#app').innerHTML = `<div class="shell">
     <header class="appbar"><button type="button" class="appbar-menu" id="menuBtn" aria-label="Otwórz menu" aria-expanded="false" aria-controls="rail">${icon('list')}</button>
@@ -140,6 +141,7 @@ async function post(path, body, idem, method = 'POST') { const r = await api(pat
 // ---------- Centrum programowania — „Dzisiaj” ----------
 VIEWS.dzisiaj = async (main) => {
   const d = await api('/today');
+  setTimeout(() => $$('[data-ack]').forEach(b => b.onclick = async () => { b.disabled = true; try { await api(`/work-orders/${b.dataset.ack}/ack`, { method: 'POST' }); toast('Potwierdzono.'); rerender(); } catch (e) { toast(e.message, 'err'); b.disabled = false; } }), 0);
   const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t]));
   const shifts = d.shifts.map(s => `<li>${person(s.employee_id)} — ${tag(tpl.get(s.shift_template_id)?.name || 'zmiana')} <span class="muted">${s.start.time}–${s.end.time}${s.work_date !== d.today ? ' (od wczoraj)' : ''}</span></li>`).join('');
   const abs = d.absences.map(a => `<li>${person(a.employee_id)} — ${tag(a.category_label, '', a.icon)} <span class="muted">${a.status}</span></li>`).join('');
@@ -150,13 +152,16 @@ VIEWS.dzisiaj = async (main) => {
     <div class="cols" style="margin-top:var(--sp-4)">
       <section class="panel"><h3>Na zmianie dziś</h3><ul class="plain">${shifts || '<li class="muted">Brak zmian w grafiku.</li>'}</ul></section>
       <section class="panel"><h3>Nieobecności dziś</h3><ul class="plain">${abs || '<li class="muted">Brak nieobecności.</li>'}</ul></section>
+      ${d.my_orders ? `<section class="panel"><h3>Moje polecenia na dziś</h3><ol class="orders">${d.my_orders.map(o => orderCard(o, { mine: true })).join('') || '<li class="muted small empty-orders">Brak poleceń na dziś.</li>'}</ol>
+        <p><a class="btn" href="#/plan">${icon('list')}Polecenia na dziś i jutro</a></p></section>` : ''}
       ${d.my_requests ? `<section class="panel"><h3>Moje zgłoszenia</h3><ul class="plain">${d.my_requests.map(r => `<li>${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])} · ${plDate(r.date_from)} ${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small muted">${esc(r.decision_note)}</span>` : ''}</li>`).join('') || '<li class="muted">Brak zgłoszeń.</li>'}</ul>
         <p><a class="btn primary" href="#/zglos">${icon('summons')}Zgłoś spóźnienie, nieobecność lub odrobienie</a></p></section>` : ''}
       ${d.delayed_projects ? `<section class="panel"><h3>Projekty opóźnione lub ponad plan godzin</h3><ul class="plain">${d.delayed_projects.map(p => { const r = p.hours ? hoursResult(p.hours) : null; return `<li>${machineChip(p)} <a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}</a>${delayLine(p)}${r && r.cls === 'over' ? `<p class="small" style="margin:2px 0 0"><span class="result-chip over">${esc(r.big)}</span> ${esc(r.line)}</p>` : ''}</li>`; }).join('') || '<li class="muted">Wszystkie aktywne projekty idą zgodnie z planem.</li>'}</ul></section>` : ''}
       ${d.my_balance ? `<section class="panel"><h3>Moje saldo do odrobienia (${plMonth(d.today.slice(0, 7))})</h3><div class="stat-row"><div class="stat"><b>${hm(d.my_balance.remaining_min)}</b><span>pozostało</span></div><div class="stat"><b>${d.my_balance.remaining_shifts}</b><span>zmian do końca miesiąca</span></div></div></section>` : ''}
       <section class="panel"><h3>Alerty rozliczeń</h3><ul class="plain">${alerts || '<li class="muted">Brak aktywnych alertów.</li>'}</ul>
         ${d.pending_makeups ? `<p class="notice">Odrabiania oczekujące na zatwierdzenie: ${d.pending_makeups}. <a href="#/wyjscia">Przejdź</a></p>` : ''}
-        ${d.pending_requests ? `<p class="notice">Zgłoszenia pracowników do decyzji: ${d.pending_requests}. <a href="#/zgloszenia">Przejdź</a></p>` : ''}</section>
+        ${d.pending_requests ? `<p class="notice">Zgłoszenia pracowników do decyzji: ${d.pending_requests}. <a href="#/zgloszenia">Przejdź</a></p>` : ''}
+        ${d.orders_today ? `<p class="notice info">Plan pracy na dziś: ${d.orders_today.n} poleceń${d.orders_today.unread ? `, nieprzeczytane: <b>${d.orders_today.unread}</b>` : ''}. <a href="#/plan">Przejdź</a></p>` : ''}</section>
       ${d.leave_reminders ? `<section class="panel"><h3>Zaległy urlop</h3><ul class="plain">${reminders || '<li class="muted">Brak zaległych pul.</li>'}</ul></section>` : ''}
       <section class="panel"><h3>Ostatnie przekazania zmian</h3><ul class="plain">${d.handovers.map(h => `<li><span class="mono">${esc(h.order_no)}</span> ${esc(h.part_no)} · ${plDate(h.shift_date)} · ${person(h.from_employee_id, { name: false })} → ${person(h.to_employee_id, { name: false })}<br><span class="muted">${esc(h.remaining_text)}</span></li>`).join('') || '<li class="muted">Brak.</li>'}</ul></section>
     </div>`;

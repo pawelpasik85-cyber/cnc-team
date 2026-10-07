@@ -12,6 +12,7 @@ const R = require('./domain/reports');
 const I = require('./domain/integration');
 const Req = require('./domain/requests');
 const A = require('./domain/analytics');
+const O = require('./domain/orders');
 
 const ADMIN = 'write';
 const isAdmin = (u) => u && u.role === 'admin';
@@ -73,6 +74,8 @@ function visibleProjects(db, user) {
   for (const p of db.all('SELECT id, responsible_ids FROM projects')) if (JSON.parse(p.responsible_ids).includes(user.employee_id)) ids.add(p.id);
   for (const t of db.all('SELECT DISTINCT project_id FROM tasks WHERE assignee_id=?', user.employee_id)) ids.add(t.project_id);
   for (const b of db.all('SELECT project_id FROM machine_board WHERE project_id IS NOT NULL')) ids.add(b.project_id);
+  // projekty z poleceń kierownika dla tego programisty (ostatnie 14 dni i przyszłe)
+  for (const o of db.all(`SELECT DISTINCT project_id FROM work_orders WHERE employee_id=? AND project_id IS NOT NULL AND status != 'anulowane' AND work_date >= ?`, user.employee_id, T.addDays(T.today(), -14))) ids.add(o.project_id);
   return ids;
 }
 // Pracownik nie widzi wkładu (zmian) innych osób w projekt.
@@ -401,6 +404,7 @@ function buildRoutes() {
     const vis = visibleProjects(db, user);
     const out = { today: d, shifts, absences: absToday, board: P.board(db), handovers: P.listHandovers(db, {}).filter(h => !vis || vis.has(h.project_id)).slice(0, 5) };
     if (user.role === 'employee') {
+      out.my_orders = O.myOrders(db, user, { from: d, to: d });
       out.my_requests = Req.listRequests(db, { employeeId: user.employee_id, limit: 5 }).map(r => ({ id: r.id, kind: r.kind, date_from: r.date_from, date_to: r.date_to, status: r.status, decision_note: r.decision_note }));
       out.my_balance = X.monthBalances(db, d.slice(0, 7)).find(b => b.employee_id === user.employee_id) || null;
       out.alerts = X.listAlerts(db, { employeeId: user.employee_id }).map(a => ({ kind_label: a.kind_label, message: a.message, remaining_min: a.remaining_min }));
@@ -410,6 +414,7 @@ function buildRoutes() {
       out.leave_reminders = db.all('SELECT id, first_name, last_name FROM employees WHERE active=1').flatMap(e => Abs.listPools(db, e.id).filter(p => p.overdue).map(p => ({ employee_id: e.id, name: `${e.first_name} ${e.last_name}`, year: p.acquisition_year, balance_min: p.balance_min, ...p.overdue })));
       out.pending_makeups = db.get(`SELECT COUNT(*) n FROM makeups WHERE status='oczekuje'`).n;
       out.pending_requests = db.get(`SELECT COUNT(*) n FROM requests WHERE status='nowe'`).n;
+      out.orders_today = db.get(`SELECT COUNT(*) n, SUM(CASE WHEN ack_at IS NULL AND status='zaplanowane' THEN 1 ELSE 0 END) unread FROM work_orders WHERE work_date=? AND status != 'anulowane'`, d);
       const ss = P.scheduleSettings(db);
       const withHours = can(user, 'view.efficiency');
       out.delayed_projects = db.all(`SELECT id FROM projects WHERE status='aktywny'`).map(r => P.projectDetail(db, r.id, { withTimes: false, withHours }))
@@ -463,6 +468,23 @@ function buildRoutes() {
     return db.all(`SELECT gp.project_id FROM guest_projects gp JOIN projects p ON p.id=gp.project_id
       WHERE gp.user_id=? AND p.status IN ('aktywny','wstrzymany') ORDER BY p.priority, p.due_date`, user.id).map(r => P.guestStatus(db, r.project_id));
   });
+
+  // ---------- Plan pracy: polecenia na zmianę ----------
+  add('GET', '/work-orders/day', ({ db, user, query }) => {
+    if (user.role !== 'admin' && user.role !== 'supervisor') throw forbidden();
+    return O.dayPlan(db, query.date || T.today());
+  });
+  add('GET', '/work-orders/my', ({ db, user, query }) => {
+    const from = query.from || T.today(), to = query.to || T.addDays(from, 1);
+    T.assertDate(from); T.assertDate(to);
+    if (to < from || (Date.parse(to) - Date.parse(from)) / 86400e3 > 62) throw bad('Zakres najwyżej 62 dni.');
+    return O.myOrders(db, user, { from, to });
+  });
+  add('POST', '/work-orders', ({ db, user, body }) => { requireAdmin(user); return O.createOrder(db, user, body); });
+  add('PATCH', '/work-orders/:id', ({ db, user, params, body }) => { requireAdmin(user); return O.updateOrder(db, user, Number(params.id), body); });
+  add('POST', '/work-orders/:id/move', ({ db, user, params, body }) => { requireAdmin(user); return O.moveOrder(db, user, Number(params.id), body.dir); });
+  add('POST', '/work-orders/carry-over', ({ db, user, body }) => { requireAdmin(user); return O.carryOver(db, user, body); });
+  add('POST', '/work-orders/:id/ack', ({ db, user, params }) => O.acknowledge(db, user, Number(params.id)));
 
   // ---------- Analiza kierownika (tylko administrator); zapisane raporty — przełożony widzi tylko udostępnione ----------
   add('GET', '/analytics/projects/:id', ({ db, user, params }) => {
