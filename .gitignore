@@ -5,3 +5,5 @@ data/
 *.db-shm
 dist-mobile/
 dist/
+dane-testowe/
+node/

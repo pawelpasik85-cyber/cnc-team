@@ -11,7 +11,7 @@ const ROOT = path.join(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'dist');
 const OUT = path.join(OUT_DIR, 'cnc-team-serwer.zip');
 const TOP = 'cnc-team';
-const INCLUDE = ['server', 'public', 'deploy', 'docs', 'test', 'scripts', 'package.json', 'README.md', 'DEPENDENCIES.md', 'INTEGRATIONS.md'];
+const INCLUDE = ['server', 'public', 'deploy', 'docs', 'test', 'scripts', 'package.json', 'README.md', 'TESTOWANIE.md', 'TEST-START.cmd', 'TEST-RESET.cmd', 'DEPENDENCIES.md', 'INTEGRATIONS.md'];
 const EXCLUDE = [/^docs\/screenshots\//, /^scripts\/.*\.py$/, /(^|\/)\.DS_Store$/, /^data\//];
 
 function walk(rel) {
