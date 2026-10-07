@@ -10,6 +10,52 @@ const Req = require('../server/domain/requests');
 
 const DEMO_PASSWORD = 'demo-cnc-2026';
 
+// Historia zakończonych projektów (2025 – wrzesień 2026) do analizy: przebiegi, podobne projekty, porównania miesięcy i lat.
+function seedHistory(db, admin, emps, tt) {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
+  const weekdays = (ym) => { const out = []; for (let d = `${ym}-01`; d.slice(0, 7) === ym; d = T.addDays(d, 1)) if (new Date(`${d}T12:00:00Z`).getUTCDay() % 6 !== 0) out.push(d); return out; };
+  const kinds = [
+    { family: 'tacki NGK', machine: 'M-HARTFORD', part: 'NGK-TR', tasks: [['ANALIZA_DOK', 60], ['NX', 240], ['WERYFIKACJA', 60], ['URUCHOMIENIE', 90]] },
+    { family: 'wsporniki', machine: 'M-GRIMME', part: 'WSP-5X', tasks: [['TECHNOLOGIA', 120], ['NX', 360], ['WERYFIKACJA', 90], ['URUCHOMIENIE', 120]] },
+  ];
+  let n = 100;
+  for (let y = 2025; y <= 2026; y++) {
+    for (let m = 1; m <= (y === 2026 ? 9 : 12); m++) {
+      const ym = `${y}-${String(m).padStart(2, '0')}`;
+      const days = weekdays(ym);
+      const perMonth = 1 + (m % 3 === 0 ? 1 : 0) + (y === 2026 ? 1 : 0);
+      for (let k = 0; k < perMonth; k++) {
+        const kind = kinds[(m + k) % 2];
+        const startIdx = Math.floor(rnd() * Math.max(1, days.length - 8));
+        const start = days[startIdx], due = days[Math.min(days.length - 1, startIdx + 6)];
+        const pid = P.saveProject(db, admin, { order_no: `ZL-${String(y).slice(2)}-${String(n++).padStart(4, '0')}`, part_no: `${kind.part}-${100 + n}`, part_rev: 'A', part_family: kind.family, machine_id: kind.machine, start_date: start, due_date: due, responsible_ids: [emps[(m + k) % 3]] });
+        // 2026 — lepsze planowanie: mniejsze przekroczenia niż w 2025
+        const drift = y === 2026 ? 0.95 + rnd() * 0.25 : 1.0 + rnd() * 0.4;
+        let di = startIdx;
+        for (const [code, plan] of kind.tasks) {
+          const emp = emps[(m + k + plan) % 3];
+          const t = P.createTask(db, admin, { project_id: pid, type_id: tt[code], title: code === 'NX' ? 'Programowanie NX' : code === 'WERYFIKACJA' ? 'Weryfikacja programu' : code === 'URUCHOMIENIE' ? 'Uruchomienie na maszynie' : code === 'TECHNOLOGIA' ? 'Dobór mocowania' : 'Analiza dokumentacji', planned_min: plan, assignee_id: emp });
+          let left = Math.round(plan * drift);
+          const rework = rnd() < 0.35 ? Math.round(left * 0.12) : 0;
+          left -= rework;
+          while (left > 0 && di < days.length) {
+            const chunk = Math.min(left, 300);
+            P.addTimeEntry(db, admin, { task_id: t, employee_id: emp, work_date: days[di], active_min: chunk, ...(rework && left === chunk ? { rework_min: rework, cause: 'zmiana_zakresu' } : {}) });
+            left -= chunk;
+            if (left > 0) di++;
+          }
+          const doneDay = days[Math.min(di, days.length - 1)];
+          P.updateTask(db, admin, t, { status: 'zakonczone', result_confirmation: 'Zgodnie z dokumentacją' });
+          db.run('UPDATE tasks SET completed_at=? WHERE id=?', T.localToUtc(doneDay, '13:00'), t);
+          di = Math.min(di + 1, days.length - 1);
+        }
+        db.run(`UPDATE projects SET status='zakonczony', created_at=?, updated_at=? WHERE id=?`, T.localToUtc(start, '07:00'), T.localToUtc(start, '07:00'), pid);
+      }
+    }
+  }
+}
+
 function seedDemo(db) {
   const now = T.nowIso();
   db.run(`INSERT INTO users(login,display_name,password_hash,role,can_view_confidential,active,created_at) VALUES ('kierownik','Kierownik (admin)',?, 'admin',1,1,?)`, hashPassword(DEMO_PASSWORD), now);
@@ -131,6 +177,7 @@ function seedDemo(db) {
     done_text: 'OP10: kieszenie zgrubnie i wykańczająco, postprocesor Heidenhain.', remaining_text: 'Weryfikacja kolizji oprawki przy ściance 3; fazowania.',
     stopped_at_text: 'Operacja „FAZY_ZEW” — nie wygenerowano', tooling_notes: 'Frez Ø6 wymaga oprawki HSK — sprawdzić dostępność', checklist: ['Sprawdzić bazę Z na płycie', 'Porównać rev 03 z rysunkiem C'] });
   P.addManualTechData(db, admin, p1, { operation_id: 'OP10', nx_time_min: 95, machine_est_min: 110 });
+  seedHistory(db, admin, emps, tt);
 
   // Gość (np. klient lub inny dział): widzi tylko status projektu ZL-26-0412
   People.saveUser(db, admin, { login: 'gosc', display_name: 'Gość — dział jakości', role: 'guest', password: DEMO_PASSWORD, guest_project_ids: [p1] });

@@ -11,6 +11,7 @@ const P = require('./domain/projects');
 const R = require('./domain/reports');
 const I = require('./domain/integration');
 const Req = require('./domain/requests');
+const A = require('./domain/analytics');
 
 const ADMIN = 'write';
 const isAdmin = (u) => u && u.role === 'admin';
@@ -462,6 +463,49 @@ function buildRoutes() {
     return db.all(`SELECT gp.project_id FROM guest_projects gp JOIN projects p ON p.id=gp.project_id
       WHERE gp.user_id=? AND p.status IN ('aktywny','wstrzymany') ORDER BY p.priority, p.due_date`, user.id).map(r => P.guestStatus(db, r.project_id));
   });
+
+  // ---------- Analiza kierownika (tylko administrator); zapisane raporty — przełożony widzi tylko udostępnione ----------
+  add('GET', '/analytics/projects/:id', ({ db, user, params }) => {
+    requireAdmin(user);
+    return { process: A.projectProcess(db, params.id), similar: A.similarProjects(db, params.id) };
+  });
+  add('POST', '/analytics/projects/:id/similar/:other/reject', ({ db, user, params, body }) => { requireAdmin(user); A.rejectSimilar(db, user, params.id, params.other, body); });
+  add('POST', '/analytics/projects/:id/similar/:other/restore', ({ db, user, params }) => { requireAdmin(user); A.restoreSimilar(db, user, params.id, params.other); });
+  add('GET', '/analytics/month', ({ db, user, query }) => { requireAdmin(user); return A.monthCompare(db, query.ym || T.today().slice(0, 7)); });
+  add('GET', '/analytics/year', ({ db, user, query }) => {
+    requireAdmin(user);
+    const compare = String(query.compare || '').split(',').filter(x => /^\d{4}$/.test(x));
+    return A.yearCompare(db, query.year || T.today().slice(0, 4), compare);
+  });
+  add('GET', '/analytics/export.csv', ({ db, user, query }) => {
+    requireAdmin(user);
+    let rep;
+    if (query.kind === 'rok') {
+      const y = A.yearCompare(db, query.ref, String(query.compare || '').split(',').filter(x => /^\d{4}$/.test(x)));
+      const rows = [];
+      for (const yr of y.years) for (const m of yr.months) rows.push({ okres: m.year_month, ...Object.fromEntries(y.kpi.map(k => [k.key, m[k.key]])) });
+      for (const yr of y.years) rows.push({ okres: `${yr.year} razem`, ...Object.fromEntries(y.kpi.map(k => [k.key, yr.totals[k.key]])) });
+      rep = { title: `Porównanie lat ${y.years.map(x => x.year).join(', ')}`, definition: 'Czas w minutach. Przepracowane = aktywna praca + weryfikacja + poprawki.', columns: [['okres', 'Okres'], ...y.kpi.map(k => [k.key, k.label, k.unit])], rows };
+    } else {
+      const m = A.monthCompare(db, query.ref || T.today().slice(0, 7));
+      rep = { title: `Miesiąc ${m.current.year_month} wobec ${m.previous.year_month}`, definition: 'Czas w minutach. Przepracowane = aktywna praca + weryfikacja + poprawki.',
+        columns: [['wskaznik', 'Wskaźnik'], ['jednostka', 'Jednostka'], ['biezacy', m.current.year_month], ['poprzedni', m.previous.year_month], ['roznica', 'Różnica'], ['roznica_pct', 'Różnica %']],
+        rows: m.kpi.map(k => ({ wskaznik: k.label, jednostka: k.unit, biezacy: m.current_kpi[k.key], poprzedni: m.previous_kpi[k.key], roznica: m.delta[k.key].diff, roznica_pct: m.delta[k.key].pct })) };
+    }
+    audit(db, user, 'export', 'analiza', 'eksport_csv', null, { query });
+    return { __raw: true, body: R.toCsv(rep), headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="analiza-${String(query.ref || '').replace(/[^0-9-]/g, '')}.csv"` } };
+  });
+  add('GET', '/saved-reports', ({ db, user }) => {
+    if (user.role !== 'admin' && user.role !== 'supervisor') throw forbidden();
+    return A.listReports(db, user);
+  });
+  add('GET', '/saved-reports/:id', ({ db, user, params }) => {
+    if (user.role !== 'admin' && user.role !== 'supervisor') throw forbidden();
+    return A.getReport(db, user, Number(params.id));
+  });
+  add('POST', '/saved-reports', ({ db, user, body }) => { requireAdmin(user); return A.saveReport(db, user, body); });
+  add('PATCH', '/saved-reports/:id', ({ db, user, params, body }) => { requireAdmin(user); return A.updateReport(db, user, Number(params.id), body); });
+  add('DELETE', '/saved-reports/:id', ({ db, user, params }) => { requireAdmin(user); A.deleteReport(db, user, Number(params.id)); });
 
   // ---------- Ustawienia i historia ----------
   add('GET', '/settings', ({ db, user }) => { requireAdmin(user); return db.all('SELECT * FROM settings ORDER BY key'); });

@@ -88,6 +88,13 @@ Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zada
 - **Prognoza całości** = zakończone (rzeczywiście) + otwarte (większa z wartości: plan albo już przepracowane).
 - Widoczne dla kierownika i przełożonego; pracownik — gdy `employee_sees_project_hours = tak`; gość — nigdy.
 
+### Analiza kierownika (tylko administrator)
+- **Przebieg projektu**: dzienne i narastające godziny pracy (aktywna + weryfikacja + poprawki) wobec planu rozłożonego liniowo od daty rozpoczęcia do terminu; postęp schodkowo wg dat zakończenia zadań (wagi) wobec planu na dzień; każde zadanie: wykonanie wobec planu. Czas trwania = od daty rozpoczęcia do ostatniego zakończenia zadania; „wobec terminu” = dni po (+) lub przed (−) terminem.
+- **Podobne projekty**: tylko zakończone; punkty — ta sama rodzina detali 3, ta sama maszyna 2, wspólne typy zadań do 3 (podobieństwo zbiorów), skala planu 0,5–2× 1; próg ≥ 2, najwyżej 6 propozycji. Kierownik może **odrzucić** propozycję (z powodem) — nie jest pokazywana ani wliczana do średniej; może ją przywrócić. Obie czynności są w historii.
+- **Miesiąc** wobec tego samego miesiąca rok wcześniej: przepracowane godziny, poprawki, blokady, zakończone zadania i projekty (projekt zakończony = ostatnie zakończenie zadania w miesiącu), odchylenie od planu zakończonych zadań (z sum), nieobecności (minuty wg grafiku, wpisy na przełomie miesięcy proporcjonalnie do dni), wyjścia prywatne, nadgodziny; podział na maszyny i osoby. „Lepiej/gorzej”: mniej poprawek, blokad, nieobecności, wyjść, nadgodzin i mniejsze odchylenie = lepiej; więcej zakończonych zadań i projektów = lepiej; godziny pracy — bez oceny.
+- **Rok** wobec wybranych lat: te same wskaźniki miesiąc po miesiącu (miesiące przyszłe = brak danych, nie zero) i sumy roczne.
+- **Zapisany raport** = migawka danych z chwili zapisu (późniejsze zmiany jej nie zmieniają) + komentarz kierownika; druk / PDF z przeglądarki, CSV. Przełożony widzi wyłącznie raporty, które kierownik mu udostępnił.
+
 ### Opóźnienie projektu (w %)
 - **Plan na dziś** = upływ czasu od daty rozpoczęcia do terminu projektu (liniowo, 0–100%).
 - **Wykonano** = Σ wag zakończonych zadań / Σ wag wszystkich zadań (bez anulowanych), oba etapy razem.

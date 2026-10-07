@@ -52,6 +52,8 @@ Saldo wyjścia = minuty − Σ przypisań z **zatwierdzonych** odrabiań. Przypi
 | `machine_board` | Karta maszyny (wprowadzana ręcznie) |
 | `handovers` | Przekazanie zmiany |
 | `requests` | Zgłoszenie pracownika do weryfikacji: rodzaj, dni, godziny, uwaga, status (nowe/przyjęte/odrzucone/wycofane), decyzja, kto i kiedy zdecydował, odnośnik do utworzonego wpisu; unikalne (konto, `client_id`) |
+| `project_comparison_rejections` | Propozycje „podobnych projektów” odrzucone przez kierownika (powód, kto, kiedy) |
+| `saved_reports` | Raporty zapisane przez kierownika: rodzaj (projekt / miesiąc / rok), zakres, tytuł, komentarz, migawka danych (JSON), udostępnienie przełożonemu |
 | `guest_projects` | Projekty widoczne dla konta gościa |
 | `login_attempts` | Próby logowania (blokada po serii błędnych haseł), czyszczone po 30 dniach |
 | `tech_data`, `tech_imports` | Dane technologiczne z CNC Process lub ręczne (jawnie oznaczone), znacznik `stale` dla nieaktualnej rewizji NC; historia importów z hashem pliku |

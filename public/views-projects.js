@@ -86,7 +86,12 @@ async function projectDetailView(main, id) {
       <section class="panel"><h3>Przekazania zmian</h3>${p.handovers.map(h => handoverCard(h)).join('') || '<p class="muted">Brak przekazań.</p>'}
         ${isAdmin() ? `<button id="addHo">${icon('handover')}Przekazanie zmiany</button>` : ''}</section>
     </div></div>
+    ${isAdmin() ? '<div id="analysisSlot" style="margin-top:var(--sp-4)"><p class="muted small">Wczytywanie przebiegu projektu…</p></div>' : ''}
     ${isAdmin() ? `<section class="panel" style="margin-top:var(--sp-4)"><h3>Historia zmian projektu i zadań</h3><div id="hist"><button id="loadHist" class="link">Pokaż historię: kto, kiedy, co zmienił</button></div></section>` : ''}`;
+  if (isAdmin()) {
+    projectAnalysisSection(p).then(html => { const slot = $('#analysisSlot'); if (slot) { slot.innerHTML = html; bindProjectAnalysis(p); } })
+      .catch(e => { const slot = $('#analysisSlot'); if (slot) slot.innerHTML = `<div class="notice danger">${esc(e.message)}</div>`; });
+  }
   on('editPrj', () => projectForm(p));
   on('ncRev', () => openForm({ title: 'Obowiązujący program i rewizja NC', intro: '<p class="small muted">Po zmianie rewizji estymacje dla poprzedniej rewizji zostaną oznaczone jako nieaktualne.</p>', fields: [
     { name: 'nc_program', label: 'Program NC', value: p.nc_program, required: true }, { name: 'nc_rev', label: 'Rewizja NC', value: p.nc_rev, required: true }, { name: 'reason', label: 'Powód', wide: true }],

@@ -27,6 +27,12 @@
 - Opóźnienie projektu zakłada liniowy plan między datą rozpoczęcia a terminem; nie uwzględnia kalendarza pracy ani nierównych etapów.
 - Bez internetu zgłoszenia nie da się wysłać (telefon nie przechowuje danych) — trzeba spróbować ponownie, gdy jest zasięg.
 
+## Analiza
+- Porównania z poprzednimi latami mają sens od chwili, gdy zespół wpisuje czas pracy w aplikacji — wcześniejszych danych aplikacja nie ma (ewentualny import historii — do ustalenia).
+- „Podobne projekty” to punktacja według rodziny detali, maszyny, typów zadań i skali planu — propozycje trzeba ocenić (dlatego można je odrzucać).
+- Nieobecności na przełomie miesięcy dzielone proporcjonalnie do dni kalendarzowych (przybliżenie).
+- PDF powstaje funkcją drukowania przeglądarki („Zapisz jako PDF”).
+
 ## Telefony
 - Aplikacja na telefon to skrót/instalacja ze strony (PWA) — bez APK i sklepu z aplikacjami. Wymaga ważnego certyfikatu HTTPS.
 - Brak trybu offline dla danych (celowo — dane osobowe nie są przechowywane na telefonach).

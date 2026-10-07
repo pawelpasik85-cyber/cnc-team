@@ -104,6 +104,7 @@ function appLogo(size = 40) {
 function hShort(min) {
   if (min === null || min === undefined) return '—';
   const a = Math.abs(min), h = Math.floor(a / 60), m = a % 60;
+  if (h === 0) return `${min < 0 ? '−' : ''}${m} min`;
   return `${min < 0 ? '−' : ''}${h} h${m ? ` ${String(m).padStart(2, '0')} min` : ''}`;
 }
 function bar3d(label, pr, cls = '') {

@@ -21,6 +21,8 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Notatki poufne, dokumenty, referencje kadrowe, nazwy kategorii „poufnych” | ✔ | tylko z uprawnieniem `can_view_confidential` | ✘ | ✘ |
 | Eksport/import JSON CNC Process | ✔ | ✘ | ✘ | ✘ |
 | Historia zmian (audyt), konta, ustawienia firmy | ✔ | ✘ | ✘ | ✘ |
+| Analiza: przebieg projektu, podobne projekty, miesiąc i rok wobec lat poprzednich, CSV | ✔ | ✘ | ✘ | ✘ |
+| Zapisane raporty kierownika | ✔ wszystkie (zapis, udostępnienie, usunięcie) | ✔ tylko udostępnione (podgląd, druk) | ✘ | ✘ |
 | Zmiana własnego hasła | ✔ | ✔ | ✔ | ✔ |
 
 Dodatkowo:

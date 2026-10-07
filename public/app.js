@@ -20,6 +20,7 @@ const NAV = [
   ['maszyny', 'Tablica maszyn', 'board', null],
   ['przekazanie', 'Przekazanie zmiany', 'handover', null],
   ['raporty', 'Raporty kierownicze', 'report', 'view.reports'],
+  ['analiza', 'Analiza i raporty', 'report', () => S.me && (S.me.role === 'admin' || S.me.role === 'supervisor')],
   ['ustawienia', 'Ustawienia', 'settings', null],
 ];
 

@@ -3,7 +3,7 @@
 ## Uruchomienie
 
 ```bash
-npm test                                   # 37 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
+npm test                                   # 41 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
 npm test -- --test-reporter=spec           # czytelny raport
 ```
 
@@ -32,6 +32,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 
 ### Runda 4 — wersja wyłącznie na serwer firmowy (7.10.2026)
 **36 / 36 zaliczonych** (usunięto 11 testów integracji z chmurą i aplikacji w chmurze). Nowe sprawdzenia: brak tras `/api/cloud/*` (404), migracja 004 usuwa tabele chmury z istniejącej bazy, blokada logowania nie daje się obejść zmiennym portem dopisywanym przez IIS do `X-Forwarded-For`. Paczka `npm run package` rozpakowana w pustym katalogu — testy 36/36, brak odwołań do usług zewnętrznych w kodzie (`server/`, `public/` bez adresów http/https poza przestrzenią nazw SVG).
+
+### Runda 6 — analiza i raporty kierownika (7.10.2026)
+**41 / 41 zaliczonych.** Nowe: `test/analytics.test.js` — przebieg projektu (dni, narastające godziny, postęp wg zakończeń, czas trwania, termin), podobne projekty (punktacja, kolejność, odrzucenie z powodem → poza listą i średnią, przywrócenie, wpis w historii), miesiąc wobec roku wcześniej (wskaźniki, różnice, zakończone projekty), rok wobec lat (sumy, miesiące, przyszłe miesiące = brak danych), dostęp przez HTTP (analiza: przełożony i pracownik 403; raport zapisany: przełożony widzi tylko udostępniony, nie może zmieniać; migawka nie zmienia się po zmianie danych). Zrzuty `67…74` (miesiąc, rok, przebieg projektu z odrzuceniem propozycji, zapisane raporty, raport, wydruk, widok przełożonego, telefon) — bez błędów konsoli; skrypt sprawdza też, że przełożony dostaje 403 na danych analizy.
 
 ## Pokrycie wymaganych scenariuszy
 
