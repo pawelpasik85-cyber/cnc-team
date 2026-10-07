@@ -5,7 +5,7 @@ Prośba: przejrzyj krytycznie aplikację CNC Team pod kątem poprawności reguł
 ## Jak uruchomić
 Node.js ≥ 22.13, bez `npm install`:
 ```bash
-npm test                          # 47 testów
+npm test                          # 36 testów
 npm run seed -- --reset           # dane fikcyjne
 CNC_TODAY=2026-10-06 npm start    # http://127.0.0.1:3000, hasło demo: demo-cnc-2026 (kierownik / przelozony / adam)
 ```
@@ -33,7 +33,7 @@ Dokumentacja: `docs/RULES.md` (reguły + status weryfikacji prawnej), `docs/PERM
 7. **DST**: przypadki brzegowe w `localToUtc` i zmianach przez północ w nocy zmiany czasu.
 8. **Integralność**: brak transakcji wokół jakiejś złożonej operacji? Wyścigi przy równoległych żądaniach (jeden proces, SQLite `BEGIN IMMEDIATE`)?
 9. **Telefony (runda 1)**: `public/sw.js` — czy na pewno żadna odpowiedź `/api` nie trafia do pamięci telefonu? `docs/MOBILE.md` — czy instrukcja instalacji lokalnego CA i ostrzeżenie o http są wystarczające? `server/index.js` — tryb `start:siec` i wykrywanie certyfikatu.
-10. **Chmura (runda 2)**: `supabase/*.sql` — czy RLS i funkcje SECURITY DEFINER nie pozwalają pracownikowi na więcej niż własne dane? `server/domain/cloud.js` — kolejność próba na sucho → decyzja w chmurze → wpis lokalny; `buildPublications` — czy nic poufnego nie wycieka? `mobile/core.js` — kolejka offline i duplikaty.
+10. **Wersja serwerowa (runda 4)**: aplikacja nie może łączyć się z żadną usługą zewnętrzną — czy coś w `server/` lub `public/` nadal to robi? `server/app.js` — `normIp`, zaufane proxy (tylko 127.0.0.1 / `CNC_PROXY_IPS`), `deploy/windows/*` i `iis-web.config` — czy konfiguracja IIS + aplikacja na 127.0.0.1 jest bezpieczna? Migracja `004_no_cloud.sql`.
 11. **Runda 3 — zaufanie i role**: `server/domain/requests.js` (pracownik tylko zgłasza; `decideRequest` tworzy wpis w tej samej transakcji), `server/app.js` (`GUEST_ALLOWED` — czy gość ma dostęp tylko do statusu?), `server/routes.js` (`visibleProjects`, blokada logowania w `/login`, `describeChanges`), migracja `003_requests_guest.sql` (przebudowa `users` z `defer_foreign_keys`). Czy jest trasa, przez którą pracownik zmieni dane bez decyzji kierownika albo zobaczy projekt, do którego nie jest przypisany? Czy definicja opóźnienia (`scheduleStatus`) jest sensowna?
 12. **Interfejs**: dostępność (kontrast, klawiatura, znaczenie nie tylko kolorem), czytelność dla kierownika.
 
@@ -49,4 +49,5 @@ Dla każdej uwagi: **waga** (krytyczna / istotna / drobna), **miejsce**, **opis 
 | 0 | 2026-10-06 | Wersja 0.1 przygotowana do przeglądu; testy 26/26 |
 | 1 | 2026-10-06 | Dodano telefony: PWA, układ mobilny, tryb sieci firmowej, https; testy 29/29 |
 | 2 | 2026-10-06 | Aplikacja pracownika (PWA/APK) + Supabase, zgłoszenia i publikacje; testy 40/40, RLS 23/23. Od tej rundy recenzja GPT działa automatycznie przy każdym pushu (po dodaniu sekretu) |
+| 4 | 2026-10-07 | Wyłącznie serwer firmowy: usunięta chmura (Supabase), aplikacja w chmurze i APK; instrukcja dla IT bez wariantów (Windows Server + IIS + HTTPS); paczka instalacyjna; testy 36/36 |
 | 3 | 2026-10-07 | Wersja na serwer firmowy: zgłoszenia do weryfikacji (pracownik nic nie wpisuje sam), rola gościa, opóźnienie projektu w %, widoczność projektów pracownika, blokada logowania, czytelna historia zmian, instrukcja dla IT; niezależny przegląd i poprawki; testy 47/47 |

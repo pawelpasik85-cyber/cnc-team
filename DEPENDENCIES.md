@@ -15,7 +15,6 @@ Aplikacja **nie ma zależności npm** (`package.json` bez `dependencies`). Nie w
 | Narzędzie | Zastosowanie | Licencja | Koszt |
 |---|---|---|---|
 | OpenSSL (np. z Git for Windows) | `npm run make-cert` — lokalny CA i certyfikat serwera | Apache-2.0 | 0 zł |
-| PWABuilder / Bubblewrap (w przyszłości) | Zbudowanie APK z tej samej aplikacji | MIT / Apache-2.0 | 0 zł (Google Play — jednorazowa opłata, niepotrzebna przy użytku wewnętrznym) |
 
 ## Opcjonalne narzędzia deweloperskie (nie są potrzebne do działania)
 

@@ -16,7 +16,9 @@ Serwer Node.js (server/app.js — node:http)
 data/cnc-team.db (plik SQLite, tryb WAL)
 ```
 
-Wybór stosu: aplikacja lokalna dla kilku osób → jeden proces Node.js i jeden plik bazy. Zero zależności npm (mniej licencji, brak łańcucha dostaw, łatwa instalacja na stanowisku kierownika). Interfejs bez frameworka — kilka plików JS ładowanych bezpośrednio, bez budowania.
+Wdrożenie: **wyłącznie serwer firmowy** (`docs/DEPLOY.md`) — jedna usługa Node.js, jeden plik bazy, dostęp z firmy i z domu przez firmowy adres HTTPS (reverse proxy). Aplikacja nie łączy się z żadną usługą zewnętrzną (bez chmury, bez GitHuba, bez CDN).
+
+Wybór stosu: jeden proces Node.js i jeden plik bazy. Zero zależności npm (mniej licencji, brak łańcucha dostaw, łatwa instalacja na stanowisku kierownika). Interfejs bez frameworka — kilka plików JS ładowanych bezpośrednio, bez budowania.
 
 Zasada: **uprawnienia egzekwuje serwer**. Każda trasa zapisu wymaga roli administratora; trasy odczytu sprawdzają uprawnienie (macierz w `docs/PERMISSIONS.md`) i filtrują pola (notatki poufne, dokumenty, nazwy kategorii poufnych, plany czasu). Interfejs ukrywa niedostępne przyciski tylko dla wygody.
 
@@ -44,9 +46,10 @@ Zasada: **uprawnienia egzekwuje serwer**. Każda trasa zapisu wymaga roli admini
 | Obecność nie jest liczona automatycznie — bez ewidencji ręcznej raport pokazuje „brak danych”. | Brak integracji z RCP. |
 | Strefa czasowa serwera nie ma znaczenia — wszystkie obliczenia w Europe/Warsaw. | |
 
-## Bezpieczeństwo (lokalny prototyp)
+## Bezpieczeństwo
 
 - Hasła: scrypt z solą; sesja 12 h w tabeli `sessions`; cookie HttpOnly, SameSite=Strict.
 - CSRF: każdy zapis wymaga nagłówka `X-CNC-Request: 1` (nie do wysłania z obcej strony bez CORS).
 - CSP bez skryptów inline; nagłówki `X-Frame-Options`, `nosniff`.
-- Serwer domyślnie nasłuchuje tylko na `127.0.0.1`. Przed udostępnieniem w sieci: HTTPS (reverse proxy), polityka haseł, ewentualnie Entra ID (`INTEGRATIONS.md`).
+- Serwer domyślnie nasłuchuje tylko na `127.0.0.1`; ruch z zewnątrz wyłącznie przez firmowe reverse proxy z HTTPS. Blokada logowania po błędnych hasłach, hasła min. 10 znaków (`docs/DEPLOY.md`).
+- Pracownik tylko zgłasza do weryfikacji; gość widzi tylko status wskazanych projektów; każda zmiana w historii.

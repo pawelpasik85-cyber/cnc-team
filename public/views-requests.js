@@ -61,7 +61,13 @@ VIEWS.zglos = async (main) => {
   });
 };
 
-// ---------- Kierownik: zgłoszenia z serwera ----------
+// ---------- Kierownik: zgłoszenia pracowników ----------
+VIEWS.zgloszenia = async (main) => {
+  const local = await localRequestsSection();
+  main.innerHTML = head('Zgłoszenia pracowników', 'Spóźnienia, nieobecności, wyjścia i odrobienia zgłoszone przez pracowników. Nic nie trafia do grafiku ani rozliczeń bez Twojej decyzji.') + local.html;
+  local.bind();
+};
+
 async function localRequestsSection() {
   const list = await api('/requests');
   const html = `<section class="panel"><h3>Zgłoszenia pracowników</h3>${table([

@@ -1,8 +1,8 @@
 {
   "name": "cnc-team",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "CNC Team — lokalna aplikacja do zarządzania zespołem programistów frezarek CNC",
+  "description": "CNC Team — aplikacja do zarządzania zespołem programistów frezarek CNC (serwer firmowy)",
   "license": "UNLICENSED",
   "type": "commonjs",
   "engines": {
@@ -15,6 +15,7 @@
     "init-admin": "node --no-warnings=ExperimentalWarning scripts/init-admin.js",
     "backup": "node --no-warnings=ExperimentalWarning scripts/backup.js",
     "make-cert": "node --no-warnings=ExperimentalWarning scripts/make-cert.js",
-    "test": "node --no-warnings=ExperimentalWarning --test --test-concurrency=1 \"test/*.test.js\""
+    "test": "node --no-warnings=ExperimentalWarning --test --test-concurrency=1 \"test/*.test.js\"",
+    "package": "node scripts/package.js"
   }
 }

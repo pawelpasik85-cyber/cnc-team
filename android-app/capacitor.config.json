@@ -1,7 +1,0 @@
-{
-  "appId": "pl.cncteam.pracownik",
-  "appName": "CNC Team",
-  "webDir": "www",
-  "backgroundColor": "#23282d",
-  "android": { "allowMixedContent": false }
-}

@@ -20,20 +20,15 @@
 - Widok do wydruku/PDF korzysta z funkcji drukowania przeglądarki („Zapisz jako PDF”).
 - Zrzuty ekranów wymagają opcjonalnego Pythona + Playwright (`scripts/screenshots.py`) — nie są potrzebne do działania aplikacji.
 
-## Aplikacja pracownika i chmura
-- Szczegóły i ryzyka: `docs/CLOUD.md` (dane na prywatnych kontach kierownika, usypianie darmowego projektu, synchronizacja tylko przy działającym CNC Team, brak powiadomień push o decyzji, odebranie dostępu przez SQL).
-
 ## Serwer firmowy i dostęp z domu
-- Dostęp z domu wymaga decyzji IT: publikacja przez reverse proxy z HTTPS (najlepiej z logowaniem kontem firmowym, np. Entra Application Proxy) albo aplikacja w chmurze (`docs/CLOUD.md`). Instrukcja: `docs/DEPLOY.md`.
-- Brak logowania kontem Microsoft (SSO) w samej aplikacji — loginy i hasła są lokalne. Przy publikacji w internecie zalecane uwierzytelnienie przed aplikacją (Entra Application Proxy).
+- Wymaga serwera od IT (`docs/DEPLOY.md`): adres HTTPS w domenie firmy opublikowany z internetu. Bez tego dostęp jest tylko w sieci, w której działa aplikacja.
+- Brak logowania kontem Microsoft (SSO) — loginy i hasła są w aplikacji (zakłada je kierownik).
 - Brak powiadomień (e-mail, push) o nowym zgłoszeniu i o decyzji — pracownik widzi decyzję po wejściu do aplikacji, kierownik — na pulpicie „Dzisiaj”.
 - Opóźnienie projektu zakłada liniowy plan między datą rozpoczęcia a terminem; nie uwzględnia kalendarza pracy ani nierównych etapów.
-- Zgłoszenia z serwera i z aplikacji w chmurze to dwie osobne listy (ten sam widok). Aplikacja w chmurze nie ma jeszcze rodzaju „odrobienie”.
+- Bez internetu zgłoszenia nie da się wysłać (telefon nie przechowuje danych) — trzeba spróbować ponownie, gdy jest zasięg.
 
 ## Telefony
-- Bez serwera firmowego: dostęp tylko w sieci, w której jest komputer z aplikacją, i tylko gdy komputer jest włączony.
-- Przez http (bez certyfikatu) telefon tworzy jedynie skrót do przeglądarki, a ruch nie jest szyfrowany. Pełna aplikacja wymaga https (lokalny CA z `make-cert` lub certyfikat firmowy).
-- APK nie jest zbudowany — wymaga stałego adresu https (`docs/MOBILE.md`, wariant C).
+- Aplikacja na telefon to skrót/instalacja ze strony (PWA) — bez APK i sklepu z aplikacjami. Wymaga ważnego certyfikatu HTTPS.
 - Brak trybu offline dla danych (celowo — dane osobowe nie są przechowywane na telefonach).
 - Sesja trwa 12 h — po tym czasie telefon poprosi o ponowne logowanie.
 - Nie testowano na fizycznych telefonach firmowych; zrzuty pochodzą z emulacji w przeglądarce.

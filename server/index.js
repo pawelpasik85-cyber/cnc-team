@@ -46,15 +46,6 @@ function main() {
     secure: process.env.CNC_SECURE_COOKIE === '1' });
   // Serwer działa całą dobę — alerty zależne od daty (koniec miesiąca) przeliczane co godzinę.
   setInterval(() => { try { recomputeAlerts(db); } catch (e) { console.log(`Alerty: ${e.message}`); } }, 3600e3).unref();
-  // Synchronizacja z aplikacją pracowników: przy starcie i co 2 minuty, gdy kierownik jest zalogowany do chmury.
-  const SYNC_MS = Number(process.env.CNC_CLOUD_SYNC_MS || 120000);
-  let syncing = false;
-  const autoSync = async () => {
-    if (syncing || !server.cloud.session()) return;
-    syncing = true;
-    try { await server.cloud.sync('automatyczna'); } catch (e) { console.log(`Chmura: ${e.message}`); } finally { syncing = false; }
-  };
-  if (SYNC_MS > 0) { setTimeout(autoSync, 5000).unref(); setInterval(autoSync, SYNC_MS).unref(); }
   server.listen(PORT, HOST, () => {
     console.log(`CNC Team: ${scheme}://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (baza: ${DB_FILE})`);
     if (HOST === '0.0.0.0') {

@@ -1,7 +1,7 @@
 'use strict';
 // Zgłoszenia pracowników do weryfikacji. Pracownik nie wpisuje spóźnień, wyjść ani odrabiania samodzielnie —
 // składa zgłoszenie, a kierownik je przyjmuje (tworząc wpis) albo odrzuca z wyjaśnieniem.
-// buildLocalEntry jest wspólne dla zgłoszeń z serwera i z aplikacji w chmurze.
+// Decyzja kierownika i utworzony wpis zapisywane są w jednej transakcji (wszystko albo nic).
 const T = require('../time');
 const { bad, conflict, notFound, forbidden, audit, reqInt, oneOf } = require('../core');
 const Abs = require('./absences');

@@ -11,7 +11,7 @@ Zasady konkretnego projektu są w jego pliku CLAUDE.md lub ZASADY-PROJEKTU.md.
 - Żadnych kluczy API, haseł ani tokenów w kodzie. Klucze użytkownika (np. Gemini, Pixabay) trzymane w ustawieniach aplikacji.
 - Bez płatnych planów i usług wymagających stałej opłaty (bez Bitrise, EAS, Apple Developer), chyba że użytkownik zdecyduje inaczej.
 
-## Aplikacje webowe/mobilne (Notario, Przepicy, StorySound, aplikacja pracownika CNC Team)
+## Aplikacje webowe/mobilne (Notario, Przepicy, StorySound)
 - Model testowania: strona w przeglądarce (PWA) na GitHub Pages + ta sama wersja zapakowana w APK (Capacitor), budowane w GitHub Actions.
 - Offline obowiązkowo: aplikacja i dane muszą działać bez internetu po pierwszym otwarciu (service worker).
 - APK podpisywane zawsze tym samym kluczem z `android-signing/` — NIGDY go nie zmieniać, inaczej aktualizacja nie zainstaluje się na telefonie.
@@ -19,8 +19,9 @@ Zasady konkretnego projektu są w jego pliku CLAUDE.md lub ZASADY-PROJEKTU.md.
 - W przeglądarce nie używać Alert z React Native (nie działa) — tylko własne okna dialogowe.
 
 ## CNC Team (zarządzanie zespołem programistów CNC)
-- Dane pracowników firmy: do chmury (Supabase) trafia tylko to, co pracownik musi widzieć poza firmą — jego zgłoszenia, jego grafik i saldo, grafik zespołu z ogólnymi etykietami nieobecności. Notatki poufne, dokumenty kadrowe, nazwy kategorii poufnych (np. L4), pule urlopu i raporty efektywności nigdy nie opuszczają komputera kierownika.
-- Uprawnienia egzekwuje serwer (API CNC Team, RLS i funkcje w Supabase), nie interfejs.
+- Wersja firmowa działa wyłącznie na serwerze firmowym (bez chmury, bez GitHub Pages/APK). Aplikacja nie może łączyć się z usługami zewnętrznymi; telefony korzystają z firmowego adresu HTTPS (PWA).
+- Pracownik tylko zgłasza do weryfikacji (spóźnienie, nieobecność, wyjście, odrobienie); niczego nie wpisuje sam. Gość widzi wyłącznie status wskazanych projektów.
+- Uprawnienia egzekwuje serwer (API), nie interfejs. Każda zmiana w historii z autorem i opisem.
 - Przepisy prawa pracy bez weryfikacji w źródle urzędowym oznaczamy „do potwierdzenia przez kadry”; nie wymyślamy limitów.
 - Czas w minutach (liczby całkowite), strefa Europe/Warsaw, zmiana czasu i zmiany nocne obsłużone jawnie.
 

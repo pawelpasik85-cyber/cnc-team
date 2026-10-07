@@ -1,70 +1,69 @@
 # Instalacja na serwerze firmowym (instrukcja dla IT)
 
-CNC Team to jedna aplikacja Node.js z bazą SQLite w jednym pliku. Nie ma zależności npm, nie pobiera niczego z internetu w czasie działania i nie łączy się z usługami zewnętrznymi (wyjątek: opcjonalna aplikacja pracowników w chmurze — `docs/CLOUD.md`, domyślnie wyłączona).
+CNC Team to jedna aplikacja Node.js z bazą SQLite w jednym pliku. Działa **wyłącznie na serwerze firmowym**: nie ma zależności npm, nie pobiera niczego z internetu i nie łączy się z żadną usługą zewnętrzną (chmura, GitHub, CDN). Wszyscy użytkownicy — kierownik, programiści (także z domu, z telefonu) i goście — korzystają z jednego adresu HTTPS w domenie firmy.
 
-## Wymagania
+```
+Telefon / komputer (firma lub dom)
+   │ https://cnc-team.<domena-firmy>  (certyfikat firmy)
+   ▼
+IIS na serwerze (reverse proxy, port 443) ──► CNC Team (Node.js, 127.0.0.1:3000) ──► C:\CNC-Team-dane\cnc-team.db
+```
 
-| | Minimum |
-|---|---|
-| System | Windows Server 2019+ lub Linux (dowolna dystrybucja z Node.js) |
-| Node.js | LTS 22.13 lub nowszy (testowane: 22.22) — https://nodejs.org |
-| Zasoby | 1 vCPU, 1 GB RAM (aplikacja ok. 65 MB), kilka GB dysku |
-| Sieć | 1 port TCP (domyślnie 3000) — tylko dla reverse proxy albo sieci firmowej |
-| Koszt | 0 zł (bez licencji) |
+## Czego potrzebujemy od IT
 
-## Instalacja — Windows
+| # | Element | Szczegóły |
+|---|---|---|
+| 1 | Maszyna wirtualna | Windows Server 2019 lub nowszy, 2 vCPU, 4 GB RAM, 20 GB dysku (aplikacja zużywa ok. 65 MB RAM i kilka MB danych — zapas na system i IIS) |
+| 2 | Node.js | LTS 22.13 lub nowszy (https://nodejs.org, instalator `.msi`, bezpłatny) |
+| 3 | IIS jako reverse proxy | IIS + bezpłatne moduły Microsoft „URL Rewrite” i „Application Request Routing”; konfiguracja: `deploy\windows\iis-web.config` |
+| 4 | Adres i certyfikat | Nazwa w domenie firmy, np. `cnc-team.<domena-firmy>`, w DNS wewnętrznym i publicznym; ważny certyfikat HTTPS (firmowy lub publiczny — nie samopodpisany, inaczej telefony nie zainstalują aplikacji) |
+| 5 | Dostęp z internetu | Publikacja portu **443** tego serwera z internetu (NAT / reguła zapory) — tylko 443, port 3000 pozostaje lokalny |
+| 6 | Kopia zapasowa | Folder `C:\CNC-Team-dane` (baza + kopie dzienne z zadania „CNC Team kopia”) objęty firmową kopią serwera |
+| 7 | Uprawnienia | Konto administratora serwera do instalacji (jednorazowo) i do podmiany plików przy aktualizacji |
 
-1. Zainstaluj Node.js LTS (instalator `.msi`, dla wszystkich użytkowników).
-2. Rozpakuj aplikację, np. do `C:\CNC-Team` (z GitHub: *Code → Download ZIP* lub `git clone`).
-3. Utwórz folder danych poza folderem aplikacji, np. `D:\CNC-Team-dane` (dostęp tylko dla administratorów i konta usługi).
-4. Popraw ścieżki i ustawienia w `deploy\windows\cnc-team-start.cmd` i `deploy\windows\cnc-team-backup.cmd`.
-5. Pierwsze konto administratora (PowerShell w folderze aplikacji):
+Koszt licencji: 0 zł. Aplikacja nie wymaga kont Microsoft 365, domeny AD ani poczty — konta użytkowników są w aplikacji (zakłada je kierownik).
+
+## Instalacja (ok. 1 h)
+
+1. Zainstaluj Node.js LTS (dla wszystkich użytkowników) oraz IIS z modułami URL Rewrite i ARR.
+2. Rozpakuj paczkę `cnc-team-serwer.zip` do `C:\CNC-Team` (folder z `package.json`).
+3. Utwórz `C:\CNC-Team-dane` — dostęp tylko dla administratorów i konta SYSTEM (dane osobowe).
+4. Pierwsze konto kierownika (PowerShell w `C:\CNC-Team`):
    ```powershell
-   $env:CNC_DB="D:\CNC-Team-dane\cnc-team.db"; $env:CNC_ADMIN_PASSWORD="(min. 10 znaków)"; npm run init-admin
+   $env:CNC_DB="C:\CNC-Team-dane\cnc-team.db"; $env:CNC_ADMIN_PASSWORD="(min. 10 znaków)"; npm run init-admin
    ```
-6. Jako administrator: `powershell -ExecutionPolicy Bypass -File deploy\windows\install-tasks.ps1` — rejestruje zadanie „CNC Team” (start z systemem, ponowienie po awarii, konto SYSTEM) i „CNC Team kopia” (codziennie 02:30).
-7. Sprawdź: `http://localhost:3000` na serwerze; dziennik: `D:\CNC-Team-dane\cnc-team.db.log`.
+   Login i hasło przekaż kierownikowi (zmieni hasło po pierwszym logowaniu: Ustawienia → Moje konto).
+5. Jako administrator: `powershell -ExecutionPolicy Bypass -File C:\CNC-Team\deploy\windows\install-tasks.ps1` — rejestruje zadanie „CNC Team” (start z systemem, ponowienie po awarii, konto SYSTEM) i „CNC Team kopia” (codziennie 02:30).
+6. IIS: nowa witryna z wiązaniem HTTPS 443 dla `cnc-team.<domena-firmy>` i certyfikatem; katalog główny = pusty folder z plikiem `deploy\windows\iis-web.config` zapisanym jako `web.config`. W ARR włącz proxy (*Server Proxy Settings → Enable proxy*), w URL Rewrite dodaj zmienną serwera `HTTP_X_FORWARDED_PROTO` (*View Server Variables → Add*).
+7. Sprawdź z telefonu poza siecią firmy: `https://cnc-team.<domena-firmy>` → strona logowania CNC Team.
 
-## Instalacja — Linux
-
-`deploy/linux/cnc-team.service` (systemd, osobne konto `cncteam`, zapis tylko do `/var/lib/cnc-team`) oraz przykład reverse proxy `deploy/linux/nginx-cnc-team.conf`. Kopia: `cron` → `cd /opt/cnc-team && CNC_DB=/var/lib/cnc-team/cnc-team.db node scripts/backup.js /var/backups/cnc-team`.
-
-## Dostęp z domu (telefony programistów, gość)
-
-Wybór należy do IT — aplikacja obsługuje oba warianty:
-
-**A. Adres HTTPS w internecie przez firmowy reverse proxy** (np. `https://cnc-team.firma.pl`)
-- Proxy (IIS z ARR, nginx, Apache, zapora z publikacją aplikacji) kończy HTTPS i przekazuje ruch na `http://serwer:3000`.
-- W aplikacji ustaw `CNC_TRUST_PROXY=1`. Nagłówki `X-Forwarded-For` / `X-Forwarded-Proto` są honorowane **tylko** od proxy na tym samym serwerze (127.0.0.1) albo z adresów w `CNC_PROXY_IPS`; adresem klienta jest ostatni wpis `X-Forwarded-For` (dopisany przez proxy). Cookie dostaje flagę `Secure` przy `X-Forwarded-Proto: https`.
-- Port 3000 ma być dostępny tylko dla proxy (`HOST=127.0.0.1`, gdy proxy jest na tym samym serwerze, albo reguła zapory).
-- Bezpieczniejsza odmiana: **Microsoft Entra Application Proxy** — logowanie kontem firmowym przed dostępem do aplikacji, bez otwierania portów przychodzących (wymaga licencji Entra ID P1/P2).
-
-**B. Aplikacja pracowników w chmurze** (Supabase, UE) — serwer tylko wysyła dane na zewnątrz, bez portów przychodzących; wymaga zgody firmy na usługę zewnętrzną. Szczegóły: `docs/CLOUD.md`.
-
-Telefon: pracownik otwiera adres w przeglądarce i wybiera „Dodaj do ekranu głównego” (PWA). Aplikacja nie przechowuje na telefonie żadnych danych — tylko szkielet strony (`public/sw.js`).
+Dziennik aplikacji: `C:\CNC-Team-dane\cnc-team.db.log`. Ustawienia uruchomienia: `deploy\windows\cnc-team-start.cmd`.
 
 ## Zabezpieczenia wbudowane
 
-- Hasła: scrypt, minimum 10 znaków; sesja 12 h w cookie `HttpOnly; SameSite=Strict` (+ `Secure` przy HTTPS).
-- Blokada logowania: po 5 błędnych hasłach dla pary konto + adres IP logowanie z tego adresu jest blokowane na 15 min (ustawienia `login_max_failures`, `login_lock_min`), a adres próbujący wielu kont — po 20 błędach. Osoba z zewnątrz nie zablokuje więc kierownika logującego się z innego adresu. Blokada trafia do historii zmian. Zgadywanie rozproszone na wiele adresów ogranicza długość hasła (min. 10 znaków) i scrypt; przy publikacji w internecie zalecane uwierzytelnienie przed aplikacją (Entra Application Proxy).
-- Ochrona CSRF (wymagany nagłówek), nagłówki CSP, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`; brak buforowania odpowiedzi API.
-- Uprawnienia egzekwowane na serwerze (`docs/PERMISSIONS.md`): programista tylko zgłasza do weryfikacji, gość widzi wyłącznie status wskazanych projektów.
-- Historia zmian: każda zmiana z autorem, datą, opisem i wartościami przed/po; nie da się jej edytować z aplikacji.
+- Aplikacja nasłuchuje tylko na `127.0.0.1` — z sieci i z internetu dostępna wyłącznie przez IIS z HTTPS.
+- Hasła: scrypt, minimum 10 znaków; sesja 12 h w cookie `HttpOnly; Secure; SameSite=Strict`.
+- Blokada logowania: po 5 błędnych hasłach dla pary konto + adres IP — 15 min blokady z tego adresu; adres próbujący wielu kont — po 20 błędach. Osoba z zewnątrz nie zablokuje kierownika logującego się z innego adresu. Blokady są w historii zmian. Adres klienta brany z nagłówka IIS (ostatni wpis `X-Forwarded-For`, bez portu) tylko dla połączeń z 127.0.0.1.
+- Ochrona CSRF, nagłówki CSP, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`; odpowiedzi API nie są buforowane (także na telefonach).
+- Role egzekwowane na serwerze (`docs/PERMISSIONS.md`): programista tylko zgłasza do weryfikacji, gość widzi wyłącznie status wskazanych projektów, kierownik decyduje. Każda zmiana w historii z autorem, datą, opisem i wartościami przed/po.
+
+## Kopia i odtworzenie
+
+Zadanie „CNC Team kopia” tworzy codziennie spójną kopię (`VACUUM INTO`, sprawdzaną `integrity_check`) w `C:\CNC-Team-dane\kopie`. Odtworzenie: `docs/BACKUP.md`.
 
 ## Aktualizacja aplikacji
 
-1. Kopia: `deploy\windows\cnc-team-backup.cmd` (lub zadanie „CNC Team kopia”).
-2. Zatrzymaj zadanie „CNC Team”, podmień pliki aplikacji (folder danych zostaje), uruchom zadanie ponownie.
-3. Migracje bazy wykonują się automatycznie przy starcie (w transakcji — błąd = brak zmian).
+1. Uruchom zadanie „CNC Team kopia”.
+2. Zatrzymaj zadanie „CNC Team”, podmień pliki w `C:\CNC-Team` na nową paczkę (folder `C:\CNC-Team-dane` zostaje bez zmian), uruchom zadanie ponownie.
+3. Zmiany bazy (migracje) wykonują się automatycznie przy starcie, każda w transakcji z kontrolą spójności — błąd = brak zmian i komunikat w dzienniku.
 
-## Zmienne środowiskowe
+## Zmienne (w `cnc-team-start.cmd`)
 
-| Zmienna | Znaczenie |
+| Zmienna | Wartość |
 |---|---|
-| `HOST`, `PORT` | Adres i port nasłuchu (domyślnie `127.0.0.1:3000`) |
-| `CNC_DB` | Plik bazy (zalecane poza folderem aplikacji) |
-| `CNC_TRUST_PROXY=1` | Aplikacja za reverse proxy (adres klienta z `X-Forwarded-For`) |
-| `CNC_PROXY_IPS` | Adresy proxy na innym serwerze (po przecinku) |
-| `CNC_SECURE_COOKIE=1` | Wymuś flagę `Secure` cookie |
-| `CNC_TLS_CERT`, `CNC_TLS_KEY` | HTTPS bezpośrednio w aplikacji (gdy bez proxy) |
-| `CNC_CLOUD_SYNC_MS` | Odstęp synchronizacji z aplikacją w chmurze (domyślnie 120000; 0 = wyłączona) |
+| `HOST`, `PORT` | `127.0.0.1`, `3000` |
+| `CNC_DB` | `C:\CNC-Team-dane\cnc-team.db` |
+| `CNC_TRUST_PROXY` | `1` — adres klienta od IIS (blokada logowania) |
+| `CNC_SECURE_COOKIE` | `1` — cookie sesji tylko przez HTTPS |
+
+Jeśli standardem IT jest Linux, odpowiedniki są w `deploy/linux` (usługa systemd i reverse proxy nginx).

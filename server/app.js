@@ -6,7 +6,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { HttpError, userFromSession } = require('./core');
 const { buildRoutes } = require('./routes');
-const { createCloud } = require('./domain/cloud');
 const T = require('./time');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -32,14 +31,20 @@ function compile(pattern) {
 // opts.trustProxy → aplikacja stoi za firmowym serwerem pośredniczącym (reverse proxy) z HTTPS:
 // adres klienta z X-Forwarded-For (do blokady logowania), cookie Secure gdy X-Forwarded-Proto = https.
 const GUEST_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /me/password', 'GET /guest/projects']);
-const normIp = (x) => String(x || '').trim().replace(/^::ffff:/, '');
+// Adres bez portu: IIS (ARR) dopisuje do X-Forwarded-For „adres:port” — port zmienia się przy każdym połączeniu.
+const normIp = (x) => {
+  let a = String(x || '').trim();
+  const v6 = /^\[([^\]]+)\](?::\d+)?$/.exec(a);
+  if (v6) a = v6[1];
+  else if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(a)) a = a.slice(0, a.lastIndexOf(':'));
+  return a.replace(/^::ffff:/, '');
+};
 const isLoopback = (x) => { const a = normIp(x); return a === '127.0.0.1' || a === '::1'; };
 
 function createApp(db, opts = {}) {
   const secureBase = !!(opts.tls || opts.secure);
   const trustProxy = !!opts.trustProxy;
   const proxyIps = new Set((opts.proxyIps || []).map(x => normIp(x)).filter(Boolean));
-  const cloud = createCloud(db, opts.cloud || {});
   const routes = buildRoutes().map(r => ({ ...r, ...compile(r.path) }));
 
   function send(res, status, body, headers = {}) {
@@ -95,8 +100,8 @@ function createApp(db, opts = {}) {
       // X-Forwarded-For (dopisany przez nasze proxy) — wcześniejsze wpisy może podać sam klient.
       const peer = req.socket.remoteAddress || '';
       const fromProxy = trustProxy && (isLoopback(peer) || proxyIps.has(normIp(peer)));
-      const fwd = fromProxy ? String(req.headers['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean).pop() : '';
-      const ip = fwd || peer || null;
+      const fwd = fromProxy ? normIp(String(req.headers['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean).pop()) : '';
+      const ip = fwd || normIp(peer) || null;
       const secure = secureBase || (fromProxy && String(req.headers['x-forwarded-proto'] || '').split(',').pop().trim() === 'https');
       const m = route.re.exec(apiPath);
       const params = Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
@@ -111,7 +116,7 @@ function createApp(db, opts = {}) {
         const prev = db.get('SELECT status, response FROM idempotency_keys WHERE key=? AND user_id=?', String(idem), user.id);
         if (prev) return send(res, prev.status, prev.response, { 'Content-Type': 'application/json; charset=utf-8', 'Idempotent-Replay': 'true' });
       }
-      const ctx = { db, user, params, query: Object.fromEntries(url.searchParams), body, raw, req, res, cookies, secure, cloud, ip };
+      const ctx = { db, user, params, query: Object.fromEntries(url.searchParams), body, raw, req, res, cookies, secure, ip };
       const result = await route.handler(ctx);
       if (result && result.__raw) {
         return send(res, result.status || 200, result.body, result.headers);
@@ -132,7 +137,6 @@ function createApp(db, opts = {}) {
     }
   };
   const server = opts.tls ? https.createServer(opts.tls, handler) : http.createServer(handler);
-  server.cloud = cloud;
   return server;
 }
 

@@ -1,11 +1,10 @@
 # Zasady projektu CNC Team (czyta je recenzent GPT)
 
-Specyfikacja i decyzje: `docs/ARCHITECTURE.md`, `docs/RULES.md`, `docs/PERMISSIONS.md`, `docs/CLOUD.md`.
+Specyfikacja i decyzje: `docs/ARCHITECTURE.md`, `docs/RULES.md`, `docs/PERMISSIONS.md`, `docs/DEPLOY.md`.
 
-- Dwie części: CNC Team (komputer kierownika, Node + SQLite, wszystkie dane) i aplikacja pracownika (`mobile/`, PWA + APK, Supabase). Aplikacja pracownika tylko zgłasza i czyta własne dane.
-- Wszystkie zapisy w Supabase wyłącznie przez funkcje RPC; tabele nie mają polityk insert/update/delete. Każda zmiana RLS/RPC — nowa migracja w `supabase/` + aktualizacja `supabase/tests/rls_check.sql`.
-- Przyjęcie zgłoszenia: najpierw próba wpisu lokalnego na sucho, potem decyzja w chmurze, potem wpis lokalny (`server/domain/cloud.js`). Nie zmieniać tej kolejności bez testu.
-- Publikacje (`buildPublications`) nie mogą zawierać pól poufnych — pilnuje tego `test/cloud.test.js`.
-- Brak zależności npm w aplikacji kierownika i w `mobile/`; Capacitor tylko w `android-app/` (budowa APK w CI).
-- Klucz APK `android-signing/cnc-team.keystore` — nigdy go nie zmieniać.
+- Wersja firmowa: jedna aplikacja (Node + SQLite) **wyłącznie na serwerze firmowym**. Żadnych połączeń z usługami zewnętrznymi (chmura, GitHub, CDN, API) w czasie działania. Dostęp z domu tylko przez firmowy adres HTTPS.
+- Pracownik niczego nie wpisuje sam — tylko zgłoszenia do weryfikacji; decyzja kierownika i wpis w jednej transakcji (`server/domain/requests.js`).
+- Gość widzi wyłącznie status wskazanych projektów (`GUEST_ALLOWED` w `server/app.js`) — każda nowa trasa API jest dla gościa zablokowana.
+- Każda zmiana danych z wpisem w historii (`audit`), z autorem i opisem.
+- Brak zależności npm.
 - Rozliczenia: brak kredytu z nadwyżki odrabiania, brak automatycznego zerowania urlopu, zamknięty miesiąc blokuje zapisy.

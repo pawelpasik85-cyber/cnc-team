@@ -121,6 +121,9 @@ test('gość widzi wyłącznie status przypisanych projektów w realizacji — b
       assert.equal((await g.call('GET', p)).status, 403, p);
     }
     assert.equal((await g.call('POST', '/requests', { kind: 'inne', date_from: '2026-10-06', note: 'x' })).status, 403);
+    // Wersja firmowa: brak jakiejkolwiek integracji z chmurą
+    const admc = client(base); await admc.login('admin');
+    for (const p of ['/cloud/status', '/cloud/reports', '/cloud/preview']) assert.equal((await admc.call('GET', p)).status, 404, p);
     // Pracownik nie ma dostępu do widoku gościa
     const jan = client(base); await jan.login('jan');
     assert.equal((await jan.call('GET', '/guest/projects')).status, 403);
@@ -216,6 +219,7 @@ test('migracja 003 na używanej bazie (konta, sesje, historia) — dane i klucze
   assert.equal(db.get('PRAGMA foreign_keys').foreign_keys, 1, 'klucze obce znów włączone');
   assert.equal(db.get(`SELECT start_date FROM projects WHERE id='PRJ-1'`).start_date, '2026-01-10', 'start nie później niż termin');
   assert.match(db.get(`SELECT sql FROM sqlite_master WHERE name='users'`).sql, /'guest'/);
+  assert.equal(db.get(`SELECT COUNT(*) n FROM sqlite_master WHERE name LIKE 'cloud_%'`).n, 0, 'brak tabel chmury (wersja firmowa)');
   db.close();
   fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -244,6 +248,8 @@ test('przegląd: odrobienie omija wyjście zajęte przez oczekujące odrabianie;
     assert.equal((await post({ login: 'admin', password: 'haslo-testowe-1' }, '198.51.100.7')).status, 200);
     // klient dopisuje fałszywy adres na początku — liczy się ostatni (wpisany przez proxy)
     assert.equal((await post({ login: 'admin', password: 'haslo-testowe-1' }, '1.2.3.4, 203.0.113.9')).status, 429);
+    // IIS dopisuje port — zmienny port nie omija blokady
+    assert.equal((await post({ login: 'admin', password: 'haslo-testowe-1' }, '203.0.113.9:51234')).status, 429);
   } finally { srv.close(); }
   // historia ustawień: zmiana wartości widoczna jako pole „value”
   const { srv: s2, base: b2 } = await startServer(w.db);
