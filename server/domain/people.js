@@ -261,12 +261,21 @@ function saveHoliday(db, user, body) {
 function saveUser(db, user, body, id) {
   const d = {
     login: reqStr(body.login, 'Login', { max: 40 }), display_name: reqStr(body.display_name, 'Nazwa', { max: 80 }),
-    role: oneOf(body.role, 'Rola', ['admin', 'supervisor', 'employee']),
+    role: oneOf(body.role, 'Rola', ['admin', 'supervisor', 'employee', 'guest']),
     employee_id: body.employee_id ? reqInt(body.employee_id, 'Pracownik') : null,
     can_view_confidential: body.can_view_confidential ? 1 : 0, active: body.active === false ? 0 : 1,
   };
   if (d.role === 'employee' && !d.employee_id) throw bad('Konto pracownika musi być powiązane z profilem pracownika.');
   if (d.role !== 'supervisor') d.can_view_confidential = d.role === 'admin' ? 1 : 0;
+  if (d.role === 'guest') d.employee_id = null;
+  const guestProjects = d.role === 'guest' && Array.isArray(body.guest_project_ids) ? [...new Set(body.guest_project_ids.map(String))] : null;
+  if (guestProjects) for (const pid of guestProjects) if (!db.get('SELECT 1 FROM projects WHERE id=?', pid)) throw bad(`Nieznany projekt ${pid}.`);
+  const setGuestProjects = (uid) => {
+    if (d.role !== 'guest') { db.run('DELETE FROM guest_projects WHERE user_id=?', uid); return; }
+    if (!guestProjects) return;
+    db.run('DELETE FROM guest_projects WHERE user_id=?', uid);
+    for (const pid of guestProjects) db.run('INSERT INTO guest_projects(user_id, project_id) VALUES (?,?)', uid, pid);
+  };
   return db.tx(() => {
     if (id) {
       const old = db.get('SELECT id,login,display_name,role,employee_id,can_view_confidential,active FROM users WHERE id=?', id);
@@ -278,18 +287,22 @@ function saveUser(db, user, body, id) {
       db.run('UPDATE users SET login=?,display_name=?,role=?,employee_id=?,can_view_confidential=?,active=? WHERE id=?',
         d.login, d.display_name, d.role, d.employee_id, d.can_view_confidential, d.active, id);
       if (body.password) {
-        if (String(body.password).length < 8) throw bad('Hasło musi mieć co najmniej 8 znaków.');
+        if (String(body.password).length < 10) throw bad('Hasło musi mieć co najmniej 10 znaków.');
         db.run('UPDATE users SET password_hash=? WHERE id=?', hashPassword(String(body.password)), id);
         db.run('DELETE FROM sessions WHERE user_id=?', id);
       }
-      audit(db, user, 'user', id, 'edycja', old, { ...d, password_changed: !!body.password });
+      const oldProjects = db.all('SELECT project_id FROM guest_projects WHERE user_id=? ORDER BY project_id', id).map(r => r.project_id);
+      setGuestProjects(id);
+      audit(db, user, 'user', id, 'edycja', { ...old, guest_projects: oldProjects },
+        { ...d, password_changed: !!body.password, guest_projects: db.all('SELECT project_id FROM guest_projects WHERE user_id=? ORDER BY project_id', id).map(r => r.project_id) }, body.reason);
       return id;
     }
-    if (!body.password || String(body.password).length < 8) throw bad('Hasło musi mieć co najmniej 8 znaków.');
+    if (!body.password || String(body.password).length < 10) throw bad('Hasło musi mieć co najmniej 10 znaków.');
     if (db.get('SELECT 1 FROM users WHERE login=?', d.login)) throw conflict('Login jest zajęty.');
     const r = db.run(`INSERT INTO users(login,display_name,password_hash,role,employee_id,can_view_confidential,active,created_at)
       VALUES (?,?,?,?,?,?,?,?)`, d.login, d.display_name, hashPassword(String(body.password)), d.role, d.employee_id, d.can_view_confidential, d.active, T.nowIso());
-    audit(db, user, 'user', Number(r.lastInsertRowid), 'utworzenie', null, d);
+    setGuestProjects(Number(r.lastInsertRowid));
+    audit(db, user, 'user', Number(r.lastInsertRowid), 'utworzenie', null, { ...d, guest_projects: guestProjects || [] });
     return Number(r.lastInsertRowid);
   });
 }

@@ -1,6 +1,6 @@
 {
   "name": "cnc-team",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "CNC Team — lokalna aplikacja do zarządzania zespołem programistów frezarek CNC",
   "license": "UNLICENSED",

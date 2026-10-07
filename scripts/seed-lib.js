@@ -6,6 +6,7 @@ const People = require('../server/domain/people');
 const Abs = require('../server/domain/absences');
 const X = require('../server/domain/exits');
 const P = require('../server/domain/projects');
+const Req = require('../server/domain/requests');
 
 const DEMO_PASSWORD = 'demo-cnc-2026';
 
@@ -94,11 +95,11 @@ function seedDemo(db) {
   exitOn(celina, cd, 60, 30);
 
   // Projekty
-  const p1 = P.saveProject(db, admin, { order_no: 'ZL-26-0412', part_no: 'NGK-TR-118', part_rev: 'C', part_family: 'tacki NGK', machine_id: 'M-HARTFORD', due_date: '2026-10-16', priority: 1, folder_link: '\\\\serwer\\CAM\\ZL-26-0412', responsible_ids: [adam, celina], description: 'Tacka transportowa, produkcja jednostkowa' });
+  const p1 = P.saveProject(db, admin, { order_no: 'ZL-26-0412', part_no: 'NGK-TR-118', part_rev: 'C', part_family: 'tacki NGK', machine_id: 'M-HARTFORD', start_date: '2026-09-28', due_date: '2026-10-16', priority: 1, folder_link: '\\\\serwer\\CAM\\ZL-26-0412', responsible_ids: [adam, celina], description: 'Tacka transportowa, produkcja jednostkowa' });
   P.setNcRevision(db, admin, p1, { nc_program: 'TR118_OP10', nc_rev: '03', reason: 'Pierwsza wersja zatwierdzona' });
-  const p2 = P.saveProject(db, admin, { order_no: 'ZL-26-0420', part_no: 'WSP-5X-07', part_rev: 'A', part_family: 'wsporniki', machine_id: 'M-GRIMME', due_date: '2026-10-23', priority: 2, folder_link: '\\\\serwer\\CAM\\ZL-26-0420', responsible_ids: [bartosz] });
+  const p2 = P.saveProject(db, admin, { order_no: 'ZL-26-0420', part_no: 'WSP-5X-07', part_rev: 'A', part_family: 'wsporniki', machine_id: 'M-GRIMME', start_date: '2026-10-01', due_date: '2026-10-23', priority: 2, folder_link: '\\\\serwer\\CAM\\ZL-26-0420', responsible_ids: [bartosz] });
   P.setNcRevision(db, admin, p2, { nc_program: 'WSP07_5X', nc_rev: '01' });
-  const p3 = P.saveProject(db, admin, { order_no: 'ZL-26-0425', part_no: 'NGK-TR-121', part_rev: 'A', part_family: 'tacki NGK', machine_id: 'M-HARTFORD', due_date: '2026-10-30', priority: 3, responsible_ids: [adam] });
+  const p3 = P.saveProject(db, admin, { order_no: 'ZL-26-0425', part_no: 'NGK-TR-121', part_rev: 'A', part_family: 'tacki NGK', machine_id: 'M-HARTFORD', start_date: '2026-10-05', due_date: '2026-10-30', priority: 3, responsible_ids: [adam] });
 
   const tt = Object.fromEntries(db.all('SELECT id, code FROM task_types').map(t => [t.code, t.id]));
   const mk = (project, code, title, plan, extra = {}) => P.createTask(db, admin, { project_id: project, type_id: tt[code], title, planned_min: plan, difficulty: 3, expected_result: 'Zgodnie z dokumentacją', ...extra });
@@ -130,6 +131,22 @@ function seedDemo(db) {
     done_text: 'OP10: kieszenie zgrubnie i wykańczająco, postprocesor Heidenhain.', remaining_text: 'Weryfikacja kolizji oprawki przy ściance 3; fazowania.',
     stopped_at_text: 'Operacja „FAZY_ZEW” — nie wygenerowano', tooling_notes: 'Frez Ø6 wymaga oprawki HSK — sprawdzić dostępność', checklist: ['Sprawdzić bazę Z na płycie', 'Porównać rev 03 z rysunkiem C'] });
   P.addManualTechData(db, admin, p1, { operation_id: 'OP10', nx_time_min: 95, machine_est_min: 110 });
+
+  // Gość (np. klient lub inny dział): widzi tylko status projektu ZL-26-0412
+  People.saveUser(db, admin, { login: 'gosc', display_name: 'Gość — dział jakości', role: 'guest', password: DEMO_PASSWORD, guest_project_ids: [p1] });
+
+  // Zgłoszenia pracowników do weryfikacji
+  const u = (login) => db.get('SELECT id, login, display_name, role, employee_id FROM users WHERE login=?', login);
+  const cl = db.get('SELECT * FROM schedule_entries WHERE employee_id=? AND work_date=?', celina, shiftDate(celina, '2026-10-05'));
+  const clStart = T.utcToLocal(cl.start_at);
+  const late = T.utcToLocal(new Date(Date.parse(cl.start_at) + 25 * 60000).toISOString());
+  const rq1 = Req.createRequest(db, u('celina'), { kind: 'spoznienie', date_from: clStart.date, time_to: late.time, note: 'Zamknięty przejazd kolejowy' });
+  Req.decideRequest(db, admin, rq1.id, { decision: 'przyjete', target: { type: 'exit', written_request: true }, note: 'Przyjęte — do odrobienia w tym miesiącu' });
+  const as = db.get('SELECT * FROM schedule_entries WHERE employee_id=? AND work_date=?', adam, shiftDate(adam, '2026-10-06'));
+  const aEnd = T.utcToLocal(as.end_at), aEnd2 = T.utcToLocal(new Date(Date.parse(as.end_at) + 45 * 60000).toISOString());
+  Req.createRequest(db, u('adam'), { kind: 'odrobienie', date_from: aEnd.date, time_from: aEnd.time, time_to: aEnd2.time, note: 'Odrobię resztę wyjścia z 1.10 po zmianie' });
+  Req.createRequest(db, u('bartosz'), { kind: 'nieobecnosc', date_from: '2026-10-09', note: 'Sprawa urzędowa — proszę o dzień wolny' });
+
   X.recomputeAlerts(db);
   return { admin, adam, bartosz, celina, p1, p2, p3 };
 }

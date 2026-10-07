@@ -9,7 +9,7 @@ a { color: var(--c-accent); }
 .mono { font-family: var(--f-mono); font-size: 0.92em; letter-spacing: -0.01em; }
 .muted { color: var(--c-ink-soft); }
 .small { font-size: var(--fs-sm); }
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 /* Domyślny rozmiar ikon w treści (reguły szczegółowe niżej nadpisują) */
 main svg:not(.chart), dialog svg { width: 1.1em; height: 1.1em; vertical-align: -0.2em; flex: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -251,6 +251,7 @@ ul.plain li:last-child { border-bottom: none; }
   table.stack tr { border: 1px solid var(--c-line); border-radius: var(--r-md); margin-bottom: var(--sp-2); padding: var(--sp-1) 0; background: var(--c-surface); }
   table.stack td { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); border-bottom: 1px dashed var(--c-line); text-align: right; padding: 6px var(--sp-3); }
   table.stack td:last-child { border-bottom: none; }
+  table.stack td > .cv { min-width: 0; overflow-wrap: anywhere; }
   table.stack td::before { content: attr(data-label); color: var(--c-ink-soft); text-align: left; flex: 0 0 40%; font-size: var(--fs-xs); }
   table.stack td[data-label=""]::before { content: none; }
   table.stack td[data-label=""] { justify-content: flex-end; }
@@ -266,3 +267,12 @@ ul.plain li:last-child { border-bottom: none; }
   .panel { border: none; padding: 0; }
   th { background: #eee !important; }
 }
+
+/* Zgłoszenia pracownika: wybór rodzaju jako duże przyciski (wygodne na telefonie) */
+.kind-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.kind-pick .kind { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: var(--sp-2) var(--sp-3); text-align: left; min-height: 72px; border: 1px solid var(--c-line); border-radius: var(--r-sm); background: var(--c-surface); }
+.kind-pick .kind svg { width: 20px; height: 20px; color: var(--c-accent); }
+.kind-pick .kind.active { border-color: var(--c-accent); box-shadow: 0 0 0 2px var(--c-accent-soft); background: var(--c-accent-soft); }
+.changes li { margin: 0; }
+.delay { margin: var(--sp-1) 0 0; }
+.guest-project details { margin-top: var(--sp-2); }

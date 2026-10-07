@@ -20,8 +20,10 @@ const CAPS = {
     'export.reports', 'view.alerts', 'view.months',
   ]),
   employee: new Set([
-    'view.calendar', 'view.projects', 'view.board', 'view.handovers', 'view.balances.own',
+    'view.calendar', 'view.projects', 'view.board', 'view.handovers', 'view.balances.own', 'request.create',
   ]),
+  // Gość: wyłącznie status przypisanych mu projektów (trasy /guest/*). Każda inna trasa API jest blokowana w app.js.
+  guest: new Set(['view.guest']),
 };
 
 function can(user, cap) {

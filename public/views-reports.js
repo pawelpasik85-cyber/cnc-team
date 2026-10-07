@@ -53,10 +53,13 @@ VIEWS.ustawienia = async (main) => {
   } else if (tab === 'konta') {
     const users = await api('/users');
     body = `<div class="toolbar">${btn('addUser', 'Nowe konto')}</div><section class="panel">${table([
-      { key: 'login', label: 'Login' }, { key: 'display_name', label: 'Nazwa' }, { key: 'role', label: 'Rola', fmt: v => ({ admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik' }[v]) },
+      { key: 'login', label: 'Login' }, { key: 'display_name', label: 'Nazwa' }, { key: 'role', label: 'Rola', fmt: v => ({ admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik', guest: 'Gość' }[v]) },
       { key: r => r, label: 'Pracownik', fmt: r => r.employee_id ? person(r.employee_id) : '—' }, { key: 'can_view_confidential', label: 'Dane poufne', fmt: v => v ? tag('tak', 'warn', 'lock') : 'nie' },
-      { key: 'active', label: 'Aktywne', fmt: v => v ? 'tak' : 'nie' }, { key: r => r, label: '', fmt: r => `<button class="link" data-user="${r.id}">Edytuj</button>` }], users)}</section>`;
+      { key: r => r, label: 'Projekty gościa', fmt: r => r.role === 'guest' ? (r.guest_project_ids.map(id => `<span class="mono small">${esc(id)}</span>`).join(' ') || '<span class="muted">brak</span>') : '' },
+      { key: 'active', label: 'Aktywne', fmt: v => v ? 'tak' : 'nie' }, { key: r => r, label: '', fmt: r => `<button class="link" data-user="${r.id}">Edytuj</button>` }], users)}</section>
+      <p class="small muted">Gość widzi tylko status (postęp, opóźnienie, etapy) wskazanych projektów w realizacji — bez osób, czasów, notatek i powodów blokad.</p>`;
     main.dataset.users = JSON.stringify(users);
+    main.dataset.projects = JSON.stringify((await api('/projects')).map(p => [p.id, `${p.order_no} · ${p.part_no} rev ${p.part_rev}${p.status !== 'aktywny' ? ` (${p.status})` : ''}`]));
   } else if (tab === 'zmiany') {
     body = `<div class="toolbar">${btn('addTpl', 'Szablon zmiany')}${btn('addHol', 'Dzień wolny / święto', 'calendar', '')}</div>
       <section class="panel"><h3>Szablony zmian</h3>${table([{ key: 'name', label: 'Nazwa' }, { key: 'short', label: 'Skrót' }, { key: r => `${r.start_time}–${r.end_time}`, label: 'Godziny' }, { key: 'break_min', label: 'Przerwa niewliczana', fmt: 'hm' }, { key: r => r, label: '', fmt: r => `<button class="link" data-tpl="${r.id}">Edytuj</button>` }], S.boot.shift_templates)}</section>
@@ -72,11 +75,9 @@ VIEWS.ustawienia = async (main) => {
         <h3 style="margin-top:var(--sp-4)">Historia importów</h3>${table([{ key: 'id', label: '#', num: true }, { key: r => new Date(r.imported_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Kiedy' }, { key: 'format_version', label: 'Wersja' }, { key: r => { const s = JSON.parse(r.summary); return `${s.items} pozycji, aktualne ${s.current}, nieaktualne ${s.stale}`; }, label: 'Podsumowanie' }], imports)}</section>`;
   } else if (tab === 'historia') {
     const log = await api('/audit');
-    body = `<section class="panel"><p class="small muted">Ostatnie 300 zmian: autor, data, powód, stara i nowa wartość.</p>${table([
-      { key: r => new Date(r.at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Kiedy' }, { key: 'display_name', label: 'Kto' }, { key: r => `${r.entity} ${r.entity_id || ''}`, label: 'Obiekt' }, { key: 'action', label: 'Akcja' }, { key: 'reason', label: 'Powód' },
-      { key: r => r, label: 'Zmiana', fmt: r => `<details><summary class="small">pokaż</summary><div class="small mono" style="white-space:pre-wrap;max-width:60ch">${esc(r.old_value || '—')}\n→\n${esc(r.new_value || '—')}</div></details>` }], log)}</section>`;
+    body = `<section class="panel"><p class="small muted">Ostatnie 300 zmian: kto, kiedy, co zmienił (było → jest) i z jakim opisem. Wpisów historii nie można edytować ani usuwać.</p>${historyTable(log)}</section>`;
   } else {
-    body = `<section class="panel" style="max-width:520px"><h3>Zmiana hasła</h3><form id="pwF" class="form-grid"><label class="field">Obecne hasło<input type="password" name="old_password" required autocomplete="current-password"></label><label class="field">Nowe hasło (min. 8 znaków)<input type="password" name="new_password" required autocomplete="new-password"></label><div class="wide"><button class="primary">Zmień hasło</button></div></form></section>`;
+    body = `<section class="panel" style="max-width:520px"><h3>Zmiana hasła</h3><form id="pwF" class="form-grid"><label class="field">Obecne hasło<input type="password" name="old_password" required autocomplete="current-password"></label><label class="field">Nowe hasło (min. 10 znaków)<input type="password" name="new_password" required autocomplete="new-password"></label><div class="wide"><button class="primary">Zmień hasło</button></div></form></section>`;
   }
   main.innerHTML = head('Ustawienia', isAdmin() ? 'Konta, zasady firmy, katalogi i wymiana danych. Każda zmiana trafia do historii.' : 'Ustawienia konta.') +
     `<div class="tabs">${tabs.map(([id, l]) => `<button class="${tab === id ? 'active' : ''}" data-st="${id}">${esc(l)}</button>`).join('')}</div>${body}`;
@@ -88,11 +89,13 @@ VIEWS.ustawienia = async (main) => {
   });
   const userForm = (u = {}) => openForm({ title: u.id ? `Konto ${u.login}` : 'Nowe konto', fields: [
     { name: 'login', label: 'Login', value: u.login, required: true }, { name: 'display_name', label: 'Nazwa wyświetlana', value: u.display_name, required: true },
-    { name: 'role', label: 'Rola', type: 'select', value: u.role, required: true, options: [['admin', 'Administrator'], ['supervisor', 'Przełożony'], ['employee', 'Pracownik']] },
+    { name: 'role', label: 'Rola', type: 'select', value: u.role, required: true, options: [['admin', 'Administrator'], ['supervisor', 'Przełożony'], ['employee', 'Pracownik'], ['guest', 'Gość — tylko status projektów']] },
+    { name: 'guest_project_ids', label: 'Projekty widoczne dla gościa', type: 'multi', options: JSON.parse(main.dataset.projects || '[]'), value: u.guest_project_ids || [], wide: true, show: v => v.role === 'guest' },
     { name: 'employee_id', label: 'Powiązany pracownik', type: 'select', options: empOptions(false), value: u.employee_id, show: v => v.role === 'employee' },
     { name: 'can_view_confidential', label: 'Dostęp do poufnych notatek i referencji kadrowych', type: 'checkbox', value: !!u.can_view_confidential, show: v => v.role === 'supervisor' },
     { name: 'active', label: 'Konto aktywne', type: 'checkbox', value: u.id ? !!u.active : true },
-    { name: 'password', label: u.id ? 'Nowe hasło (puste = bez zmian)' : 'Hasło (min. 8 znaków)', type: 'password', required: !u.id }],
+    { name: 'password', label: u.id ? 'Nowe hasło (puste = bez zmian)' : 'Hasło (min. 10 znaków)', type: 'password', required: !u.id },
+    ...(u.id ? [{ name: 'reason', label: 'Opis zmiany (do historii)', wide: true }] : [])],
   submit: (v, idem) => u.id ? post(`/users/${u.id}`, v, idem, 'PUT') : post('/users', v, idem) });
   on('addUser', () => userForm());
   $$('[data-user]').forEach(b => b.onclick = () => userForm(JSON.parse(main.dataset.users).find(x => x.id === Number(b.dataset.user))));

@@ -51,11 +51,16 @@ Saldo wyjścia = minuty − Σ przypisań z **zatwierdzonych** odrabiań. Przypi
 | `task_explanations` | Wyjaśnienie odchylenia i wniosek administratora |
 | `machine_board` | Karta maszyny (wprowadzana ręcznie) |
 | `handovers` | Przekazanie zmiany |
+| `requests` | Zgłoszenie pracownika do weryfikacji: rodzaj, dni, godziny, uwaga, status (nowe/przyjęte/odrzucone/wycofane), decyzja, kto i kiedy zdecydował, odnośnik do utworzonego wpisu; unikalne (konto, `client_id`) |
+| `guest_projects` | Projekty widoczne dla konta gościa |
+| `login_attempts` | Próby logowania (blokada po serii błędnych haseł), czyszczone po 30 dniach |
 | `tech_data`, `tech_imports` | Dane technologiczne z CNC Process lub ręczne (jawnie oznaczone), znacznik `stale` dla nieaktualnej rewizji NC; historia importów z hashem pliku |
 
 ## Historia i integralność
 
-- `audit_log`: kto, kiedy, obiekt, akcja, **powód**, stara i nowa wartość (JSON) — dla każdego zapisu.
+- `audit_log`: kto, kiedy, obiekt, akcja, **opis/powód**, stara i nowa wartość (JSON) — dla każdego zapisu. Interfejs pokazuje czytelnie zmienione pola („termin: 01.11 → 15.11”), także w historii projektu wraz z jego zadaniami.
+- `projects.start_date`: data rozpoczęcia — podstawa planu na dziś i opóźnienia w %.
+- `users.role`: admin / supervisor / employee / **guest**.
 - `idempotency_keys`: ochrona przed podwójnym zapisem (ten sam klucz → ta sama odpowiedź).
 - Brak cichego usuwania: absencje, wyjścia, odrabiania są anulowane/odrzucane z powodem. Usuwać można tylko zmianę z grafiku (z powodem, gdy miesiąc otwarty i bez wyjść na tej zmianie).
 - Zamknięty miesiąc blokuje zapisy w grafiku, absencjach, wyjściach i odrabianiu tego miesiąca.

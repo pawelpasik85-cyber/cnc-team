@@ -9,6 +9,7 @@ const C = require('./common');
 const Abs = require('./absences');
 const X = require('./exits');
 const People = require('./people');
+const Req = require('./requests');
 const config = require('../cloud-config');
 
 const PUBLISH_DAYS_BACK = 7;
@@ -150,48 +151,10 @@ function createCloud(db, { fetchImpl = globalThis.fetch, url = config.url, key =
     return rows.map(r => ({ ...r, employee_known: !!db.get('SELECT 1 FROM employees WHERE id=?', r.employee_ref) }));
   }
 
-  // Zamiana zgłoszenia na wpis lokalny. target: {type:'exit'|'absence'|'none', category_id, unit, written_request}
+  // Zamiana zgłoszenia na wpis lokalny — wspólna logika z zgłoszeniami na serwerze (domain/requests.js).
   function buildLocalEntry(user, r, target) {
-    const ref = `zgłoszenie w aplikacji ${r.id.slice(0, 8)} z ${T.utcToLocal(r.created_at).date}`;
-    if (target.type === 'none') return null;
-    if (target.type === 'exit') {
-      let start = r.time_from, end = r.time_to;
-      if (r.kind === 'spoznienie') {
-        // spóźnienie: od początku zmiany do godziny przyjścia
-        const sh = db.get('SELECT * FROM schedule_entries WHERE employee_id=? AND work_date=? ORDER BY start_at LIMIT 1', r.employee_ref, r.date_from);
-        if (!sh) throw conflict(`Brak zmiany w grafiku pracownika w dniu ${r.date_from}.`);
-        start = T.utcToLocal(sh.start_at).time;
-        end = r.time_to || r.time_from;
-      }
-      if (!start || !end) throw bad('Zgłoszenie nie zawiera godzin — wybierz inny sposób rozliczenia.');
-      const endDate = end <= start ? T.addDays(r.date_from, 1) : r.date_from;
-      const res = X.createExit(db, user, {
-        employee_id: r.employee_ref, start_date: r.date_from, start_time: start, end_date: endDate, end_time: end,
-        status: 'zarejestrowane', written_request: !!target.written_request, document_ref: ref,
-      });
-      return { ref: `exit:${res.id}`, warnings: res.warnings || [] };
-    }
-    if (target.type === 'absence') {
-      const cat = db.get('SELECT * FROM absence_categories WHERE id=?', reqInt(target.category_id, 'Kategoria'));
-      if (!cat) throw bad('Nieznana kategoria.');
-      const hourly = cat.unit === 'godziny' || cat.unit === 'minuty' || (cat.unit === 'dni_lub_godziny' && (target.unit || (r.time_from ? 'godziny' : 'dni')) === 'godziny');
-      let startTime = r.time_from, endTime = r.time_to;
-      if (hourly && r.kind === 'spoznienie') {
-        const sh = db.get('SELECT * FROM schedule_entries WHERE employee_id=? AND work_date=? ORDER BY start_at LIMIT 1', r.employee_ref, r.date_from);
-        if (!sh) throw conflict(`Brak zmiany w grafiku pracownika w dniu ${r.date_from}.`);
-        startTime = T.utcToLocal(sh.start_at).time; endTime = r.time_to || r.time_from;
-      }
-      if (hourly && (!startTime || !endTime)) throw bad('Ta kategoria rozlicza godziny, a zgłoszenie nie ma godzin.');
-      const endDate = hourly && endTime <= startTime ? T.addDays(r.date_from, 1) : r.date_to;
-      const res = Abs.createAbsence(db, user, {
-        employee_id: r.employee_ref, category_id: cat.id, status: r.date_to <= T.today() ? 'wykorzystana' : 'planowana',
-        unit: cat.unit === 'dni_lub_godziny' ? (hourly ? 'godziny' : 'dni') : undefined,
-        start_date: r.date_from, end_date: endDate, start_time: hourly ? startTime : undefined, end_time: hourly ? endTime : undefined,
-        employee_request: true, document_ref: ref,
-      });
-      return { ref: `absence:${res.id}`, warnings: res.warnings || [] };
-    }
-    throw bad('Nieznany sposób rozliczenia zgłoszenia.');
+    const label = `zgłoszenie w aplikacji ${r.id.slice(0, 8)} z ${T.utcToLocal(r.created_at).date}`;
+    return Req.buildLocalEntry(db, user, { ...r, employee_id: r.employee_ref, label }, target);
   }
 
   async function decide(user, id, body) {
@@ -203,7 +166,7 @@ function createCloud(db, { fetchImpl = globalThis.fetch, url = config.url, key =
     const note = body.note ? String(body.note).slice(0, 500) : null;
     if (decision === 'odrzucone' && !note) throw bad('Odrzucenie wymaga krótkiego wyjaśnienia dla pracownika.');
     const target = decision === 'przyjete' ? (body.target || { type: 'none' }) : { type: 'none' };
-    oneOf(target.type, 'Sposób rozliczenia', ['exit', 'absence', 'none']);
+    oneOf(target.type, 'Sposób rozliczenia', ['exit', 'absence', 'makeup', 'none']);
     // 1) próba na sucho: wpis lokalny musi przejść wszystkie walidacje, zanim decyzja trafi do chmury
     const DRY = Symbol('dry');
     try { db.tx(() => { buildLocalEntry(user, r, target); throw DRY; }); } catch (e) { if (e !== DRY) throw e; }

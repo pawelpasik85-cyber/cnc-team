@@ -69,7 +69,11 @@ function saveProject(db, user, body, id) {
     status: oneOf(body.status || 'aktywny', 'Status', ['aktywny', 'wstrzymany', 'zakonczony', 'anulowany']),
     blocked: body.blocked ? 1 : 0, block_reason: reqStr(body.block_reason, 'Powód blokady', { optional: true }),
     description: reqStr(body.description, 'Opis', { optional: true }),
+    start_date: reqStr(body.start_date, 'Data rozpoczęcia', { optional: true })
+      || (id ? (db.get('SELECT start_date FROM projects WHERE id=?', id) || {}).start_date : null) || T.today(),
   };
+  T.assertDate(d.start_date);
+  if (d.due_date && d.due_date < d.start_date) throw bad('Termin nie może być przed datą rozpoczęcia.');
   for (const k of ['order_no', 'part_no', 'part_rev']) if (!ID_RE.test(d[k])) throw bad(`Pole ${k} zawiera niedozwolone znaki (dozwolone: litery, cyfry, . _ - /).`);
   if (d.machine_id && !db.get('SELECT 1 FROM machines WHERE id=?', d.machine_id)) throw bad('Nieznana maszyna.');
   if (d.due_date) T.assertDate(d.due_date);
@@ -87,9 +91,9 @@ function saveProject(db, user, body, id) {
       return id;
     }
     const newId = nextProjectId(db);
-    db.run(`INSERT INTO projects(id,order_no,part_no,part_rev,part_family,machine_id,due_date,priority,folder_link,responsible_ids,status,blocked,block_reason,description,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, newId, d.order_no, d.part_no, d.part_rev, d.part_family, d.machine_id, d.due_date, d.priority,
-    d.folder_link, d.responsible_ids, d.status, d.blocked, d.block_reason, d.description, now, now);
+    db.run(`INSERT INTO projects(id,order_no,part_no,part_rev,part_family,machine_id,due_date,priority,folder_link,responsible_ids,status,blocked,block_reason,description,start_date,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, newId, d.order_no, d.part_no, d.part_rev, d.part_family, d.machine_id, d.due_date, d.priority,
+    d.folder_link, d.responsible_ids, d.status, d.blocked, d.block_reason, d.description, d.start_date, now, now);
     audit(db, user, 'project', newId, 'utworzenie', null, d);
     return newId;
   });
@@ -118,6 +122,35 @@ function progress(tasks, phase) {
   return { done_weight: done, total_weight: total, percent: total ? Math.round((done / total) * 100) : null, tasks: list.length };
 }
 
+// Opóźnienie: plan na dziś = upływ czasu między datą rozpoczęcia a terminem (liniowo);
+// wykonanie = postęp wagowy wszystkich zadań. Opóźnienie (pkt %) = plan − wykonanie, gdy dodatnie.
+function scheduleStatus(p, tasks, today, { warnPct = 5, alertPct = 15 } = {}) {
+  const all = tasks.filter(t => t.status !== 'anulowane');
+  const total = all.reduce((s, t) => s + t.weight, 0);
+  const done = all.filter(t => t.status === 'zakonczone').reduce((s, t) => s + t.weight, 0);
+  const actual = total ? Math.round((done / total) * 100) : null;
+  const out = { actual_percent: actual, planned_percent: null, delay_pct: null, ahead_pct: null, overdue_days: null, level: 'brak_danych', note: null,
+    overdue_tasks: all.filter(t => t.due_date && t.due_date < today && t.status !== 'zakonczone').length };
+  if (actual === null) { out.note = 'brak zadań — nie da się policzyć postępu'; return out; }
+  if (!p.start_date || !p.due_date) { out.note = 'brak daty rozpoczęcia lub terminu'; return out; }
+  const span = (Date.parse(p.due_date) - Date.parse(p.start_date)) / 86400e3;
+  const elapsed = (Date.parse(today) - Date.parse(p.start_date)) / 86400e3;
+  const planned = span <= 0 ? (today >= p.due_date ? 100 : 0) : Math.round(Math.min(1, Math.max(0, elapsed / span)) * 100);
+  out.planned_percent = planned;
+  out.delay_pct = Math.max(0, planned - actual);
+  out.ahead_pct = Math.max(0, actual - planned);
+  if (today > p.due_date && actual < 100) out.overdue_days = Math.round((Date.parse(today) - Date.parse(p.due_date)) / 86400e3);
+  if (p.status === 'zakonczony' || actual === 100) out.level = 'zakonczony';
+  else if (out.overdue_days || out.delay_pct > alertPct) out.level = 'zagrozony';
+  else if (out.delay_pct > warnPct) out.level = 'opozniony';
+  else out.level = 'zgodnie';
+  return out;
+}
+
+function scheduleSettings(db) {
+  return { warnPct: C.getSettingInt(db, 'project_delay_warn_pct', 5), alertPct: C.getSettingInt(db, 'project_delay_alert_pct', 15) };
+}
+
 function projectDetail(db, id, { withTimes }) {
   const p = db.get(`SELECT p.*, m.name AS machine_name, m.axes, m.control FROM projects p LEFT JOIN machines m ON m.id=p.machine_id WHERE p.id=?`, id);
   if (!p) throw notFound('Nie znaleziono projektu.');
@@ -127,6 +160,7 @@ function projectDetail(db, id, { withTimes }) {
   const out = {
     ...p, responsible_ids: JSON.parse(p.responsible_ids),
     progress_program: progress(tasks, 'przygotowanie'), progress_execution: progress(tasks, 'wykonanie'),
+    schedule: scheduleStatus(p, tasks, T.today(), scheduleSettings(db)),
     tasks: tasks.map(t => withTimes ? { ...t, ...taskTimes(db, t.id) } : stripTaskPlan(t)),
     handovers: db.all('SELECT * FROM handovers WHERE project_id=? ORDER BY shift_date DESC, id DESC', id).map(h => ({ ...h, checklist: JSON.parse(h.checklist) })),
     contributions: contributions.map(c => ({ employee_id: c.employee_id, shifts: c.shifts, ...(withTimes ? { work_min: c.work_min } : {}) })),
@@ -373,7 +407,21 @@ function addManualTechData(db, user, projectId, body) {
   });
 }
 
+// Widok gościa: wyłącznie status projektu — bez osób, czasów, notatek, powodów blokad i danych technologicznych.
+function guestStatus(db, id) {
+  const p = db.get(`SELECT p.*, m.name AS machine_name, m.axes, m.control FROM projects p LEFT JOIN machines m ON m.id=p.machine_id WHERE p.id=?`, id);
+  if (!p) throw notFound('Nie znaleziono projektu.');
+  const tasks = db.all('SELECT title, phase, weight, status, due_date FROM tasks WHERE project_id=? ORDER BY id', id);
+  return {
+    id: p.id, order_no: p.order_no, part_no: p.part_no, part_rev: p.part_rev, machine: p.machine_name ? `${p.machine_name} ${p.axes}X` : null,
+    status: p.status, blocked: !!p.blocked, start_date: p.start_date, due_date: p.due_date,
+    progress_program: progress(tasks, 'przygotowanie'), progress_execution: progress(tasks, 'wykonanie'),
+    schedule: scheduleStatus(p, tasks, T.today(), scheduleSettings(db)),
+    stages: tasks.filter(t => t.status !== 'anulowane').map(t => ({ title: t.title, phase: t.phase, status: t.status, due_date: t.due_date })),
+  };
+}
+
 module.exports = {
   CAUSES, saveMachine, saveTaskType, saveProject, setNcRevision, projectDetail, listProjects, createTask, updateTask, changeTaskPlan,
-  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress,
+  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus,
 };

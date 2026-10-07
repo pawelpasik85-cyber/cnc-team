@@ -74,7 +74,7 @@ function table(columns, rows, { empty = 'Brak wpisów.', rowClass } = {}) {
   };
   const num = (c) => c.num || c.fmt === 'hm' || c.fmt === 'pct';
   return `<div class="table-wrap"><table class="stack"><thead><tr>${columns.map(c => `<th class="${num(c) ? 'num' : ''}" scope="col">${esc(c.label)}</th>`).join('')}</tr></thead><tbody>
-    ${rows.map(r => `<tr class="${rowClass ? rowClass(r) : ''}">${columns.map(c => `<td class="${num(c) ? 'num' : ''}" data-label="${esc(c.label)}">${cell(c, r)}</td>`).join('')}</tr>`).join('')}
+    ${rows.map(r => `<tr class="${rowClass ? rowClass(r) : ''}">${columns.map(c => `<td class="${num(c) ? 'num' : ''}" data-label="${esc(c.label)}"><span class="cv">${cell(c, r)}</span></td>`).join('')}</tr>`).join('')}
   </tbody></table></div>`;
 }
 

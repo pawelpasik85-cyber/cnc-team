@@ -12,9 +12,11 @@ function cloudStatusLine(st) {
 }
 
 VIEWS.zgloszenia = async (main) => {
-  const [st, list] = await Promise.all([api('/cloud/status'), api('/cloud/reports')]);
-  main.innerHTML = head('Zgłoszenia pracowników', 'Nieobecności, spóźnienia i wyjścia zgłoszone w aplikacji na telefonie. Przyjęcie tworzy wpis w CNC Team, a pracownik widzi decyzję w aplikacji.',
-    st.connected ? btn('syncNow', 'Synchronizuj teraz', 'makeup', '') : '') + cloudStatusLine(st) + `
+  const [local, st, list] = await Promise.all([localRequestsSection(), api('/cloud/status'), api('/cloud/reports')]);
+  const showCloud = st.connected || list.length;
+  main.innerHTML = head('Zgłoszenia pracowników', 'Spóźnienia, nieobecności, wyjścia i odrobienia zgłoszone przez pracowników. Nic nie trafia do grafiku ani rozliczeń bez Twojej decyzji.',
+    st.connected ? btn('syncNow', 'Synchronizuj aplikację w chmurze', 'makeup', '') : '') + local.html + (showCloud ? `
+    <h2>Z aplikacji w chmurze</h2>${cloudStatusLine(st)}
     <section class="panel">${table([
       { key: r => r, label: 'Pracownik', fmt: r => r.employee_known ? person(r.employee_ref) : `<span class="muted">nieznany (#${r.employee_ref})</span>` },
       { key: r => r, label: 'Rodzaj', fmt: r => `${icon(KIND_LABEL[r.kind][1])} ${esc(KIND_LABEL[r.kind][0])}` },
@@ -23,7 +25,8 @@ VIEWS.zgloszenia = async (main) => {
       { key: r => new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Zgłoszono' },
       { key: r => r, label: 'Status', fmt: r => `${tag(...REPORT_STATUS[r.status])}${r.decision_note ? `<br><span class="small">${esc(r.decision_note)}</span>` : ''}${r.cnc_ref ? `<br><span class="small muted">wpis: ${esc(r.cnc_ref)}</span>` : ''}${r.local_error ? `<br>${tag(`błąd wpisu: ${r.local_error}`, 'danger', 'alert')}` : ''}` },
       { key: r => r, label: '', fmt: r => r.status === 'nowe' && r.employee_known ? `<button data-accept="${esc(r.id)}" class="primary">Przyjmij</button> <button data-reject="${esc(r.id)}" class="link">Odrzuć</button>` : '' },
-    ], list, { empty: 'Brak zgłoszeń. Pracownicy zgłaszają w aplikacji na telefonie.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section>`;
+    ], list, { empty: 'Brak zgłoszeń z aplikacji w chmurze.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section>` : '');
+  local.bind();
   on('syncNow', async () => { try { const r = await api('/cloud/sync', { method: 'POST' }); toast(`Zsynchronizowano. Nowe zgłoszenia: ${r.added}.`); rerender(); } catch (e) { toast(e.message, 'err'); } });
   $$('[data-accept]').forEach(b => b.onclick = () => acceptForm(list.find(r => r.id === b.dataset.accept)));
   $$('[data-reject]').forEach(b => b.onclick = () => openForm({

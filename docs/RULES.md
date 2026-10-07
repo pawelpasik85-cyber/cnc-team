@@ -81,5 +81,19 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Opóźnienie projektu (w %)
+- **Plan na dziś** = upływ czasu od daty rozpoczęcia do terminu projektu (liniowo, 0–100%).
+- **Wykonano** = Σ wag zakończonych zadań / Σ wag wszystkich zadań (bez anulowanych), oba etapy razem.
+- **Opóźnienie** = plan na dziś − wykonano (punkty procentowe), gdy dodatnie; w przeciwnym razie „przed planem o X%”.
+- Poziomy: *zgodnie z planem* (opóźnienie ≤ 5), *opóźniony* (> 5), *zagrożony* (> 15 albo po terminie, gdy nie wykonano 100%) — progi w ustawieniach `project_delay_warn_pct`, `project_delay_alert_pct`.
+- Dodatkowo: liczba dni po terminie i liczba zadań po swoich terminach.
+- Brak daty rozpoczęcia, terminu albo zadań = „brak danych” (nie zero). Założenie liniowego planu jest uproszczeniem — przy nierównych etapach lepszą miarą są terminy zadań (pokazywane osobno).
+
+### Zgłoszenia pracowników do weryfikacji
+- Pracownik **nie wpisuje** spóźnień, wyjść, odrabiania ani postępu prac. Składa zgłoszenie: spóźnienie (godzina przyjścia), nieobecność (dni), wyjście (od–do), odrobienie (dzień, od–do), inna sprawa (opis). Zgłoszenie najwyżej 31 dni wstecz, najwyżej 60 dni.
+- Decyzję podejmuje wyłącznie kierownik (administrator): przyjęcie z wyborem sposobu rozliczenia (wyjście prywatne, kategoria nieobecności, odrabianie, bez wpisu) albo odrzucenie z wyjaśnieniem. Jedna decyzja na zgłoszenie; wpis powstaje w tej samej transakcji co decyzja i przechodzi wszystkie walidacje (kolizje, odpoczynek, zamknięty miesiąc) — jeśli walidacja się nie powiedzie, zgłoszenie pozostaje nierozpatrzone.
+- Spóźnienie przyjęte „do odrobienia” = wyjście od początku zmiany do godziny przyjścia. Odrobienie przyjęte = odrabianie zatwierdzone, przypisane kolejno do najstarszych nierozliczonych wyjść z tego samego miesiąca (sprzed odrabiania); nadwyżka nie tworzy kredytu.
+- Pracownik może wycofać zgłoszenie, dopóki nie zostało rozpatrzone. Każdy krok (zgłoszenie, wycofanie, decyzja) jest w historii z autorem.
+
 ### Raporty efektywności
 Odchylenie = rzeczywisty czas aktywny − plan obowiązujący (oraz %). Oznaczenie „odchylenie wymagające wyjaśnienia”, gdy > 60 min **i** > 20% (ustawienia). Brak planu lub wpisów czasu = „brak danych”, nie zero; raport pokazuje liczebność próbki i kompletność. Trendy: mediana odchylenia w grupach typ × rodzina × trudność, z uwagą przy próbce < 3. Absencje nie wpływają na wskaźnik; czas maszyny nie jest czasem programisty; brak ocen typu „celowo opóźnia”.

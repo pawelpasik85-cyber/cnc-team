@@ -22,7 +22,7 @@ VIEWS.projekty = async (main, rest) => {
     <div class="cols">${list.map(p => `<article class="panel">
       <div class="page-head" style="margin:0 0 var(--sp-2)"><div><h3 style="margin:0"><a href="#/projekty/${encodeURIComponent(p.id)}">${projectRef(p)}</a></h3><span class="small muted">${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')}</span></div>
       <div>${p.machine_id ? tag(`${p.machine_name} ${p.axes}X`, 'accent', p.axes >= 5 ? 'axes' : 'spindle') : ''}</div></div>
-      ${bars(p)}
+      ${bars(p)}${delayLine(p.schedule)}
       <p class="small" style="margin:var(--sp-2) 0 0">Termin: <b>${plDate(p.due_date)}</b> · priorytet ${p.priority} · ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : 'brak programu NC'}
       ${p.blocked ? `<br>${tag(p.block_reason, 'danger', 'block')}` : ''}${p.tasks.some(t => t.status === 'zablokowane') ? `<br>${tag('zablokowane zadanie', 'warn', 'alert')}` : ''}</p>
       <p class="small" style="margin:var(--sp-2) 0 0">${p.responsible_ids.map(id => person(id, { name: false })).join(' ')} ${esc(p.status)}</p>
@@ -36,7 +36,9 @@ function projectForm(p = {}) {
     title: p.id ? `Edytuj projekt ${p.id}` : 'Nowy projekt', intro: '<p class="small muted">Identyfikatory (zlecenie, detal, rewizja) są wspólne z CNC Process — używaj stałych oznaczeń.</p>', fields: [
       { name: 'order_no', label: 'Numer zlecenia', value: p.order_no, required: true }, { name: 'part_no', label: 'Detal', value: p.part_no, required: true },
       { name: 'part_rev', label: 'Rewizja detalu', value: p.part_rev, required: true }, { name: 'part_family', label: 'Rodzina detali (np. tacki NGK)', value: p.part_family },
-      { name: 'machine_id', label: 'Maszyna', type: 'select', options: machineOptions(), value: p.machine_id }, { name: 'due_date', label: 'Termin', type: 'date', value: p.due_date },
+      { name: 'machine_id', label: 'Maszyna', type: 'select', options: machineOptions(), value: p.machine_id },
+      { name: 'start_date', label: 'Data rozpoczęcia', type: 'date', value: p.start_date || S.me.today, help: 'Plan na dziś = upływ czasu od rozpoczęcia do terminu; podstawa opóźnienia w %.' },
+      { name: 'due_date', label: 'Termin', type: 'date', value: p.due_date },
       { name: 'priority', label: 'Priorytet (1 = najwyższy)', type: 'number', min: 1, max: 5, value: p.priority || 3 },
       { name: 'status', label: 'Status', type: 'select', placeholder: false, value: p.status || 'aktywny', options: [['aktywny', 'aktywny'], ['wstrzymany', 'wstrzymany'], ['zakonczony', 'zakończony'], ['anulowany', 'anulowany']] },
       { name: 'folder_link', label: 'Odnośnik do folderu (CAM/NC)', value: p.folder_link, wide: true },
@@ -68,7 +70,7 @@ async function projectDetailView(main, id) {
   main.innerHTML = head(`${p.order_no} · ${p.part_no} rev ${p.part_rev}`, `${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')} · ${p.machine_name ? `${esc(p.machine_name)} ${p.axes}X / ${esc(p.control)}` : 'bez maszyny'} · termin ${plDate(p.due_date)} · priorytet ${p.priority}`,
     `<a class="btn" href="#/projekty">‹ Projekty</a>${isAdmin() ? `<button id="editPrj">Edytuj</button><button id="ncRev">${icon('nc')}Rewizja NC</button>${btn('addTask', 'Zadanie')}` : ''}`) + `
     <div class="cols-2"><div>
-      <section class="panel">${bars(p)}${p.blocked ? `<p>${tag(p.block_reason, 'danger', 'block')}</p>` : ''}
+      <section class="panel">${bars(p)}${delayLine(p.schedule)}${p.blocked ? `<p>${tag(p.block_reason, 'danger', 'block')}</p>` : ''}
         <p class="small">Obowiązujący program: ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : '<span class="muted">nie ustalono</span>'}${p.folder_link ? ` · Folder: <span class="mono">${esc(p.folder_link)}</span>` : ''}</p>
         ${p.description ? `<p class="small">${esc(p.description)}</p>` : ''}</section>
       <section class="panel"><h3>Zadania</h3>${table([
@@ -82,11 +84,11 @@ async function projectDetailView(main, id) {
       <section class="panel"><h3>Dane technologiczne</h3><p class="small muted">Dane z CNC Process. CNC Team nie wylicza czasu obróbki.</p>${techRows}
         <div class="toolbar" style="margin-top:var(--sp-3)">${p.cnc_process_url ? `<a class="btn" href="${esc(p.cnc_process_url)}" target="_blank" rel="noopener">Otwórz w CNC Process</a>` : '<span class="btn" aria-disabled="true" title="Integracja nieskonfigurowana">Otwórz w CNC Process — brak integracji</span>'}${isAdmin() ? `<button id="manualTech">Wpis ręczny</button>` : ''}</div></section>
     </div><div>
-      <section class="panel"><h3>Wkład osób (kolejne zmiany)</h3><ul class="plain">${p.contributions.map(c => `<li>${person(c.employee_id)} — zmian: ${c.shifts}${c.work_min !== undefined ? `, czas: ${hm(c.work_min)}` : ''}</li>`).join('') || '<li class="muted">Brak zapisanego czasu.</li>'}</ul></section>
+      ${p.contributions ? `<section class="panel"><h3>Wkład osób (kolejne zmiany)</h3><ul class="plain">${p.contributions.map(c => `<li>${person(c.employee_id)} — zmian: ${c.shifts}${c.work_min !== undefined ? `, czas: ${hm(c.work_min)}` : ''}</li>`).join('') || '<li class="muted">Brak zapisanego czasu.</li>'}</ul></section>` : ''}
       <section class="panel"><h3>Przekazania zmian</h3>${p.handovers.map(h => handoverCard(h)).join('') || '<p class="muted">Brak przekazań.</p>'}
         ${isAdmin() ? `<button id="addHo">${icon('handover')}Przekazanie zmiany</button>` : ''}</section>
-      ${isAdmin() ? `<section class="panel"><h3>Historia zmian</h3><div id="hist"><button id="loadHist" class="link">Pokaż historię projektu</button></div></section>` : ''}
-    </div></div>`;
+    </div></div>
+    ${isAdmin() ? `<section class="panel" style="margin-top:var(--sp-4)"><h3>Historia zmian projektu i zadań</h3><div id="hist"><button id="loadHist" class="link">Pokaż historię: kto, kiedy, co zmienił</button></div></section>` : ''}`;
   on('editPrj', () => projectForm(p));
   on('ncRev', () => openForm({ title: 'Obowiązujący program i rewizja NC', intro: '<p class="small muted">Po zmianie rewizji estymacje dla poprzedniej rewizji zostaną oznaczone jako nieaktualne.</p>', fields: [
     { name: 'nc_program', label: 'Program NC', value: p.nc_program, required: true }, { name: 'nc_rev', label: 'Rewizja NC', value: p.nc_rev, required: true }, { name: 'reason', label: 'Powód', wide: true }],
@@ -98,8 +100,8 @@ async function projectDetailView(main, id) {
   submit: (v, idem) => post(`/projects/${encodeURIComponent(p.id)}/tech-data`, v, idem) }));
   on('addHo', () => handoverForm(p));
   on('loadHist', async () => {
-    const h = await api(`/audit?entity=project&entity_id=${encodeURIComponent(p.id)}`);
-    $('#hist').innerHTML = table([{ key: r => new Date(r.at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Kiedy' }, { key: 'display_name', label: 'Kto' }, { key: 'action', label: 'Zmiana' }, { key: 'reason', label: 'Powód' }], h);
+    const h = await api(`/projects/${encodeURIComponent(p.id)}/history`);
+    $('#hist').innerHTML = historyTable(h);
   });
   $$('[data-task]').forEach(b => b.onclick = () => { const t = p.tasks.find(x => x.id === Number(b.dataset.task)); taskStatusForm(t, p); });
   $$('[data-time]').forEach(b => b.onclick = () => timeForm(p.tasks.find(x => x.id === Number(b.dataset.time))));

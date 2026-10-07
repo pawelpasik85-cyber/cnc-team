@@ -1,0 +1,25 @@
+# CNC Team — usługa systemd (Linux). Instalacja:
+#   useradd --system --home /opt/cnc-team cncteam
+#   cp -r cnc-team /opt/cnc-team && mkdir -p /var/lib/cnc-team && chown cncteam /var/lib/cnc-team
+#   cp deploy/linux/cnc-team.service /etc/systemd/system/ && systemctl enable --now cnc-team
+[Unit]
+Description=CNC Team
+After=network.target
+
+[Service]
+User=cncteam
+WorkingDirectory=/opt/cnc-team
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=CNC_DB=/var/lib/cnc-team/cnc-team.db
+Environment=CNC_TRUST_PROXY=1
+ExecStart=/usr/bin/node --no-warnings=ExperimentalWarning server/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/cnc-team
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

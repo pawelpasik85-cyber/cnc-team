@@ -13,4 +13,4 @@ const { seedDemo } = require('./seed-lib');
 const { db } = boot(DB_FILE);
 if (db.get('SELECT COUNT(*) n FROM users').n) { console.error('Baza zawiera już konta. Użyj --reset, aby utworzyć bazę demonstracyjną od nowa.'); process.exit(1); }
 seedDemo(db);
-console.log('Dane demonstracyjne gotowe. Konta: kierownik, przelozony, adam, bartosz, celina — hasło: demo-cnc-2026');
+console.log('Dane demonstracyjne gotowe. Konta: kierownik, przelozony, adam, bartosz, celina, gosc — hasło: demo-cnc-2026');

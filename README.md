@@ -23,9 +23,14 @@ Konta demonstracyjne (hasło dla wszystkich: `demo-cnc-2026` — wyłącznie do 
 |---|---|
 | `kierownik` | Administrator (wprowadza i edytuje wszystkie dane) |
 | `przelozony` | Przełożony (podgląd, raporty; bez dostępu do notatek poufnych) |
-| `adam`, `bartosz`, `celina` | Pracownicy (podgląd kalendarza, projektów, własnego salda) |
+| `adam`, `bartosz`, `celina` | Pracownicy: podgląd swoich danych i projektów; spóźnienie, nieobecność, wyjście, odrobienie tylko **zgłaszają** do weryfikacji |
+| `gosc` | Gość: wyłącznie status udostępnionego projektu (postęp, opóźnienie w %, etapy) |
 
 Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je tak, jak na zrzutach ekranu, uruchom serwer z `CNC_TODAY=2026-10-06` (Windows PowerShell: `$env:CNC_TODAY="2026-10-06"; npm start`). Bez tej zmiennej aplikacja używa bieżącej daty.
+
+## Serwer firmowy (zalecane)
+
+Instalacja jako usługa na serwerze (Windows lub Linux), dostęp z domu przez firmowy adres HTTPS, kopie, zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`.
 
 ## Aplikacja pracownika (z domu, na telefonie)
 
@@ -67,7 +72,7 @@ Następnie w aplikacji: Ustawienia → Konta i role, Pracownicy, Kalendarz → G
 | `npm start` | Serwer aplikacji |
 | `npm run start:siec` | Serwer dostępny dla telefonów w sieci lokalnej |
 | `npm run make-cert` | Lokalny certyfikat HTTPS dla telefonów |
-| `npm test` | Testy automatyczne (40 scenariuszy) |
+| `npm test` | Testy automatyczne (45 scenariuszy) |
 | `node scripts/build-mobile.js` | Budowa aplikacji pracownika do `dist-mobile/` |
 | `npm run seed -- --reset` | Baza demonstracyjna od nowa (usuwa plik bazy!) |
 | `npm run init-admin` | Pierwsze konto administratora w pustej bazie |
@@ -83,6 +88,7 @@ public/            interfejs (HTML/CSS/JS bez frameworka), tokens.css — wspól
 mobile/            aplikacja pracownika (PWA; ta sama w APK)
 android-app/       powłoka Capacitor do budowy APK (tylko w GitHub Actions)
 supabase/          migracje i test uprawnień chmury
+deploy/            uruchamianie jako usługa (Windows, Linux), przykład reverse proxy
 .github/           budowa strony i APK, recenzja GPT przy każdym pushu
 scripts/           seed, init-admin, backup, zrzuty ekranów
 test/              testy (node:test)
@@ -99,6 +105,7 @@ docs/              dokumentacja i zrzuty ekranów
 - `docs/BACKUP.md` — kopia zapasowa i odtworzenie
 - `docs/LIMITATIONS.md` — znane ograniczenia
 - `docs/INTEGRATION_JSON.md` — format wymiany z CNC Process
+- `docs/DEPLOY.md` — instalacja na serwerze firmowym, dostęp z domu, zabezpieczenia (dla IT)
 - `docs/CLOUD.md` — aplikacja pracownika, chmura, co jest wysyłane, konfiguracja
 - `docs/MOBILE.md` — telefony: skrót, pełna aplikacja (https), APK
 - `docs/DESIGN_TOKENS.md` — wygląd do odtworzenia w CNC Process

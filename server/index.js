@@ -40,7 +40,10 @@ function main() {
   const users = db.get('SELECT COUNT(*) n FROM users').n;
   const tls = loadTls();
   const scheme = tls ? 'https' : 'http';
-  const server = createApp(db, { tls });
+  // Za firmowym reverse proxy (HTTPS w internecie): CNC_TRUST_PROXY=1. Cookie Secure wymuszone: CNC_SECURE_COOKIE=1.
+  const server = createApp(db, { tls, trustProxy: process.env.CNC_TRUST_PROXY === '1', secure: process.env.CNC_SECURE_COOKIE === '1' });
+  // Serwer działa całą dobę — alerty zależne od daty (koniec miesiąca) przeliczane co godzinę.
+  setInterval(() => { try { recomputeAlerts(db); } catch (e) { console.log(`Alerty: ${e.message}`); } }, 3600e3).unref();
   // Synchronizacja z aplikacją pracowników: przy starcie i co 2 minuty, gdy kierownik jest zalogowany do chmury.
   const SYNC_MS = Number(process.env.CNC_CLOUD_SYNC_MS || 120000);
   let syncing = false;

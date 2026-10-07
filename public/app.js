@@ -4,12 +4,15 @@
 const S = { me: null, boot: null, emp: new Map(), cat: new Map() };
 const can = (cap) => S.me && S.me.caps.includes(cap);
 const isAdmin = () => S.me && S.me.role === 'admin';
+const isEmployee = () => S.me && S.me.role === 'employee';
+const isGuest = () => S.me && S.me.role === 'guest';
 
 const NAV = [
   ['dzisiaj', 'Centrum programowania', 'today', null],
   ['kalendarz', 'Kalendarz', 'calendar', null],
   ['zdarzenia', 'Lista zdarzeń', 'list', null],
   ['pracownicy', 'Pracownicy', 'users', null],
+  ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee()],
   ['wyjscia', 'Wyjścia i odrabianie', 'exit', null],
   ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
   ['absencje', 'Urlopy i absencje', 'leave', 'view.leave.all'],
@@ -29,6 +32,8 @@ const empOptions = (activeOnly = true) => [...S.emp.values()].filter(e => !activ
 const machineOptions = () => S.boot.machines.map(m => [m.id, `${m.name} ${m.axes}X / ${m.control}`]);
 
 async function loadBoot() {
+  // Gość nie ma dostępu do danych referencyjnych (pracownicy, kategorie) — tylko status projektów.
+  if (isGuest()) { S.boot = { machines: [], task_types: [], shift_templates: [], categories: [], employees: [], holidays: [], settings: {}, months: [], causes: [] }; S.emp = new Map(); S.cat = new Map(); return; }
   S.boot = await api('/bootstrap');
   S.emp = new Map(S.boot.employees.map(e => [e.id, e]));
   S.cat = new Map(S.boot.categories.map(c => [c.id, c]));
@@ -66,21 +71,24 @@ function renderLogin() {
     e.preventDefault();
     try {
       await api('/login', { method: 'POST', body: { login: e.target.login.value, password: e.target.password.value } });
-      location.hash = '#/dzisiaj'; start();
+      location.hash = ''; start();
     } catch (err) { $('.form-error').textContent = err.message; }
   });
 }
 
 function renderShell() {
-  const roleName = { admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik' }[S.me.role];
-  const tabs = [['dzisiaj', 'Dzisiaj', 'today'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project'], ['maszyny', 'Maszyny', 'board']];
+  const roleName = { admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik', guest: 'Gość' }[S.me.role];
+  const tabs = isGuest() ? [['status', 'Status', 'project']]
+    : isEmployee() ? [['dzisiaj', 'Dzisiaj', 'today'], ['zglos', 'Zgłoś', 'summons'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']]
+      : [['dzisiaj', 'Dzisiaj', 'today'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project'], ['maszyny', 'Maszyny', 'board']];
+  const nav = isGuest() ? [['status', 'Status projektów', 'project', null]] : NAV.filter(n => typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3])));
   $('#app').innerHTML = `<div class="shell">
     <header class="appbar"><button type="button" class="appbar-menu" id="menuBtn" aria-label="Otwórz menu" aria-expanded="false" aria-controls="rail">${icon('list')}</button>
       <span class="appbar-title" id="appbarTitle">CNC Team</span>${icon('cutter')}</header>
     <div class="scrim" id="scrim" hidden></div>
     <nav class="rail" id="rail" aria-label="Menu główne">
     <div class="brand">${icon('cutter')}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
-    ${NAV.filter(n => !n[3] || can(n[3])).map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(label)}</span></a>`).join('')}
+    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(label)}</span></a>`).join('')}
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
       <button type="button" id="installBtn" class="link ${document.documentElement.dataset.installable ? '' : 'mobile-only'}">${icon('download')}Skrót na telefonie</button>
@@ -109,9 +117,10 @@ function renderShell() {
 const VIEWS = {};
 async function route() {
   if (!S.me) return;
-  const [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || 'dzisiaj').split('/');
+  let [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || (isGuest() ? 'status' : 'dzisiaj')).split('/');
+  if (isGuest()) name = 'status';
   $$('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === name));
-  const navItem = NAV.find(n => n[0] === name);
+  const navItem = isGuest() ? ['status', 'Status projektów'] : NAV.find(n => n[0] === name);
   if ($('#appbarTitle')) $('#appbarTitle').textContent = navItem ? navItem[1] : 'CNC Team';
   const main = $('#main');
   main.innerHTML = '<p class="muted">Wczytywanie…</p>';
@@ -140,9 +149,13 @@ VIEWS.dzisiaj = async (main) => {
     <div class="cols" style="margin-top:var(--sp-4)">
       <section class="panel"><h3>Na zmianie dziś</h3><ul class="plain">${shifts || '<li class="muted">Brak zmian w grafiku.</li>'}</ul></section>
       <section class="panel"><h3>Nieobecności dziś</h3><ul class="plain">${abs || '<li class="muted">Brak nieobecności.</li>'}</ul></section>
+      ${d.my_requests ? `<section class="panel"><h3>Moje zgłoszenia</h3><ul class="plain">${d.my_requests.map(r => `<li>${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])} · ${plDate(r.date_from)} ${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small muted">${esc(r.decision_note)}</span>` : ''}</li>`).join('') || '<li class="muted">Brak zgłoszeń.</li>'}</ul>
+        <p><a class="btn primary" href="#/zglos">${icon('summons')}Zgłoś spóźnienie, nieobecność lub odrobienie</a></p></section>` : ''}
+      ${d.delayed_projects ? `<section class="panel"><h3>Projekty opóźnione</h3><ul class="plain">${d.delayed_projects.map(p => `<li><a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}</a>${delayLine(p)}</li>`).join('') || '<li class="muted">Wszystkie aktywne projekty idą zgodnie z planem.</li>'}</ul></section>` : ''}
       ${d.my_balance ? `<section class="panel"><h3>Moje saldo do odrobienia (${plMonth(d.today.slice(0, 7))})</h3><div class="stat-row"><div class="stat"><b>${hm(d.my_balance.remaining_min)}</b><span>pozostało</span></div><div class="stat"><b>${d.my_balance.remaining_shifts}</b><span>zmian do końca miesiąca</span></div></div></section>` : ''}
       <section class="panel"><h3>Alerty rozliczeń</h3><ul class="plain">${alerts || '<li class="muted">Brak aktywnych alertów.</li>'}</ul>
-        ${d.pending_makeups ? `<p class="notice">Odrabiania oczekujące na zatwierdzenie: ${d.pending_makeups}. <a href="#/wyjscia">Przejdź</a></p>` : ''}</section>
+        ${d.pending_makeups ? `<p class="notice">Odrabiania oczekujące na zatwierdzenie: ${d.pending_makeups}. <a href="#/wyjscia">Przejdź</a></p>` : ''}
+        ${d.pending_requests ? `<p class="notice">Zgłoszenia pracowników do decyzji: ${d.pending_requests}. <a href="#/zgloszenia">Przejdź</a></p>` : ''}</section>
       ${d.leave_reminders ? `<section class="panel"><h3>Zaległy urlop</h3><ul class="plain">${reminders || '<li class="muted">Brak zaległych pul.</li>'}</ul></section>` : ''}
       <section class="panel"><h3>Ostatnie przekazania zmian</h3><ul class="plain">${d.handovers.map(h => `<li><span class="mono">${esc(h.order_no)}</span> ${esc(h.part_no)} · ${plDate(h.shift_date)} · ${person(h.from_employee_id, { name: false })} → ${person(h.to_employee_id, { name: false })}<br><span class="muted">${esc(h.remaining_text)}</span></li>`).join('') || '<li class="muted">Brak.</li>'}</ul></section>
     </div>`;

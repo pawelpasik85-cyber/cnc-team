@@ -11,6 +11,11 @@ const SETTINGS = [
   ['employee_sees_team_balances', 'nie', 'Czy pracownik widzi salda do odrobienia całego zespołu (tak/nie); domyślnie tylko własne'],
   ['deviation_threshold_pct', '20', 'Próg odchylenia (%) dla oznaczenia „odchylenie wymagające wyjaśnienia”'],
   ['deviation_threshold_min', '60', 'Próg odchylenia (min) — oba progi muszą być przekroczone'],
+  ['employee_sees_all_projects', 'nie', 'Czy pracownik widzi wszystkie projekty (tak/nie); domyślnie tylko te, w których ma zadanie, jest odpowiedzialny albo które są na tablicy maszyn'],
+  ['project_delay_warn_pct', '5', 'Opóźnienie projektu (punkty %) powyżej którego projekt jest oznaczany jako „opóźniony”'],
+  ['project_delay_alert_pct', '15', 'Opóźnienie projektu (punkty %) powyżej którego projekt jest „zagrożony” (także po terminie)'],
+  ['login_max_failures', '5', 'Liczba błędnych haseł, po której konto jest czasowo blokowane'],
+  ['login_lock_min', '15', 'Czas blokady logowania po serii błędnych haseł (minuty)'],
   ['cnc_process_url_template', '', 'Szablon odnośnika „Otwórz w CNC Process”, np. http://localhost:3001/projekty/{project_id} (puste = brak integracji)'],
 ];
 

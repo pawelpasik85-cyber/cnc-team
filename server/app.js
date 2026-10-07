@@ -29,8 +29,13 @@ function compile(pattern) {
 }
 
 // opts.tls = { cert, key } → serwer HTTPS (wymagany przez telefon dla pełnej aplikacji PWA); opts.secure → cookie z flagą Secure
+// opts.trustProxy → aplikacja stoi za firmowym serwerem pośredniczącym (reverse proxy) z HTTPS:
+// adres klienta z X-Forwarded-For (do blokady logowania), cookie Secure gdy X-Forwarded-Proto = https.
+const GUEST_ALLOWED = new Set(['GET /me', 'POST /logout', 'POST /me/password', 'GET /guest/projects']);
+
 function createApp(db, opts = {}) {
-  const secure = !!(opts.tls || opts.secure);
+  const secureBase = !!(opts.tls || opts.secure);
+  const trustProxy = !!opts.trustProxy;
   const cloud = createCloud(db, opts.cloud || {});
   const routes = buildRoutes().map(r => ({ ...r, ...compile(r.path) }));
 
@@ -81,6 +86,11 @@ function createApp(db, opts = {}) {
       const mutating = req.method !== 'GET';
       if (mutating && req.headers['x-cnc-request'] !== '1') throw new HttpError(403, 'Brak nagłówka ochrony CSRF.');
       if (!route.public && !user) throw new HttpError(401, 'Wymagane zalogowanie.');
+      // Gość ma dostęp wyłącznie do statusu swoich projektów — każda inna trasa jest zablokowana.
+      if (user && user.role === 'guest' && !GUEST_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Konto gościa ma dostęp tylko do statusu projektów.');
+      const fwd = trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '';
+      const ip = fwd || req.socket.remoteAddress || null;
+      const secure = secureBase || (trustProxy && String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https');
       const m = route.re.exec(apiPath);
       const params = Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
       const raw = mutating ? await readBody(req) : '';
@@ -94,7 +104,7 @@ function createApp(db, opts = {}) {
         const prev = db.get('SELECT status, response FROM idempotency_keys WHERE key=? AND user_id=?', String(idem), user.id);
         if (prev) return send(res, prev.status, prev.response, { 'Content-Type': 'application/json; charset=utf-8', 'Idempotent-Replay': 'true' });
       }
-      const ctx = { db, user, params, query: Object.fromEntries(url.searchParams), body, raw, req, res, cookies, secure, cloud };
+      const ctx = { db, user, params, query: Object.fromEntries(url.searchParams), body, raw, req, res, cookies, secure, cloud, ip };
       const result = await route.handler(ctx);
       if (result && result.__raw) {
         return send(res, result.status || 200, result.body, result.headers);
