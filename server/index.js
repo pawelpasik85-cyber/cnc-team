@@ -41,7 +41,9 @@ function main() {
   const tls = loadTls();
   const scheme = tls ? 'https' : 'http';
   // Za firmowym reverse proxy (HTTPS w internecie): CNC_TRUST_PROXY=1. Cookie Secure wymuszone: CNC_SECURE_COOKIE=1.
-  const server = createApp(db, { tls, trustProxy: process.env.CNC_TRUST_PROXY === '1', secure: process.env.CNC_SECURE_COOKIE === '1' });
+  // CNC_PROXY_IPS: adresy reverse proxy (po przecinku), gdy proxy jest na innym serwerze.
+  const server = createApp(db, { tls, trustProxy: process.env.CNC_TRUST_PROXY === '1', proxyIps: String(process.env.CNC_PROXY_IPS || '').split(',').filter(Boolean),
+    secure: process.env.CNC_SECURE_COOKIE === '1' });
   // Serwer działa całą dobę — alerty zależne od daty (koniec miesiąca) przeliczane co godzinę.
   setInterval(() => { try { recomputeAlerts(db); } catch (e) { console.log(`Alerty: ${e.message}`); } }, 3600e3).unref();
   // Synchronizacja z aplikacją pracowników: przy starcie i co 2 minuty, gdy kierownik jest zalogowany do chmury.

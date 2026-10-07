@@ -5,7 +5,7 @@ Prośba: przejrzyj krytycznie aplikację CNC Team pod kątem poprawności reguł
 ## Jak uruchomić
 Node.js ≥ 22.13, bez `npm install`:
 ```bash
-npm test                          # 45 testów
+npm test                          # 47 testów
 npm run seed -- --reset           # dane fikcyjne
 CNC_TODAY=2026-10-06 npm start    # http://127.0.0.1:3000, hasło demo: demo-cnc-2026 (kierownik / przelozony / adam)
 ```
@@ -49,4 +49,4 @@ Dla każdej uwagi: **waga** (krytyczna / istotna / drobna), **miejsce**, **opis 
 | 0 | 2026-10-06 | Wersja 0.1 przygotowana do przeglądu; testy 26/26 |
 | 1 | 2026-10-06 | Dodano telefony: PWA, układ mobilny, tryb sieci firmowej, https; testy 29/29 |
 | 2 | 2026-10-06 | Aplikacja pracownika (PWA/APK) + Supabase, zgłoszenia i publikacje; testy 40/40, RLS 23/23. Od tej rundy recenzja GPT działa automatycznie przy każdym pushu (po dodaniu sekretu) |
-| 3 | 2026-10-07 | Wersja na serwer firmowy: zgłoszenia do weryfikacji (pracownik nic nie wpisuje sam), rola gościa, opóźnienie projektu w %, widoczność projektów pracownika, blokada logowania, czytelna historia zmian, instrukcja dla IT; testy 45/45 |
+| 3 | 2026-10-07 | Wersja na serwer firmowy: zgłoszenia do weryfikacji (pracownik nic nie wpisuje sam), rola gościa, opóźnienie projektu w %, widoczność projektów pracownika, blokada logowania, czytelna historia zmian, instrukcja dla IT; niezależny przegląd i poprawki; testy 47/47 |

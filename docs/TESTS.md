@@ -3,7 +3,7 @@
 ## Uruchomienie
 
 ```bash
-npm test                                   # 45 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
+npm test                                   # 47 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
 npm test -- --test-reporter=spec           # czytelny raport
 ```
 
@@ -28,7 +28,7 @@ Prawdziwa baza: `supabase/tests/rls_check.sql` — 23 sprawdzenia uprawnień, ws
 
 ### Runda 3 — zgłoszenia do weryfikacji, gość, opóźnienie, serwer (7.10.2026)
 **45 / 45 zaliczonych.** Nowe: `test/requests.test.js` — pracownik nie może niczego wpisać bezpośrednio (wyjścia, odrabianie, absencje, zadania, czas, przekazania, tablica → 403), składa zgłoszenia (walidacja, duplikat `client_id`), wycofuje tylko własne nierozpatrzone; decyzja tylko kierownika (przełożony i pracownik → 403), odrzucenie wymaga wyjaśnienia, jedna decyzja; przyjęcie spóźnienia tworzy wyjście 40 min, przyjęcie odrobienia — odrabianie przypisane do wyjścia (saldo 0), odrobienie bez wyjścia → 409 i zgłoszenie zostaje „nowe”; historia: zgłoszenie i decyzja z różnymi autorami. Gość: tylko przypisane projekty w realizacji, bez osób i czasów, 13 tras → 403. Pracownik widzi tylko swoje projekty (+ tablica maszyn), cudzy → 403, ustawienie „wszystkie”. Opóźnienie: plan 50% / wykonano 20% → 30%, poziomy, po terminie, brak danych. Blokada logowania po 5 błędach (429, inne konto działa, wpis w historii). Opis zmian: pole, było → jest, kto, powód.
-Migracja 003 (przebudowa tabeli `users` dla roli gościa) sprawdzona na bazie z danymi: `PRAGMA foreign_key_check` bez błędów.
+Niezależny przegląd (osobny agent, bez udziału w budowie) znalazł m.in. krytyczny błąd: migracja 003 nie przechodziła na używanej bazie (sesje → FOREIGN KEY constraint failed). Poprawione (migracje z wyłączonymi kluczami obcymi + `PRAGMA foreign_key_check`), dodano test aktualizacji bazy z kontami, sesjami i historią — na starym kodzie test nie przechodzi, na nowym przechodzi. Także: odrobienie uwzględnia odrabiania oczekujące, blokada na parę konto + adres (brak blokowania kierownika przez osobę z zewnątrz), nagłówki proxy tylko od zaufanego proxy (ostatni wpis X-Forwarded-For), opis zmian ustawień, odrzucenie nietypowych rodzajów zgłoszeń i dat > 180 dni naprzód. **Razem 47 / 47.**
 Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefonie, gość, blokada logowania), skrypt `scripts/screenshots-v3.py` — bez błędów konsoli; sprawdza też, że pracownica nie otworzy nieprzypisanego projektu.
 
 ## Pokrycie wymaganych scenariuszy

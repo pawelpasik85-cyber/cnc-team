@@ -1,8 +1,7 @@
 -- Migracja 3: zgłoszenia pracowników do weryfikacji, rola gościa, termin rozpoczęcia projektu, ochrona logowania.
 
 -- Rola „guest” (gość — tylko status wskazanych projektów). SQLite nie zmienia CHECK, więc tabela jest przebudowana.
--- Klucze obce sprawdzane przy zatwierdzeniu migracji (po zmianie nazwy tabeli odwołania wskazują nową tabelę).
-PRAGMA defer_foreign_keys = ON;
+-- Migracje działają z wyłączonymi kluczami obcymi; po nich db.js wykonuje PRAGMA foreign_key_check.
 CREATE TABLE users_new (
   id INTEGER PRIMARY KEY,
   login TEXT NOT NULL UNIQUE,
@@ -28,7 +27,8 @@ CREATE TABLE guest_projects (
 
 -- Data rozpoczęcia projektu — podstawa planowanego postępu i opóźnienia
 ALTER TABLE projects ADD COLUMN start_date TEXT;
-UPDATE projects SET start_date = substr(created_at, 1, 10) WHERE start_date IS NULL;
+UPDATE projects SET start_date = CASE WHEN due_date IS NOT NULL AND due_date < substr(created_at, 1, 10) THEN due_date ELSE substr(created_at, 1, 10) END
+  WHERE start_date IS NULL;
 
 -- Zgłoszenia pracowników (na serwerze firmowym). Pracownik niczego nie wpisuje bezpośrednio:
 -- zgłoszenie czeka na decyzję kierownika; przyjęcie tworzy wpis z odnośnikiem do zgłoszenia.

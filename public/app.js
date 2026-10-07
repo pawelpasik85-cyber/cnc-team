@@ -81,7 +81,7 @@ function renderShell() {
   const tabs = isGuest() ? [['status', 'Status', 'project']]
     : isEmployee() ? [['dzisiaj', 'Dzisiaj', 'today'], ['zglos', 'Zgłoś', 'summons'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']]
       : [['dzisiaj', 'Dzisiaj', 'today'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project'], ['maszyny', 'Maszyny', 'board']];
-  const nav = isGuest() ? [['status', 'Status projektów', 'project', null]] : NAV.filter(n => typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3])));
+  const nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3])));
   $('#app').innerHTML = `<div class="shell">
     <header class="appbar"><button type="button" class="appbar-menu" id="menuBtn" aria-label="Otwórz menu" aria-expanded="false" aria-controls="rail">${icon('list')}</button>
       <span class="appbar-title" id="appbarTitle">CNC Team</span>${icon('cutter')}</header>
@@ -118,9 +118,9 @@ const VIEWS = {};
 async function route() {
   if (!S.me) return;
   let [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || (isGuest() ? 'status' : 'dzisiaj')).split('/');
-  if (isGuest()) name = 'status';
+  if (isGuest() && name !== 'ustawienia') name = 'status';
   $$('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === name));
-  const navItem = isGuest() ? ['status', 'Status projektów'] : NAV.find(n => n[0] === name);
+  const navItem = isGuest() ? (name === 'status' ? ['status', 'Status projektów'] : ['ustawienia', 'Moje konto']) : NAV.find(n => n[0] === name);
   if ($('#appbarTitle')) $('#appbarTitle').textContent = navItem ? navItem[1] : 'CNC Team';
   const main = $('#main');
   main.innerHTML = '<p class="muted">Wczytywanie…</p>';

@@ -15,6 +15,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_BACK_DAYS = 31;
 const MAX_SPAN_DAYS = 60;
+const MAX_AHEAD_DAYS = 180;
 
 function validate(body, today = T.today()) {
   const r = {
@@ -23,13 +24,14 @@ function validate(body, today = T.today()) {
     note: body.note == null || String(body.note).trim() === '' ? null : String(body.note).trim(),
   };
   const errors = [];
-  if (!KINDS[r.kind]) errors.push('Wybierz rodzaj zgłoszenia.');
+  if (typeof r.kind !== 'string' || !Object.hasOwn(KINDS, r.kind)) errors.push('Wybierz rodzaj zgłoszenia.');
   if (!DATE_RE.test(r.date_from || '')) errors.push('Podaj dzień.');
   else {
     if (!DATE_RE.test(r.date_to || '')) errors.push('Niepoprawna data końca.');
     else if (r.date_to < r.date_from) errors.push('Data końca jest przed datą początku.');
     else if ((Date.parse(r.date_to) - Date.parse(r.date_from)) / 86400e3 > MAX_SPAN_DAYS) errors.push(`Zgłoszenie może obejmować najwyżej ${MAX_SPAN_DAYS} dni.`);
     if (r.date_from < T.addDays(today, -MAX_BACK_DAYS)) errors.push(`Zgłoszenie może dotyczyć najwyżej ${MAX_BACK_DAYS} dni wstecz.`);
+    if (r.date_from > T.addDays(today, MAX_AHEAD_DAYS)) errors.push(`Zgłoszenie może dotyczyć najwyżej ${MAX_AHEAD_DAYS} dni naprzód.`);
   }
   for (const k of ['time_from', 'time_to']) if (r[k] && !TIME_RE.test(r[k])) errors.push('Niepoprawna godzina (GG:MM).');
   if (r.kind === 'spoznienie' && !r.time_to) errors.push('Podaj, o której przyjdziesz do pracy.');
@@ -88,11 +90,14 @@ function autoAllocations(db, employeeId, date, startTime, endTime) {
   let left = T.minutesBetween(startAt, endAt);
   const out = [];
   const exits = X.listExits(db, { employeeId, month: T.monthOf(date) })
-    .filter(x => x.status === 'zarejestrowane' && x.remaining_min > 0 && x.start_at <= startAt)
+    .filter(x => x.status === 'zarejestrowane' && x.start_at <= startAt)
+    // wolne minuty = wyjście − wszystkie przypisania (także odrabiania oczekujące na zatwierdzenie)
+    .map(x => ({ ...x, free: x.minutes - X.exitAllocated(db, x.id, { approvedOnly: false }) }))
+    .filter(x => x.free > 0)
     .sort((a, b) => a.start_at.localeCompare(b.start_at));
   for (const x of exits) {
     if (left <= 0) break;
-    const m = Math.min(left, x.remaining_min);
+    const m = Math.min(left, x.free);
     out.push({ exit_id: x.id, minutes: m });
     left -= m;
   }

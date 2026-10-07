@@ -35,8 +35,8 @@ Wybór należy do IT — aplikacja obsługuje oba warianty:
 
 **A. Adres HTTPS w internecie przez firmowy reverse proxy** (np. `https://cnc-team.firma.pl`)
 - Proxy (IIS z ARR, nginx, Apache, zapora z publikacją aplikacji) kończy HTTPS i przekazuje ruch na `http://serwer:3000`.
-- W aplikacji ustaw `CNC_TRUST_PROXY=1` — adres klienta brany jest z `X-Forwarded-For` (blokada logowania), cookie dostaje flagę `Secure` przy `X-Forwarded-Proto: https`.
-- Proxy musi **nadpisywać** `X-Forwarded-For` (nie dopisywać wartości od klienta), a port 3000 ma być dostępny tylko dla proxy (`HOST=127.0.0.1`, gdy proxy jest na tym samym serwerze, albo reguła zapory).
+- W aplikacji ustaw `CNC_TRUST_PROXY=1`. Nagłówki `X-Forwarded-For` / `X-Forwarded-Proto` są honorowane **tylko** od proxy na tym samym serwerze (127.0.0.1) albo z adresów w `CNC_PROXY_IPS`; adresem klienta jest ostatni wpis `X-Forwarded-For` (dopisany przez proxy). Cookie dostaje flagę `Secure` przy `X-Forwarded-Proto: https`.
+- Port 3000 ma być dostępny tylko dla proxy (`HOST=127.0.0.1`, gdy proxy jest na tym samym serwerze, albo reguła zapory).
 - Bezpieczniejsza odmiana: **Microsoft Entra Application Proxy** — logowanie kontem firmowym przed dostępem do aplikacji, bez otwierania portów przychodzących (wymaga licencji Entra ID P1/P2).
 
 **B. Aplikacja pracowników w chmurze** (Supabase, UE) — serwer tylko wysyła dane na zewnątrz, bez portów przychodzących; wymaga zgody firmy na usługę zewnętrzną. Szczegóły: `docs/CLOUD.md`.
@@ -46,7 +46,7 @@ Telefon: pracownik otwiera adres w przeglądarce i wybiera „Dodaj do ekranu g�
 ## Zabezpieczenia wbudowane
 
 - Hasła: scrypt, minimum 10 znaków; sesja 12 h w cookie `HttpOnly; SameSite=Strict` (+ `Secure` przy HTTPS).
-- Blokada logowania: po 5 błędnych hasłach na koncie konto jest blokowane na 15 min (ustawienia `login_max_failures`, `login_lock_min`); limit także na adres IP; blokada trafia do historii zmian.
+- Blokada logowania: po 5 błędnych hasłach dla pary konto + adres IP logowanie z tego adresu jest blokowane na 15 min (ustawienia `login_max_failures`, `login_lock_min`), a adres próbujący wielu kont — po 20 błędach. Osoba z zewnątrz nie zablokuje więc kierownika logującego się z innego adresu. Blokada trafia do historii zmian. Zgadywanie rozproszone na wiele adresów ogranicza długość hasła (min. 10 znaków) i scrypt; przy publikacji w internecie zalecane uwierzytelnienie przed aplikacją (Entra Application Proxy).
 - Ochrona CSRF (wymagany nagłówek), nagłówki CSP, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`; brak buforowania odpowiedzi API.
 - Uprawnienia egzekwowane na serwerze (`docs/PERMISSIONS.md`): programista tylko zgłasza do weryfikacji, gość widzi wyłącznie status wskazanych projektów.
 - Historia zmian: każda zmiana z autorem, datą, opisem i wartościami przed/po; nie da się jej edytować z aplikacji.
@@ -64,6 +64,7 @@ Telefon: pracownik otwiera adres w przeglądarce i wybiera „Dodaj do ekranu g�
 | `HOST`, `PORT` | Adres i port nasłuchu (domyślnie `127.0.0.1:3000`) |
 | `CNC_DB` | Plik bazy (zalecane poza folderem aplikacji) |
 | `CNC_TRUST_PROXY=1` | Aplikacja za reverse proxy (adres klienta z `X-Forwarded-For`) |
+| `CNC_PROXY_IPS` | Adresy proxy na innym serwerze (po przecinku) |
 | `CNC_SECURE_COOKIE=1` | Wymuś flagę `Secure` cookie |
 | `CNC_TLS_CERT`, `CNC_TLS_KEY` | HTTPS bezpośrednio w aplikacji (gdy bez proxy) |
 | `CNC_CLOUD_SYNC_MS` | Odstęp synchronizacji z aplikacją w chmurze (domyślnie 120000; 0 = wyłączona) |

@@ -72,7 +72,7 @@ Następnie w aplikacji: Ustawienia → Konta i role, Pracownicy, Kalendarz → G
 | `npm start` | Serwer aplikacji |
 | `npm run start:siec` | Serwer dostępny dla telefonów w sieci lokalnej |
 | `npm run make-cert` | Lokalny certyfikat HTTPS dla telefonów |
-| `npm test` | Testy automatyczne (45 scenariuszy) |
+| `npm test` | Testy automatyczne (47 scenariuszy) |
 | `node scripts/build-mobile.js` | Budowa aplikacji pracownika do `dist-mobile/` |
 | `npm run seed -- --reset` | Baza demonstracyjna od nowa (usuwa plik bazy!) |
 | `npm run init-admin` | Pierwsze konto administratora w pustej bazie |

@@ -20,8 +20,22 @@ function migrate(db) {
     name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)`);
   const done = new Set(db.prepare('SELECT name FROM schema_migrations').all().map(r => r.name));
   const files = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
-  for (const f of files) {
-    if (done.has(f)) continue;
+  const pending = files.filter(f => !done.has(f));
+  if (!pending.length) return;
+  // Migracje mogą przebudowywać tabele (DROP/RENAME) — klucze obce wyłączone na czas migracji
+  // (PRAGMA nie działa wewnątrz transakcji), a po nich pełna kontrola spójności.
+  db.exec('PRAGMA foreign_keys = OFF');
+  try {
+    for (const f of pending) applyMigration(db, f);
+    const broken = db.prepare('PRAGMA foreign_key_check').all();
+    if (broken.length) throw new Error(`Migracje naruszyły klucze obce: ${JSON.stringify(broken.slice(0, 5))}`);
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON');
+  }
+}
+
+function applyMigration(db, f) {
+  {
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8');
     db.exec('BEGIN');
     try {

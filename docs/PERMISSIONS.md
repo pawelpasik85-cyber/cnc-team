@@ -38,7 +38,7 @@ Egzekwowane w Supabase przez RLS i funkcje (`supabase/`), sprawdzone `supabase/t
 Dodatkowo:
 - Brak sesji → 401 dla każdego API poza logowaniem.
 - Konto gościa: każda trasa API poza `/me`, `/logout`, `/me/password`, `/guest/projects` → 403 (blokada w `server/app.js`, niezależna od pojedynczych tras).
-- Logowanie: po 5 błędnych hasłach konto blokowane na 15 min (także limit na adres IP); hasła min. 10 znaków.
+- Logowanie: po 5 błędnych hasłach blokada pary konto + adres na 15 min, adres z wieloma kontami — po 20; hasła min. 10 znaków.
 - Zapis bez nagłówka `X-CNC-Request: 1` → 403 (ochrona CSRF), także dla administratora.
 - Nie można odebrać roli ostatniemu aktywnemu administratorowi.
 - Aplikacja nie przechowuje diagnoz — formularze i katalog L4 zawierają ostrzeżenie; pola są tekstem wolnym, więc zasada wymaga dyscypliny użytkownika (patrz `docs/LIMITATIONS.md`).

@@ -189,3 +189,68 @@ test('blokada logowania po serii błędnych haseł; opis zmian w historii', asyn
     assert.ok(!edit.changes.some(x => x.field === 'part_no'), 'tylko zmienione pola');
   } finally { srv.close(); }
 });
+
+test('migracja 003 na używanej bazie (konta, sesje, historia) — dane i klucze obce zachowane', () => {
+  const fs = require('node:fs'); const os = require('node:os'); const path = require('node:path');
+  const { DatabaseSync } = require('node:sqlite');
+  const { openDb } = require('../server/db');
+  const { hashPassword } = require('../server/core');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cnc-mig-'));
+  const file = path.join(dir, 'stara.db');
+  const raw = new DatabaseSync(file);
+  raw.exec('PRAGMA foreign_keys = ON; CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)');
+  for (const f of ['001_init.sql', '002_cloud.sql']) {
+    raw.exec(fs.readFileSync(path.join(__dirname, '..', 'server', 'migrations', f), 'utf8'));
+    raw.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(f, new Date().toISOString());
+  }
+  const now = new Date().toISOString();
+  raw.prepare(`INSERT INTO users(login,display_name,password_hash,role,can_view_confidential,active,created_at) VALUES ('szef','Szef',?, 'admin',1,1,?)`).run(hashPassword('haslo-testowe-1'), now);
+  raw.prepare(`INSERT INTO sessions(token,user_id,created_at,expires_at) VALUES ('t1',1,?,?)`).run(now, now);
+  raw.prepare(`INSERT INTO audit_log(at,user_id,entity,entity_id,action) VALUES (?,1,'session','1','logowanie')`).run(now);
+  raw.prepare(`INSERT INTO projects(id,order_no,part_no,part_rev,due_date,created_at,updated_at) VALUES ('PRJ-1','Z','D','A','2026-01-10','2026-02-01T10:00:00Z','2026-02-01T10:00:00Z')`).run();
+  raw.close();
+  const db = openDb(file);
+  assert.equal(db.get('SELECT COUNT(*) n FROM sessions').n, 1);
+  assert.equal(db.get('SELECT role FROM users WHERE id=1').role, 'admin');
+  assert.deepEqual(db.all('PRAGMA foreign_key_check'), []);
+  assert.equal(db.get('PRAGMA foreign_keys').foreign_keys, 1, 'klucze obce znów włączone');
+  assert.equal(db.get(`SELECT start_date FROM projects WHERE id='PRJ-1'`).start_date, '2026-01-10', 'start nie później niż termin');
+  assert.match(db.get(`SELECT sql FROM sqlite_master WHERE name='users'`).sql, /'guest'/);
+  db.close();
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('przegląd: odrobienie omija wyjście zajęte przez oczekujące odrabianie; blokada konto+adres; zaufane proxy; nietypowy rodzaj', async () => {
+  const w = world();
+  const s1 = X.createExit(w.db, w.admin, { employee_id: w.e, start_date: '2026-10-01', start_time: '07:00', end_time: '08:00' });
+  X.createExit(w.db, w.admin, { employee_id: w.e, start_date: '2026-10-02', start_time: '07:00', end_time: '08:00' });
+  X.createMakeup(w.db, w.admin, { employee_id: w.e, start_date: '2026-10-01', start_time: '14:00', end_time: '15:00', allocations: [{ exit_id: s1.id, minutes: 60 }] });
+  const Req = require('../server/domain/requests');
+  const jan = w.db.get(`SELECT * FROM users WHERE login='jan'`);
+  const r = Req.createRequest(w.db, jan, { kind: 'odrobienie', date_from: '2026-10-05', time_from: '14:00', time_to: '15:00' });
+  const d = Req.decideRequest(w.db, w.admin, r.id, { decision: 'przyjete', target: { type: 'makeup' } });
+  assert.match(d.result_ref, /^makeup:/);
+  assert.throws(() => Req.createRequest(w.db, jan, { kind: 'constructor', date_from: '2026-10-05' }), /rodzaj/);
+  assert.throws(() => Req.createRequest(w.db, jan, { kind: 'nieobecnosc', date_from: '2027-12-01' }), /naprzód/);
+
+  const srv = createApp(w.db, { trustProxy: true });
+  await new Promise(res => srv.listen(0, '127.0.0.1', res));
+  const base = `http://127.0.0.1:${srv.address().port}/api`;
+  try {
+    const post = (body, xff) => fetch(`${base}/login`, { method: 'POST', headers: { 'X-CNC-Request': '1', 'Content-Type': 'application/json', ...(xff ? { 'X-Forwarded-For': xff } : {}) }, body: JSON.stringify(body) });
+    // atakujący z adresu 203.0.113.9 blokuje tylko siebie — kierownik z innego adresu loguje się dalej
+    for (let i = 0; i < 5; i++) await post({ login: 'admin', password: 'zle-haslo-zz' }, '203.0.113.9');
+    assert.equal((await post({ login: 'admin', password: 'haslo-testowe-1' }, '203.0.113.9')).status, 429);
+    assert.equal((await post({ login: 'admin', password: 'haslo-testowe-1' }, '198.51.100.7')).status, 200);
+    // klient dopisuje fałszywy adres na początku — liczy się ostatni (wpisany przez proxy)
+    assert.equal((await post({ login: 'admin', password: 'haslo-testowe-1' }, '1.2.3.4, 203.0.113.9')).status, 429);
+  } finally { srv.close(); }
+  // historia ustawień: zmiana wartości widoczna jako pole „value”
+  const { srv: s2, base: b2 } = await startServer(w.db);
+  try {
+    const adm = client(b2); assert.equal((await adm.login('admin')).status, 200);
+    await adm.call('PUT', '/settings/employee_sees_all_projects', { value: 'tak' });
+    const h = (await adm.call('GET', '/audit?entity=setting&entity_id=employee_sees_all_projects')).data;
+    assert.deepEqual(h[0].changes, [{ field: 'value', old: 'nie', new: 'tak' }]);
+  } finally { s2.close(); }
+});

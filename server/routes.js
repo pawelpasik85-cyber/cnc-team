@@ -88,7 +88,10 @@ function describeChanges(oldJson, newJson) {
   let o = null, n = null;
   try { o = oldJson ? JSON.parse(oldJson) : null; } catch { o = null; }
   try { n = newJson ? JSON.parse(newJson) : null; } catch { n = null; }
-  if (!n || typeof n !== 'object') return [];
+  if (n === null || n === undefined) return [];
+  if (typeof n !== 'object' || (o !== null && typeof o !== 'object')) {
+    return JSON.stringify(o ?? null) === JSON.stringify(n) ? [] : [{ field: 'value', old: o ?? null, new: n }];
+  }
   const out = [];
   for (const [k, v] of Object.entries(n)) {
     if (SKIP_FIELDS.has(k)) continue;
@@ -113,11 +116,13 @@ function buildRoutes() {
     const lockMin = C.getSettingInt(db, 'login_lock_min', 15);
     const now = Date.now();
     const since = new Date(now - lockMin * 60e3).toISOString();
-    // Liczą się błędy od ostatniego udanego logowania w oknie blokady.
-    const fails = (col, val) => db.get(`SELECT COUNT(*) n, MIN(at) first FROM login_attempts WHERE ${col}=? AND ok=0 AND at>?
-      AND at > COALESCE((SELECT MAX(at) FROM login_attempts WHERE ${col}=? AND ok=1), '')`, val, since, val);
-    const byLogin = fails('login', login);
-    const byIp = ip ? fails('ip', ip) : { n: 0 };
+    // Blokada dotyczy pary konto + adres (obca osoba nie zablokuje kierownika z innego adresu)
+    // oraz adresu, który próbuje wielu kont. Liczą się błędy od ostatniego udanego logowania w oknie blokady.
+    const ipKey = ip || '-';
+    const byLogin = db.get(`SELECT COUNT(*) n, MIN(at) first FROM login_attempts WHERE login=? AND COALESCE(ip,'-')=? AND ok=0 AND at>?
+      AND at > COALESCE((SELECT MAX(at) FROM login_attempts WHERE login=? AND COALESCE(ip,'-')=? AND ok=1), '')`, login, ipKey, since, login, ipKey);
+    const byIp = ip ? db.get(`SELECT COUNT(*) n, MIN(at) first FROM login_attempts WHERE ip=? AND ok=0 AND at>?
+      AND at > COALESCE((SELECT MAX(at) FROM login_attempts WHERE ip=? AND ok=1), '')`, ip, since, ip) : { n: 0 };
     if (byLogin.n >= max || byIp.n >= max * 4) {
       const first = byLogin.n >= max ? byLogin.first : byIp.first;
       const wait = Math.max(1, Math.ceil((Date.parse(first) + lockMin * 60e3 - now) / 60e3));

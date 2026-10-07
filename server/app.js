@@ -31,11 +31,14 @@ function compile(pattern) {
 // opts.tls = { cert, key } → serwer HTTPS (wymagany przez telefon dla pełnej aplikacji PWA); opts.secure → cookie z flagą Secure
 // opts.trustProxy → aplikacja stoi za firmowym serwerem pośredniczącym (reverse proxy) z HTTPS:
 // adres klienta z X-Forwarded-For (do blokady logowania), cookie Secure gdy X-Forwarded-Proto = https.
-const GUEST_ALLOWED = new Set(['GET /me', 'POST /logout', 'POST /me/password', 'GET /guest/projects']);
+const GUEST_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /me/password', 'GET /guest/projects']);
+const normIp = (x) => String(x || '').trim().replace(/^::ffff:/, '');
+const isLoopback = (x) => { const a = normIp(x); return a === '127.0.0.1' || a === '::1'; };
 
 function createApp(db, opts = {}) {
   const secureBase = !!(opts.tls || opts.secure);
   const trustProxy = !!opts.trustProxy;
+  const proxyIps = new Set((opts.proxyIps || []).map(x => normIp(x)).filter(Boolean));
   const cloud = createCloud(db, opts.cloud || {});
   const routes = buildRoutes().map(r => ({ ...r, ...compile(r.path) }));
 
@@ -88,9 +91,13 @@ function createApp(db, opts = {}) {
       if (!route.public && !user) throw new HttpError(401, 'Wymagane zalogowanie.');
       // Gość ma dostęp wyłącznie do statusu swoich projektów — każda inna trasa jest zablokowana.
       if (user && user.role === 'guest' && !GUEST_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Konto gościa ma dostęp tylko do statusu projektów.');
-      const fwd = trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '';
-      const ip = fwd || req.socket.remoteAddress || null;
-      const secure = secureBase || (trustProxy && String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https');
+      // Nagłówki proxy honorowane tylko od zaufanego proxy (lokalnie lub z listy CNC_PROXY_IPS); adres klienta = ostatni wpis
+      // X-Forwarded-For (dopisany przez nasze proxy) — wcześniejsze wpisy może podać sam klient.
+      const peer = req.socket.remoteAddress || '';
+      const fromProxy = trustProxy && (isLoopback(peer) || proxyIps.has(normIp(peer)));
+      const fwd = fromProxy ? String(req.headers['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean).pop() : '';
+      const ip = fwd || peer || null;
+      const secure = secureBase || (fromProxy && String(req.headers['x-forwarded-proto'] || '').split(',').pop().trim() === 'https');
       const m = route.re.exec(apiPath);
       const params = Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
       const raw = mutating ? await readBody(req) : '';
