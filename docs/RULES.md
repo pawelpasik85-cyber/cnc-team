@@ -81,6 +81,13 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Godziny projektu
+- **Przepracowano** = Σ czasu ludzi na zadaniach projektu: aktywna praca + weryfikacja/uruchomienie + poprawki (bez blokad/oczekiwania i czasu nieprzypisanego).
+- **Plan** = Σ obowiązujących planów zadań (bez anulowanych); zadania bez planu są liczone osobno („bez planu: N zad.”).
+- **Wynik** (wyróżniony): na zakończonych zadaniach — rzeczywiste − plan (h i %); czerwony = ponad plan, zielony = szybciej niż plan. Gdy nie ma zakończonych zadań: przekroczenie całego planu albo ile zostało z planu.
+- **Prognoza całości** = zakończone (rzeczywiście) + otwarte (większa z wartości: plan albo już przepracowane).
+- Widoczne dla kierownika i przełożonego; pracownik — gdy `employee_sees_project_hours = tak`; gość — nigdy.
+
 ### Opóźnienie projektu (w %)
 - **Plan na dziś** = upływ czasu od daty rozpoczęcia do terminu projektu (liniowo, 0–100%).
 - **Wykonano** = Σ wag zakończonych zadań / Σ wag wszystkich zadań (bez anulowanych), oba etapy razem.

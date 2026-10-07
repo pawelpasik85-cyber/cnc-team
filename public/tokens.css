@@ -51,3 +51,13 @@
   --c-warn: #e0a243; --c-warn-soft: #3a2c14; --c-danger: #ef6b62; --c-danger-soft: #3b1d1b;
   --c-ok: #5cbf86; --c-ok-soft: #173326; --c-info: #6ea8e8; --c-grid: rgba(220, 230, 235, 0.035); --c-graphite: #111417; --c-graphite-2: #1a1e22;
 }
+
+/* Motywy maszyn: Hartford 3X — stal/szarości, Grimme 5X — błękit. Używane w emblematach, paskach i kartach maszyn. */
+.theme-hartford { --m-dark: #3c434b; --m-mid: #77818c; --m-light: #c9d0d7; --m-glow: #eef1f4; --m-ink: #39414a; --m-soft: #eceff2; }
+.theme-grimme { --m-dark: #0c3a78; --m-mid: #1d6fd6; --m-light: #74b6fb; --m-glow: #dcedff; --m-ink: #0f4c9c; --m-soft: #e3f0ff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-hartford { --m-ink: #cfd6dd; --m-soft: #262c32; }
+  :root:not([data-theme="light"]) .theme-grimme { --m-ink: #8fc3ff; --m-soft: #142a44; }
+}
+:root[data-theme="dark"] .theme-hartford { --m-ink: #cfd6dd; --m-soft: #262c32; }
+:root[data-theme="dark"] .theme-grimme { --m-ink: #8fc3ff; --m-soft: #142a44; }

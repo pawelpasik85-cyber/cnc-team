@@ -1,1 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#23282d"/><g fill="none" stroke="#2bb3b1" stroke-width="1.7" stroke-linejoin="round"><path d="M10 3h4v5h-4z"/><path d="M9 8h6v10l-3 3-3-3z"/><path d="M9 11l6 2M9 14l6 2"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" class="app-logo" viewBox="0 0 64 64" role="img" aria-label="CNC Team">
+    <defs>
+      <radialGradient id="lb1" cx=".3" cy=".2" r="1"><stop offset="0" stop-color="#3a434b"/><stop offset="1" stop-color="#15191c"/></radialGradient>
+      <linearGradient id="ls1" x1="0" x2="1"><stop offset="0" stop-color="#eef2f4"/><stop offset=".45" stop-color="#b8c2ca"/><stop offset="1" stop-color="#6d7a84"/></linearGradient>
+      <linearGradient id="lc1" x1="0" x2="1"><stop offset="0" stop-color="#7ae0d8"/><stop offset=".5" stop-color="#1fa8a3"/><stop offset="1" stop-color="#0b6a6b"/></linearGradient>
+      <clipPath id="lk1"><path d="M24 26 L24 46 L32 54 L40 46 L40 26 A8 3 0 0 1 24 26Z"/></clipPath>
+    </defs>
+    <rect x="1" y="1" width="62" height="62" rx="14" fill="url(#lb1)"/>
+    <rect x="1.5" y="1.5" width="61" height="61" rx="13.5" fill="none" stroke="rgba(255,255,255,.14)"/>
+    <ellipse cx="32" cy="55" rx="15" ry="4.2" fill="#2bb3b1" opacity=".22"/>
+    <path d="M24 8 L24 26 A8 3 0 0 0 40 26 L40 8Z" fill="url(#ls1)"/>
+    <ellipse cx="32" cy="8" rx="8" ry="3" fill="#f6f8f9"/>
+    <path d="M24 26 L24 46 L32 54 L40 46 L40 26 A8 3 0 0 1 24 26Z" fill="url(#lc1)"/>
+    <g clip-path="url(#lk1)"><path d="M22 30 C30 34 36 27 42 31 M22 36 C30 40 36 33 42 37 M22 42 C30 46 36 39 42 43 M22 48 C30 52 36 45 42 49" fill="none" stroke="#063f40" stroke-width="2.2" opacity=".75"/>
+    <path d="M22 28.6 C30 32.6 36 25.6 42 29.6 M22 34.6 C30 38.6 36 31.6 42 35.6" fill="none" stroke="#c9fffb" stroke-width=".8" opacity=".8"/></g>
+    <path d="M32 54 L40 46" stroke="#063f40" stroke-width="1" opacity=".5"/>
+  </svg>

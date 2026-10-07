@@ -151,7 +151,34 @@ function scheduleSettings(db) {
   return { warnPct: C.getSettingInt(db, 'project_delay_warn_pct', 5), alertPct: C.getSettingInt(db, 'project_delay_alert_pct', 15) };
 }
 
-function projectDetail(db, id, { withTimes }) {
+// Godziny projektu: przepracowane (aktywna praca + weryfikacja/uruchomienie + poprawki; bez blokad i czasu nieprzypisanego),
+// plan (obowiązujące plany zadań), wynik na zakończonych zadaniach (rzeczywiste − plan) i prognoza całości.
+function projectHours(db, id, tasks) {
+  const worked = new Map(db.all(`SELECT e.task_id, SUM(e.active_min + e.verify_min + e.rework_min) AS w
+    FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ? GROUP BY e.task_id`, id).map(r => [r.task_id, r.w]));
+  let workedAll = 0;
+  for (const w of worked.values()) workedAll += w;
+  let planned = 0, donePlanned = 0, doneWorked = 0, forecast = 0, noPlan = 0, doneCount = 0;
+  for (const t of tasks) {
+    if (t.status === 'anulowane') continue;
+    const w = worked.get(t.id) || 0;
+    if (t.planned_min == null) { noPlan++; forecast += w; continue; }
+    planned += t.planned_min;
+    if (t.status === 'zakonczone') { donePlanned += t.planned_min; doneWorked += w; doneCount++; forecast += w; }
+    else forecast += Math.max(t.planned_min, w);
+  }
+  // praca na zadaniach anulowanych też jest przepracowanym czasem projektu
+  for (const t of tasks) if (t.status === 'anulowane') forecast += worked.get(t.id) || 0;
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : null);
+  return {
+    worked_min: workedAll, planned_min: planned || null, use_pct: pct(workedAll, planned),
+    remaining_min: planned ? planned - workedAll : null, over_min: planned && workedAll > planned ? workedAll - planned : 0,
+    done: doneCount ? { tasks: doneCount, planned_min: donePlanned, worked_min: doneWorked, diff_min: doneWorked - donePlanned, diff_pct: donePlanned ? Math.round(((doneWorked - donePlanned) / donePlanned) * 100) : null } : null,
+    forecast_min: forecast, forecast_diff_min: planned ? forecast - planned : null, tasks_without_plan: noPlan,
+  };
+}
+
+function projectDetail(db, id, { withTimes, withHours = withTimes }) {
   const p = db.get(`SELECT p.*, m.name AS machine_name, m.axes, m.control FROM projects p LEFT JOIN machines m ON m.id=p.machine_id WHERE p.id=?`, id);
   if (!p) throw notFound('Nie znaleziono projektu.');
   const tasks = db.all(`SELECT t.*, tt.name AS type_name, tt.code AS type_code FROM tasks t JOIN task_types tt ON tt.id=t.type_id WHERE t.project_id=? ORDER BY t.id`, id);
@@ -161,6 +188,7 @@ function projectDetail(db, id, { withTimes }) {
     ...p, responsible_ids: JSON.parse(p.responsible_ids),
     progress_program: progress(tasks, 'przygotowanie'), progress_execution: progress(tasks, 'wykonanie'),
     schedule: scheduleStatus(p, tasks, T.today(), scheduleSettings(db)),
+    ...(withHours ? { hours: projectHours(db, id, tasks) } : {}),
     tasks: tasks.map(t => withTimes ? { ...t, ...taskTimes(db, t.id) } : stripTaskPlan(t)),
     handovers: db.all('SELECT * FROM handovers WHERE project_id=? ORDER BY shift_date DESC, id DESC', id).map(h => ({ ...h, checklist: JSON.parse(h.checklist) })),
     contributions: contributions.map(c => ({ employee_id: c.employee_id, shifts: c.shifts, ...(withTimes ? { work_min: c.work_min } : {}) })),
@@ -183,12 +211,12 @@ function cncProcessUrl(db, p) {
     .replace('{part_no}', encodeURIComponent(p.part_no)).replace('{part_rev}', encodeURIComponent(p.part_rev));
 }
 
-function listProjects(db, { withTimes, machineId, status, employeeId } = {}) {
+function listProjects(db, { withTimes, withHours = withTimes, machineId, status, employeeId } = {}) {
   const w = ['1=1'], p = [];
   if (machineId) { w.push('machine_id=?'); p.push(machineId); }
   if (status) { w.push('status=?'); p.push(status); }
   return db.all(`SELECT id FROM projects WHERE ${w.join(' AND ')} ORDER BY priority, due_date`, ...p)
-    .map(r => projectDetail(db, r.id, { withTimes }))
+    .map(r => projectDetail(db, r.id, { withTimes, withHours }))
     .filter(pr => !employeeId || pr.responsible_ids.includes(Number(employeeId)) || pr.tasks.some(t => t.assignee_id === Number(employeeId)));
 }
 
@@ -414,6 +442,7 @@ function guestStatus(db, id) {
   const tasks = db.all('SELECT title, phase, weight, status, due_date FROM tasks WHERE project_id=? ORDER BY id', id);
   return {
     id: p.id, order_no: p.order_no, part_no: p.part_no, part_rev: p.part_rev, machine: p.machine_name ? `${p.machine_name} ${p.axes}X` : null,
+    machine_id: p.machine_id, machine_name: p.machine_name, axes: p.axes, control: p.control,
     status: p.status, blocked: !!p.blocked, start_date: p.start_date, due_date: p.due_date,
     progress_program: progress(tasks, 'przygotowanie'), progress_execution: progress(tasks, 'wykonanie'),
     schedule: scheduleStatus(p, tasks, T.today(), scheduleSettings(db)),
@@ -423,5 +452,5 @@ function guestStatus(db, id) {
 
 module.exports = {
   CAUSES, saveMachine, saveTaskType, saveProject, setNcRevision, projectDetail, listProjects, createTask, updateTask, changeTaskPlan,
-  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus,
+  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus, projectHours,
 };

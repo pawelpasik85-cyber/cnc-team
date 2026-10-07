@@ -62,7 +62,7 @@ window.addEventListener('cnc-logout', () => { S.me = null; renderLogin(); });
 
 function renderLogin() {
   $('#app').innerHTML = `<div class="login"><form>
-    <div class="brand">${icon('cutter')}<div>CNC Team<small>Zespół programistów CNC</small></div></div>
+    <div class="brand">${appLogo(44)}<div>CNC Team<small>Zespół programistów CNC</small></div></div>
     <label class="field">Login<input name="login" autocomplete="username" required></label>
     <label class="field">Hasło<input name="password" type="password" autocomplete="current-password" required></label>
     <div class="form-error" role="alert"></div>
@@ -84,10 +84,10 @@ function renderShell() {
   const nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3])));
   $('#app').innerHTML = `<div class="shell">
     <header class="appbar"><button type="button" class="appbar-menu" id="menuBtn" aria-label="Otwórz menu" aria-expanded="false" aria-controls="rail">${icon('list')}</button>
-      <span class="appbar-title" id="appbarTitle">CNC Team</span>${icon('cutter')}</header>
+      <span class="appbar-title" id="appbarTitle">CNC Team</span>${appLogo(30)}</header>
     <div class="scrim" id="scrim" hidden></div>
     <nav class="rail" id="rail" aria-label="Menu główne">
-    <div class="brand">${icon('cutter')}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
+    <div class="brand">${appLogo(40)}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
     ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(label)}</span></a>`).join('')}
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
@@ -151,7 +151,7 @@ VIEWS.dzisiaj = async (main) => {
       <section class="panel"><h3>Nieobecności dziś</h3><ul class="plain">${abs || '<li class="muted">Brak nieobecności.</li>'}</ul></section>
       ${d.my_requests ? `<section class="panel"><h3>Moje zgłoszenia</h3><ul class="plain">${d.my_requests.map(r => `<li>${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])} · ${plDate(r.date_from)} ${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small muted">${esc(r.decision_note)}</span>` : ''}</li>`).join('') || '<li class="muted">Brak zgłoszeń.</li>'}</ul>
         <p><a class="btn primary" href="#/zglos">${icon('summons')}Zgłoś spóźnienie, nieobecność lub odrobienie</a></p></section>` : ''}
-      ${d.delayed_projects ? `<section class="panel"><h3>Projekty opóźnione</h3><ul class="plain">${d.delayed_projects.map(p => `<li><a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}</a>${delayLine(p)}</li>`).join('') || '<li class="muted">Wszystkie aktywne projekty idą zgodnie z planem.</li>'}</ul></section>` : ''}
+      ${d.delayed_projects ? `<section class="panel"><h3>Projekty opóźnione lub ponad plan godzin</h3><ul class="plain">${d.delayed_projects.map(p => { const r = p.hours ? hoursResult(p.hours) : null; return `<li>${machineChip(p)} <a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}</a>${delayLine(p)}${r && r.cls === 'over' ? `<p class="small" style="margin:2px 0 0"><span class="result-chip over">${esc(r.big)}</span> ${esc(r.line)}</p>` : ''}</li>`; }).join('') || '<li class="muted">Wszystkie aktywne projekty idą zgodnie z planem.</li>'}</ul></section>` : ''}
       ${d.my_balance ? `<section class="panel"><h3>Moje saldo do odrobienia (${plMonth(d.today.slice(0, 7))})</h3><div class="stat-row"><div class="stat"><b>${hm(d.my_balance.remaining_min)}</b><span>pozostało</span></div><div class="stat"><b>${d.my_balance.remaining_shifts}</b><span>zmian do końca miesiąca</span></div></div></section>` : ''}
       <section class="panel"><h3>Alerty rozliczeń</h3><ul class="plain">${alerts || '<li class="muted">Brak aktywnych alertów.</li>'}</ul>
         ${d.pending_makeups ? `<p class="notice">Odrabiania oczekujące na zatwierdzenie: ${d.pending_makeups}. <a href="#/wyjscia">Przejdź</a></p>` : ''}
@@ -166,8 +166,9 @@ function plate(b) {
   const m = b.machine;
   const p = b.project;
   const blocked = b.block_reason || (p && p.blocked);
-  return `<article class="plate ${blocked ? 'blocked' : ''}">
-    <div class="axes">${icon(m.axes >= 5 ? 'axes' : 'spindle')}<b>${m.axes}X</b><span>${esc(m.control)}</span></div>
+  const th = machineTheme(m);
+  return `<article class="plate theme-${th} ${blocked ? 'blocked' : ''}">
+    <div class="axes">${machineEmblem(th, 58)}<b>${m.axes}X</b><span>${esc(m.control)}</span></div>
     <div class="body"><div class="title"><h3>${esc(m.name)}</h3><span class="muted small">${esc(m.model || 'model do uzupełnienia')}</span></div>
     <dl>
       <dt>Projekt</dt><dd>${p ? `<a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span></a> ${esc(p.part_no)} rev ${esc(p.part_rev)}` : '<span class="muted">brak</span>'}</dd>

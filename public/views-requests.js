@@ -146,7 +146,7 @@ VIEWS.status = async (main) => {
       <div class="page-head" style="margin:0 0 var(--sp-2)"><div><h3 style="margin:0">${projectRef(p)}</h3>
         <span class="small muted">${p.machine ? esc(p.machine) + ' · ' : ''}start ${plDate(p.start_date)} · termin ${plDate(p.due_date)}</span></div>
         <div>${p.status === 'wstrzymany' || p.blocked ? tag('wstrzymany', 'warn', 'block') : tag('w realizacji', 'accent')}</div></div>
-      ${bars(p)}${delayLine(p.schedule)}
+      ${projectMeter(p)}${delayLine(p.schedule)}
       <details><summary class="small">Etapy (${p.stages.length})</summary>${table([
         { key: 'title', label: 'Etap' }, { key: 'phase', label: 'Faza', fmt: v => v === 'przygotowanie' ? 'przygotowanie programu' : 'wykonanie detalu' },
         { key: 'due_date', label: 'Termin', fmt: 'date' }, { key: 'status', label: 'Status', fmt: v => tag(...(GUEST_TASK[v] || [v, ''])) }], p.stages)}</details>

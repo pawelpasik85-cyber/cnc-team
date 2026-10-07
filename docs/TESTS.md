@@ -3,7 +3,7 @@
 ## Uruchomienie
 
 ```bash
-npm test                                   # 36 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
+npm test                                   # 37 testów, każdy na świeżej bazie w pamięci (jeden — w pliku tymczasowym)
 npm test -- --test-reporter=spec           # czytelny raport
 ```
 

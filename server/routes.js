@@ -80,7 +80,12 @@ function projectForUser(user, p) {
   const { contributions, ...rest } = p;
   return rest;
 }
-const TAK_NIE = ['employee_sees_team_balances', 'employee_sees_all_projects'];
+const TAK_NIE = ['employee_sees_team_balances', 'employee_sees_all_projects', 'employee_sees_project_hours'];
+// Godziny projektu (przepracowane / plan / wynik): kierownik i przełożony; pracownik — gdy firma włączy ustawienie.
+function seesHours(db, user) {
+  if (can(user, 'view.efficiency')) return true;
+  return user.role === 'employee' && C.getSetting(db, 'employee_sees_project_hours', 'nie') === 'tak';
+}
 
 // Czytelny opis zmiany: pola, które się zmieniły (stara → nowa wartość).
 const SKIP_FIELDS = new Set(['updated_at', 'created_at', 'password_hash']);
@@ -301,14 +306,14 @@ function buildRoutes() {
   add('GET', '/projects', ({ db, user, query }) => {
     requireCap(user, 'view.projects');
     const vis = visibleProjects(db, user);
-    return P.listProjects(db, { withTimes: can(user, 'view.efficiency'), machineId: query.machine_id, status: query.status, employeeId: int(query.employee_id) })
+    return P.listProjects(db, { withTimes: can(user, 'view.efficiency'), withHours: seesHours(db, user), machineId: query.machine_id, status: query.status, employeeId: int(query.employee_id) })
       .filter(p => !vis || vis.has(p.id)).map(p => projectForUser(user, p));
   });
   add('GET', '/projects/:id', ({ db, user, params }) => {
     requireCap(user, 'view.projects');
     const vis = visibleProjects(db, user);
     if (vis && !vis.has(params.id)) throw forbidden('Ten projekt nie jest przypisany do Ciebie.');
-    return projectForUser(user, P.projectDetail(db, params.id, { withTimes: can(user, 'view.efficiency') }));
+    return projectForUser(user, P.projectDetail(db, params.id, { withTimes: can(user, 'view.efficiency'), withHours: seesHours(db, user) }));
   });
   add('POST', '/projects', ({ db, user, body }) => { requireAdmin(user); return { id: P.saveProject(db, user, body) }; });
   add('PUT', '/projects/:id', ({ db, user, body, params }) => { requireAdmin(user); return { id: P.saveProject(db, user, body, params.id) }; });
@@ -405,9 +410,10 @@ function buildRoutes() {
       out.pending_makeups = db.get(`SELECT COUNT(*) n FROM makeups WHERE status='oczekuje'`).n;
       out.pending_requests = db.get(`SELECT COUNT(*) n FROM requests WHERE status='nowe'`).n;
       const ss = P.scheduleSettings(db);
-      out.delayed_projects = db.all(`SELECT id FROM projects WHERE status='aktywny'`).map(r => P.projectDetail(db, r.id, { withTimes: false }))
-        .filter(p => p.schedule.level === 'opozniony' || p.schedule.level === 'zagrozony')
-        .map(p => ({ id: p.id, order_no: p.order_no, part_no: p.part_no, due_date: p.due_date, ...p.schedule, thresholds: ss }));
+      const withHours = can(user, 'view.efficiency');
+      out.delayed_projects = db.all(`SELECT id FROM projects WHERE status='aktywny'`).map(r => P.projectDetail(db, r.id, { withTimes: false, withHours }))
+        .filter(p => p.schedule.level === 'opozniony' || p.schedule.level === 'zagrozony' || (p.hours && (p.hours.over_min > 0 || (p.hours.done && p.hours.done.diff_min > 0))))
+        .map(p => ({ id: p.id, order_no: p.order_no, part_no: p.part_no, due_date: p.due_date, machine_id: p.machine_id, axes: p.axes, machine_name: p.machine_name, ...p.schedule, hours: p.hours, thresholds: ss }));
       out.blocked_projects = db.all(`SELECT id, order_no, part_no, block_reason FROM projects WHERE blocked=1 AND status='aktywny'`);
     }
     return out;

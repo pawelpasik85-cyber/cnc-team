@@ -120,3 +120,22 @@ test('eksport do CNC Process bez danych osobowych i poufnych', () => {
   assert.deepEqual(data.projects[0].operations, ['OP10']);
   assert.deepEqual(data.projects[0].current_nc, { nc_program: 'PRG1', nc_rev: '03' });
 });
+
+test('godziny projektu: przepracowane, plan, wynik na zakończonych zadaniach, prognoza; widoczność', () => {
+  const w = world();
+  const t1 = P.createTask(w.db, w.admin, { project_id: w.pid, type_id: w.tt.NX, title: 'A', planned_min: 120, assignee_id: w.e });
+  const t2 = P.createTask(w.db, w.admin, { project_id: w.pid, type_id: w.tt.WERYFIKACJA, title: 'B', planned_min: 60 });
+  P.createTask(w.db, w.admin, { project_id: w.pid, type_id: w.tt.URUCHOMIENIE, title: 'C' });
+  P.addTimeEntry(w.db, w.admin, { task_id: t1, employee_id: w.e, work_date: '2026-10-01', active_min: 120, rework_min: 30, blocked_min: 45, cause: 'narzedzia' });
+  P.updateTask(w.db, w.admin, t1, { status: 'zakonczone', result_confirmation: 'ok' });
+  P.addTimeEntry(w.db, w.admin, { task_id: t2, employee_id: w.e, work_date: '2026-10-02', verify_min: 20 });
+  const h = P.projectDetail(w.db, w.pid, { withTimes: true }).hours;
+  assert.equal(h.worked_min, 170, 'aktywna + poprawki + weryfikacja, bez blokad');
+  assert.equal(h.planned_min, 180);
+  assert.equal(h.use_pct, 94);
+  assert.deepEqual(h.done, { tasks: 1, planned_min: 120, worked_min: 150, diff_min: 30, diff_pct: 25 });
+  assert.equal(h.forecast_min, 150 + 60, 'zakończone rzeczywiście + otwarte wg planu');
+  assert.equal(h.forecast_diff_min, 30);
+  assert.equal(h.tasks_without_plan, 1);
+  assert.equal(P.projectDetail(w.db, w.pid, { withTimes: false }).hours, undefined, 'bez uprawnienia brak godzin');
+});

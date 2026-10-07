@@ -4,10 +4,8 @@
 const TASK_STATUS = { nowe: ['nowe', ''], w_toku: ['w toku', 'accent'], zablokowane: ['zablokowane', 'danger'], zakonczone: ['zakończone', 'ok'], anulowane: ['anulowane', ''] };
 const CAUSE_LABEL = { brak_dokumentacji: 'brak dokumentacji', zmiana_zakresu: 'zmiana zakresu', narzedzia: 'narzędzia', maszyna: 'maszyna', decyzja_zewnetrzna: 'decyzja zewnętrzna', blad_programowania: 'błąd programowania', inne: 'inne' };
 
-function bars(p) {
-  const b = (cls, label, pr) => `<div class="bar ${cls}"><span>${label}</span><div class="track" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pr.percent ?? 0}"><div class="fill" style="width:${pr.percent ?? 0}%"></div></div><span class="val">${pr.percent === null ? '—' : pr.percent + '%'}</span></div>`;
-  return b('', 'Przygotowanie', p.progress_program) + b('exec', 'Wykonanie', p.progress_execution);
-}
+// Paski postępu: wspólny komponent projectMeter (public/brand.js)
+function bars(p) { return projectMeter(p, { compact: true }); }
 function projectRef(p) { return `<span class="mono">${esc(p.order_no)}</span> · ${esc(p.part_no)} <span class="muted">rev ${esc(p.part_rev)}</span>`; }
 
 VIEWS.projekty = async (main, rest) => {
@@ -21,7 +19,7 @@ VIEWS.projekty = async (main, rest) => {
     `<form class="panel toolbar" id="pf">${sel('machine_id', 'Maszyna', machineOptions())}${sel('status', 'Status', [['aktywny', 'aktywny'], ['wstrzymany', 'wstrzymany'], ['zakonczony', 'zakończony'], ['anulowany', 'anulowany']])}${sel('employee_id', 'Osoba', empOptions(false))}<button class="primary">Filtruj</button></form>
     <div class="cols">${list.map(p => `<article class="panel">
       <div class="page-head" style="margin:0 0 var(--sp-2)"><div><h3 style="margin:0"><a href="#/projekty/${encodeURIComponent(p.id)}">${projectRef(p)}</a></h3><span class="small muted">${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')}</span></div>
-      <div>${p.machine_id ? tag(`${p.machine_name} ${p.axes}X`, 'accent', p.axes >= 5 ? 'axes' : 'spindle') : ''}</div></div>
+      </div>
       ${bars(p)}${delayLine(p.schedule)}
       <p class="small" style="margin:var(--sp-2) 0 0">Termin: <b>${plDate(p.due_date)}</b> · priorytet ${p.priority} · ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : 'brak programu NC'}
       ${p.blocked ? `<br>${tag(p.block_reason, 'danger', 'block')}` : ''}${p.tasks.some(t => t.status === 'zablokowane') ? `<br>${tag('zablokowane zadanie', 'warn', 'alert')}` : ''}</p>
@@ -70,7 +68,7 @@ async function projectDetailView(main, id) {
   main.innerHTML = head(`${p.order_no} · ${p.part_no} rev ${p.part_rev}`, `${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')} · ${p.machine_name ? `${esc(p.machine_name)} ${p.axes}X / ${esc(p.control)}` : 'bez maszyny'} · termin ${plDate(p.due_date)} · priorytet ${p.priority}`,
     `<a class="btn" href="#/projekty">‹ Projekty</a>${isAdmin() ? `<button id="editPrj">Edytuj</button><button id="ncRev">${icon('nc')}Rewizja NC</button>${btn('addTask', 'Zadanie')}` : ''}`) + `
     <div class="cols-2"><div>
-      <section class="panel">${bars(p)}${delayLine(p.schedule)}${p.blocked ? `<p>${tag(p.block_reason, 'danger', 'block')}</p>` : ''}
+      <section class="panel">${projectMeter(p)}${delayLine(p.schedule)}${p.blocked ? `<p>${tag(p.block_reason, 'danger', 'block')}</p>` : ''}
         <p class="small">Obowiązujący program: ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : '<span class="muted">nie ustalono</span>'}${p.folder_link ? ` · Folder: <span class="mono">${esc(p.folder_link)}</span>` : ''}</p>
         ${p.description ? `<p class="small">${esc(p.description)}</p>` : ''}</section>
       <section class="panel"><h3>Zadania</h3>${table([

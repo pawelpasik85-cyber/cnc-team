@@ -36,3 +36,11 @@ Własne ikony SVG (obrys 1.7, `currentColor`, siatka 24): frez (`cutter`), wrzec
 
 ## Komponenty
 Panel (`.panel`, promień 6 px, obrys 1 px), tabela z przyklejonym nagłówkiem, znacznik (`.tag`), pasek postępu (`.bar` — dwa oddzielne: przygotowanie/wykonanie), tabliczka maszyny (`.plate`), komunikat (`.notice`), okno formularza (`dialog`), wykres słupkowy SVG zawsze z tabelą danych i definicją wskaźnika.
+
+
+## Motywy maszyn i grafika 2.5D (wersja 0.5)
+- **Hartford 3X** — stal i szarości: `--m-dark #3c434b`, `--m-mid #77818c`, `--m-light #c9d0d7`.
+- **Grimme 5X** — błękit: `--m-dark #0c3a78`, `--m-mid #1d6fd6`, `--m-light #74b6fb`.
+- Klasy `.theme-hartford` / `.theme-grimme` (`public/tokens.css`) ustawiają zmienne `--m-*`; motyw wybierany po identyfikatorze maszyny, a dla nowych maszyn po liczbie osi (≥ 5 → błękit).
+- Emblematy i logo: SVG w rzucie izometrycznym (`public/brand.js` — `machineEmblem`, `appLogo`), bez plików graficznych. Ikony PWA generuje `scripts/make-icons.py` z tego samego logo.
+- Paski 3D: tor wklęsły (cień wewnętrzny), wypełnienie z gradientem jasny → średni → ciemny i odblaskiem u góry; etap wykonania z ukośnym prążkowaniem. Wynik godzin: kafel z gradientem — zielony (w planie), czerwony (ponad plan), w kolorze maszyny (brak danych do oceny); przekroczenie na pasku godzin — czerwone prążki za znacznikiem planu.

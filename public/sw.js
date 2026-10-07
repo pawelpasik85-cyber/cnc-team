@@ -2,9 +2,9 @@
 // Zasada prywatności: w pamięci telefonu przechowywany jest WYŁĄCZNIE szkielet aplikacji (HTML/CSS/JS/ikony).
 // Odpowiedzi API (/api/*) — dane osobowe, absencje, rozliczenia — nigdy nie są buforowane.
 'use strict';
-const VERSION = 'cnc-team-shell-v5';
+const VERSION = 'cnc-team-shell-v6';
 const SHELL = [
-  '/', '/index.html', '/tokens.css', '/app.css', '/icons.js', '/ui.js', '/app.js', '/views-people.js', '/views-projects.js',
+  '/', '/index.html', '/tokens.css', '/app.css', '/icons.js', '/brand.js', '/ui.js', '/app.js', '/views-people.js', '/views-projects.js',
   '/views-reports.js', '/views-requests.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
 ];
 

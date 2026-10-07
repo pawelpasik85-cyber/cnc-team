@@ -11,6 +11,7 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Kalendarz, grafik, lista zdarzeń | ✔ | ✔ | ✔ (kategorie poza „pełnymi” jako etykieta ogólna, np. „Nieobecność”; bez minut, notatek, dokumentów; anulowane ukryte) | ✘ |
 | Projekty, zadania, postęp, przekazania zmian, tablica maszyn | ✔ | ✔ | ✔ tylko projekty, w których pracuje (odpowiedzialny, ma zadanie, projekt na tablicy maszyn); bez planów czasu, trudności, czasu i wkładu innych osób; ustawienie `employee_sees_all_projects` | ✘ |
 | Plany czasu zadań, wpisy czasu, wyjaśnienia odchyleń | ✔ | ✔ (podgląd) | ✘ | ✘ |
+| Godziny projektu: przepracowano, plan, wynik, prognoza | ✔ | ✔ | ✘ (✔ gdy `employee_sees_project_hours = tak`) | ✘ |
 | Profile pracowników | pełne | bez referencji kadrowej (chyba że ma uprawnienie do danych poufnych) | imię, nazwisko, kolor, maszyny, kompetencje | ✘ |
 | Salda do odrabiania | wszystkie | wszystkie | własne (zespołu tylko gdy `employee_sees_team_balances = tak`) | ✘ |
 | Wyjścia i odrabianie (lista) | ✔ | ✔ | własne, bez notatek i dokumentów | ✘ |
