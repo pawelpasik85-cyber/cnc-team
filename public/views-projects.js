@@ -138,7 +138,7 @@ function taskStatusForm(t, p) {
 function timeForm(t) {
   openForm({
     title: `Czas pracy: ${t.title}`, intro: '<p class="small muted">Czas ludzi (nie maszyny). Wpisuje administrator. Poprawki i blokady wymagają przyczyny.</p>', fields: [
-      { name: 'employee_id', label: 'Pracownik', type: 'select', options: empOptions(), value: t.assignee_id, required: true }, { name: 'work_date', label: 'Dzień', type: 'date', value: S.me.today, required: true },
+      { name: 'employee_id', label: 'Pracownik', type: 'select', options: empOptions(), value: t.assignee_id, required: true }, { name: 'work_date', label: 'Dzień rozpoczęcia zmiany', type: 'date', value: S.me.today, required: true, help: 'Praca z nocnej zmiany należy do dnia jej rozpoczęcia — wtedy poprawnie liczą się nadgodziny i dni dodatkowe.' },
       { name: 'active_min', label: 'Aktywna praca', type: 'hm' }, { name: 'verify_min', label: 'Weryfikacja i uruchomienie', type: 'hm' }, { name: 'rework_min', label: 'Poprawki', type: 'hm' },
       { name: 'blocked_min', label: 'Blokady i oczekiwanie', type: 'hm' }, { name: 'unassigned_min', label: 'Czas nieprzypisany', type: 'hm' },
       { name: 'cause', label: 'Przyczyna', type: 'select', options: Object.entries(CAUSE_LABEL) }, { name: 'note', label: 'Uwagi', wide: true },

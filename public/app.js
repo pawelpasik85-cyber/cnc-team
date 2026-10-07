@@ -216,7 +216,7 @@ VIEWS.kalendarz = async (main) => {
     const empty = !daySched.length && !dayEv.length && !holidays.has(d) && d !== S.me.today;
     cells += `<div class="day ${mode === 'miesiac' && d.slice(0, 7) !== anchor.slice(0, 7) ? 'other' : ''} ${off ? 'off' : ''} ${d === S.me.today ? 'today' : ''} ${empty ? 'empty-day' : ''}">
       <div class="num" data-dow="${DOW[weekday(d) - 1]}, ${plDate(d)}"><span class="desk-only">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}</div>
-      ${daySched.map(s => { const e = S.emp.get(s.employee_id); return `<div class="chip" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(e ? e.first_name + ' ' + e.last_name : '')}: ${s.start_local.time}–${s.end_local.time}">${icon('spindle')}<b>${esc(initials(e))}</b> ${esc(tpl.get(s.shift_template_id)?.short || '')} ${s.start_local.time}–${s.end_local.time}</div>`; }).join('')}
+      ${daySched.map(s => shiftChip(s, tpl)).join('')}
       ${dayEv.map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(ev.label)} ${esc(ev.status || '')}">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
     </div>`;
   }
@@ -224,13 +224,137 @@ VIEWS.kalendarz = async (main) => {
     `<a class="btn" href="${link({ data: prev })}">‹ Poprzedni</a><a class="btn" href="${link({ data: S.me.today })}">Dziś</a><a class="btn" href="${link({ data: next })}">Następny ›</a>
      <a class="btn ${mode === 'miesiac' ? 'primary' : ''}" href="${link({ tryb: 'miesiac' })}">Miesiąc</a><a class="btn ${mode === 'tydzien' ? 'primary' : ''}" href="${link({ tryb: 'tydzien' })}">Tydzień</a>
      <label class="field">Osoba<select id="calEmp"><option value="">wszyscy</option>${empOptions().map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
-     ${isAdmin() ? btn('addShift', 'Zmiana w grafiku') + btn('genShift', 'Generuj grafik', 'calendar', '') : ''}`) +
+     ${isAdmin() ? btn('addShift', 'Zmiana w grafiku') + btn('extraShift', 'Dzień dodatkowy / nadgodziny', 'plus', '') + btn('bulkMode', 'Zmiana trybu pracy', 'calendar', '') + btn('genShift', 'Generuj grafik', 'calendar', '') : ''}`) +
     `<h2>${esc(title)}</h2><div class="cal ${mode === 'tydzien' ? 'week' : ''}">${cells}</div>
-     <p class="small muted">Legenda: ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika), ${icon('absence')} nieobecność, ${icon('exit')} wyjście prywatne, ${icon('makeup')} odrabianie, ${icon('handover')} przekazanie zmiany. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
+     <p class="small muted">Legenda: ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika), <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny, ${icon('absence')} nieobecność, ${icon('exit')} wyjście prywatne, ${icon('makeup')} odrabianie, ${icon('handover')} przekazanie zmiany. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
   $('#calEmp').onchange = (e) => { location.hash = link({ osoba: e.target.value }); };
   on('addShift', () => shiftForm(anchor));
   on('genShift', () => generateForm(anchor));
+  on('extraShift', () => extraShiftForm(anchor));
+  on('bulkMode', () => bulkModeForm(anchor, from, to));
+  if (isAdmin()) $$('.cal [data-shift]', main).forEach(b => b.addEventListener('click', () => {
+    const s = sched.find(x => x.id === Number(b.dataset.shift));
+    if (s) editShiftForm(s, sched);
+  }));
 };
+
+// Tryb pracy zmiany: standardowa / wydłużona (np. 12 h) / nieregularna / dzień dodatkowy (nadgodziny)
+const MODE_LABEL = { standardowa: 'standardowa', wydluzona: 'wydłużona', nieregularna: 'nieregularna', dodatkowa: 'dzień dodatkowy / nadgodziny' };
+function modeBadge(s) {
+  if (s.mode === 'dodatkowa') return '<span class="mode-badge dod">DOD</span>';
+  if (s.mode === 'wydluzona') return `<span class="mode-badge">${Math.round((s.planned_min || 0) / 60)}h</span>`;
+  if (s.mode === 'nieregularna') return '<span class="mode-badge">NR</span>';
+  return '';
+}
+function shiftChip(s, tpl) {
+  const e = S.emp.get(s.employee_id);
+  const mode = s.mode && s.mode !== 'standardowa' ? s.mode : '';
+  const ot = s.overtime_min ? ` · nadgodziny ${hShort(s.overtime_min)}` : '';
+  const tip = `${e ? e.first_name + ' ' + e.last_name : ''}: ${s.start_local.time}–${s.end_local.time}${mode ? ` · ${MODE_LABEL[mode]}` : ''}${ot}${s.reason ? ` · ${s.reason}` : ''}`;
+  const inner = `${icon('spindle')}<b>${esc(initials(e))}</b>${modeBadge(s)} ${esc(tpl.get(s.shift_template_id)?.short || '')} ${s.start_local.time}–${s.end_local.time}`;
+  const cls = `chip shift ${mode ? `mode-${mode}` : ''}`;
+  return isAdmin()
+    ? `<button type="button" class="${cls}" data-shift="${s.id}" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(tip)} — kliknij, aby zmienić">${inner}</button>`
+    : `<div class="${cls}" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(tip)}">${inner}</div>`;
+}
+const daysBetween = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
+// Wybór szablonu wpisuje jego godziny (potem można je ręcznie zmienić, np. na 12 h)
+function tplFillsTimes(initial) {
+  let last = initial ? String(initial) : '';
+  return (vals, form) => {
+    const cur = vals.shift_template_id ? String(vals.shift_template_id) : '';
+    if (cur === last) return;
+    last = cur;
+    const t = S.boot.shift_templates.find(x => String(x.id) === cur);
+    if (t) { form.elements.start_time.value = t.start_time; form.elements.end_time.value = t.end_time; }
+  };
+}
+const tplOptions = () => S.boot.shift_templates.map(t => [t.id, `${t.name} ${t.start_time}–${t.end_time}`]);
+const confirmFields = () => [
+  { name: 'confirm_holiday', label: 'Świadomie planuję pracę w niedzielę / święto', type: 'checkbox', wide: true },
+  { name: 'confirm_rest', label: 'Świadomie skracam 11 h odpoczynku (wyjątek — do potwierdzenia przez kadry)', type: 'checkbox', wide: true },
+];
+function editShiftForm(s, sched) {
+  const e = S.emp.get(s.employee_id);
+  const others = sched.filter(x => x.employee_id !== s.employee_id && Math.abs(daysBetween(x.work_date, s.work_date)) <= 7);
+  openForm({
+    title: `Zmiana: ${e ? `${e.first_name} ${e.last_name}` : ''}, ${plDate(s.work_date)}`,
+    intro: `<p class="small muted">Teraz: ${s.start_local.time}–${s.end_local.time}, tryb ${esc(MODE_LABEL[s.mode] || 'standardowa')}${s.overtime_min ? `, nadgodziny ${hShort(s.overtime_min)}` : ''}. Każda zmiana trafia do historii z powodem.</p>
+      <div class="row-actions"><button type="button" data-act="swap">${icon('handover')} Zamień z inną osobą</button><button type="button" class="danger" data-act="del">Usuń z grafiku</button></div>`,
+    fields: [
+      { name: 'mode', label: 'Tryb pracy', type: 'select', options: Object.entries(MODE_LABEL), value: s.mode || 'standardowa', required: true },
+      { name: 'employee_id', label: 'Osoba', type: 'select', options: empOptions(), value: s.employee_id, required: true },
+      { name: 'shift_template_id', label: 'Szablon zmiany', type: 'select', options: tplOptions(), value: s.shift_template_id, placeholder: 'indywidualne godziny' },
+      { name: 'start_time', label: 'Początek', type: 'time', value: s.start_local.time }, { name: 'end_time', label: 'Koniec', type: 'time', value: s.end_local.time, help: 'Np. 06:00–18:00 dla 12 h. Koniec ≤ początek = następny dzień.' },
+      { name: 'break_min', label: 'Przerwa niewliczana (min)', type: 'number', min: 0, value: s.break_min },
+      ...confirmFields(),
+      { name: 'reason', label: 'Powód zmiany', type: 'text', required: true, wide: true, help: 'Np. braki kadrowe — L4 w zespole, termin projektu.' },
+    ],
+    submit: (v, idem) => post(`/schedule/${s.id}`, v, idem, 'PATCH'),
+    onChange: tplFillsTimes(s.shift_template_id),
+    afterRender: (form) => {
+      const dlg = form.closest('dialog');
+      $('[data-act=swap]', form).onclick = () => { dlg.close(); dlg.remove(); swapForm(s, others); };
+      $('[data-act=del]', form).onclick = () => { dlg.close(); dlg.remove(); confirmReason('Usuń zmianę z grafiku', `${esc(e ? e.first_name + ' ' + e.last_name : '')}, ${plDate(s.work_date)} ${s.start_local.time}–${s.end_local.time}`, (reason) => post(`/schedule/${s.id}`, { reason }, undefined, 'DELETE'), 'Usuń'); };
+    },
+  });
+}
+function swapForm(s, others) {
+  const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t]));
+  openForm({
+    title: 'Zamiana osób między zmianami',
+    intro: `<p class="small muted">Osoby zamienią się zmianami: ${esc(initials(S.emp.get(s.employee_id)))} przejmie wybraną zmianę, a jej właściciel — zmianę z ${plDate(s.work_date)} ${s.start_local.time}–${s.end_local.time}. Sprawdzane są nakładanie i 11 h odpoczynku.</p>`,
+    fields: [
+      { name: 'b_id', label: 'Zmiana do zamiany (± 7 dni)', type: 'select', required: true, wide: true, options: others.map(x => { const e = S.emp.get(x.employee_id); return [x.id, `${e ? `${e.first_name} ${e.last_name}` : ''} · ${plDate(x.work_date)} ${tpl.get(x.shift_template_id)?.short || ''} ${x.start_local.time}–${x.end_local.time}`]; }) },
+      ...confirmFields(),
+      { name: 'reason', label: 'Powód zamiany', type: 'text', required: true, wide: true },
+    ],
+    submit: (v, idem) => post('/schedule/swap', { ...v, a_id: s.id }, idem),
+  });
+}
+function extraShiftForm(date) {
+  openForm({
+    title: 'Dzień dodatkowy / nadgodziny',
+    intro: '<p class="small muted">Np. sobota lub niedziela na nocnej zmianie. Cała zmiana liczy się jako nadgodziny, a praca na projektach w tym czasie — osobno w analizie projektu i miesiąca. Limity i rozliczenie — do potwierdzenia przez kadry.</p>',
+    fields: [
+      { name: 'employee_id', label: 'Pracownik', type: 'select', options: empOptions(), required: true },
+      { name: 'work_date', label: 'Dzień rozpoczęcia zmiany', type: 'date', value: date, required: true },
+      { name: 'shift_template_id', label: 'Szablon zmiany', type: 'select', options: tplOptions(), placeholder: 'indywidualne godziny' },
+      { name: 'start_time', label: 'Początek (opcjonalnie)', type: 'time' }, { name: 'end_time', label: 'Koniec (opcjonalnie)', type: 'time' },
+      { name: 'break_min', label: 'Przerwa niewliczana (min)', type: 'number', min: 0 },
+      ...confirmFields(),
+      { name: 'reason', label: 'Powód', type: 'text', required: true, wide: true, help: 'Np. termin projektu ZL-…, braki kadrowe.' },
+    ],
+    submit: (v, idem) => post('/schedule', { ...v, mode: 'dodatkowa' }, idem),
+  });
+}
+function bulkModeForm(date, from, to) {
+  const ws = date < from ? from : date;
+  openForm({
+    title: 'Zmiana trybu pracy na okres',
+    intro: '<p class="small muted">Zmienia istniejące zmiany w grafiku wybranych osób, np. z 8 h na 12 h albo na czas nieregularny przy brakach kadrowych. Godziny ponad dobową normę liczą się jako nadgodziny (bez względu na nazwę trybu). Dni dodatkowe i zmiany, których nie da się zmienić (nakładanie, odpoczynek, zamknięty miesiąc), są pomijane i wypisane.</p>',
+    fields: [
+      { name: 'employee_ids', label: 'Pracownicy', type: 'multi', options: empOptions(), value: [], wide: true },
+      { name: 'from', label: 'Od', type: 'date', value: ws, required: true }, { name: 'to', label: 'Do', type: 'date', value: addDays(ws, 6) > to ? to : addDays(ws, 6), required: true },
+      { name: 'weekdays', label: 'Dni tygodnia', type: 'multi', options: DOW.map((d, i) => [i + 1, d]), value: [1, 2, 3, 4, 5, 6, 7], wide: true },
+      { name: 'mode', label: 'Tryb pracy', type: 'select', options: [['wydluzona', 'wydłużona (np. 12 h)'], ['nieregularna', 'nieregularna'], ['standardowa', 'powrót do standardowej']], value: 'wydluzona', required: true },
+      { name: 'shift_template_id', label: 'Szablon zmiany', type: 'select', options: tplOptions(), placeholder: 'bez zmiany szablonu' },
+      { name: 'start_time', label: 'Nowy początek', type: 'time' }, { name: 'end_time', label: 'Nowy koniec', type: 'time', help: 'Np. 06:00–18:00 lub 18:00–06:00.' },
+      { name: 'break_min', label: 'Przerwa niewliczana (min)', type: 'number', min: 0 },
+      ...confirmFields(),
+      { name: 'reason', label: 'Powód', type: 'text', required: true, wide: true, help: 'Np. absencja dwóch osób, braki kadrowe.' },
+    ],
+    submit: async (v, idem) => {
+      if (!v.employee_ids || !v.employee_ids.length) throw new Error('Wybierz co najmniej jednego pracownika.');
+      if (v.mode === 'standardowa' && !v.shift_template_id && !(v.start_time && v.end_time)) throw new Error('Przy powrocie do trybu standardowego wybierz szablon zmiany lub podaj godziny — inaczej zostaną dotychczasowe (wydłużone) godziny.');
+      const r = await api('/schedule/bulk-mode', { method: 'POST', body: { ...v, employee_ids: v.employee_ids.map(Number), weekdays: (v.weekdays || []).map(Number) }, idem });
+      toast(`Zmieniono zmian: ${r.changed}. Pominięto: ${r.skipped.length}.`, r.skipped.length ? 'warn' : '');
+      r.skipped.slice(0, 4).forEach(x => toast(`${plDate(x.work_date)} ${initials(S.emp.get(x.employee_id))}: ${x.reason}`, 'warn'));
+      setTimeout(rerender, 50);
+      return { warnings: r.warnings };
+    },
+  });
+}
 
 function shiftForm(date) {
   openForm({

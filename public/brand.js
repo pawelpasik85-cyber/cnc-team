@@ -139,7 +139,7 @@ function hoursBlock(h) {
     <div class="burn" aria-label="Godziny: przepracowano ${hShort(h.worked_min)} z planu ${hShort(h.planned_min)}">
       <div class="track"><div class="fill" style="width:${(inPlan / max) * 100}%"></div>${over ? `<div class="over" style="left:${planPos}%;width:${(over / max) * 100}%"></div>` : ''}
         ${planPos !== null ? `<div class="plan-mark" style="left:${planPos}%"><span>plan</span></div>` : ''}</div>
-      <div class="burn-legend"><span>${h.use_pct !== null ? `wykorzystano ${h.use_pct}% planu` : 'brak planu'}</span>${h.forecast_diff_min !== null ? `<span>prognoza całości: <b>${hShort(h.forecast_min)}</b> ${h.forecast_diff_min > 0 ? `<em class="bad">(+${hShort(h.forecast_diff_min)})</em>` : '<em class="good">(w planie)</em>'}</span>` : ''}</div>
+      <div class="burn-legend"><span>${h.use_pct !== null ? `wykorzystano ${h.use_pct}% planu` : 'brak planu'}</span>${h.forecast_diff_min !== null ? `<span>prognoza całości: <b>${hShort(h.forecast_min)}</b> ${h.forecast_diff_min > 0 ? `<em class="bad">(+${hShort(h.forecast_diff_min)})</em>` : '<em class="good">(w planie)</em>'}</span>` : ''}${h.overtime_work_min ? `<span class="ot-line"><span class="mode-badge dod">DOD</span> w nadgodzinach: <b>${hShort(h.overtime_work_min)}</b> (${h.overtime_share_pct}%)</span>` : ''}</div>
     </div>`;
 }
 function machineChip(m) {

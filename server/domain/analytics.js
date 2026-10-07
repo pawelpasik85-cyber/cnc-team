@@ -33,6 +33,7 @@ function projectMetrics(db, id) {
     diff_min: hours.planned_min ? hours.worked_min - hours.planned_min : null,
     diff_pct: hours.planned_min ? Math.round(((hours.worked_min - hours.planned_min) / hours.planned_min) * 100) : null,
     rework_min: agg.rw || 0, blocked_min: agg.bl || 0, rework_share_pct: hours.worked_min ? pct(agg.rw || 0, hours.worked_min) : null,
+    overtime_work_min: hours.overtime_work_min, overtime_share_pct: hours.overtime_share_pct,
     tasks: live.length, type_codes: [...new Set(live.map(t => t.type_code))].sort(), hours, tasks_rows: tasks,
   };
 }
@@ -174,11 +175,25 @@ function monthStats(db, ym, { toDay } = {}) {
   }
   const ex = db.get(`SELECT COUNT(*) n, SUM(minutes) m FROM private_exits WHERE status = 'zarejestrowane' AND settlement_month = ?`, ym);
   const mk = db.get(`SELECT SUM(minutes) m FROM makeups WHERE status = 'zatwierdzone' AND settlement_month = ?`, ym);
-  const ot = db.get(`SELECT SUM(minutes) m FROM attendance_records WHERE kind = 'nadgodziny' AND work_date BETWEEN ? AND ?`, from, to);
+  // ręczne wpisy nadgodzin w ewidencji — bez tych, które pokrywają się ze zmianą z nadgodzinami w grafiku (inaczej liczone byłyby dwa razy)
+  const ot = db.get(`SELECT SUM(a.minutes) m FROM attendance_records a WHERE a.kind = 'nadgodziny' AND a.work_date BETWEEN ? AND ?
+    AND NOT EXISTS (SELECT 1 FROM schedule_entries s WHERE s.employee_id = a.employee_id AND s.overtime_min > 0 AND s.start_at < a.end_at AND s.end_at > a.start_at)`, from, to);
+  // nadgodziny z grafiku: dni dodatkowe i zmiany wydłużone / nieregularne
+  const so = db.get(`SELECT SUM(CASE WHEN mode = 'dodatkowa' THEN 1 ELSE 0 END) extra, SUM(CASE WHEN mode IN ('wydluzona','nieregularna') AND overtime_min > 0 THEN 1 ELSE 0 END) ext,
+    COALESCE(SUM(overtime_min), 0) m FROM schedule_entries WHERE work_date BETWEEN ? AND ?`, from, to);
+  const otw = P.overtimeWork(db, { from, to });
+  const otWork = otw.reduce((s, r) => s + r.overtime_work_min, 0);
+  const projNames = new Map(db.all('SELECT id, order_no, part_no FROM projects').map(p => [p.id, p]));
+  const overtime = {
+    extra_days: so.extra || 0, extended_shifts: so.ext || 0, schedule_min: so.m, records_min: ot.m || 0,
+    work_min: otWork, work_share_pct: pct(otWork, work.worked_min),
+    by_project: otw.filter(r => r.overtime_work_min > 0).sort((a, b) => b.overtime_work_min - a.overtime_work_min)
+      .map(r => ({ ...r, order_no: (projNames.get(r.project_id) || {}).order_no, part_no: (projNames.get(r.project_id) || {}).part_no })),
+  };
   const rq = db.all(`SELECT kind, COUNT(*) n FROM requests WHERE created_at >= ? AND created_at < ? GROUP BY kind`, fromUtc, toUtc);
   return {
     year_month: ym, from, to, work, by_machine: byMachine, by_employee: byEmployee, tasks, projects_done: projects,
-    absence, exits: { count: ex.n, minutes: ex.m || 0, made_up_min: mk.m || 0 }, overtime_min: ot.m || 0,
+    absence, exits: { count: ex.n, minutes: ex.m || 0, made_up_min: mk.m || 0 }, overtime_min: so.m + (ot.m || 0), overtime,
     requests: Object.fromEntries(rq.map(r => [r.kind, r.n])), has_data: !!(w.n || abs.length || ex.n),
   };
 }
@@ -193,14 +208,17 @@ const KPI = [
   ['tasks_diff_pct', 'Odchylenie od planu (zakończone zadania)', '%', s => s.tasks.diff_pct],
   ['absence_min', 'Nieobecności', 'min', s => s.absence.total_min],
   ['exits_min', 'Wyjścia prywatne', 'min', s => s.exits.minutes],
-  ['overtime_min', 'Nadgodziny', 'min', s => s.overtime_min],
+  ['overtime_min', 'Nadgodziny (grafik i ewidencja)', 'min', s => s.overtime_min],
+  ['extra_days', 'Dni dodatkowe (zmiany)', 'szt', s => s.overtime.extra_days],
+  ['overtime_work_min', 'Praca na projektach w nadgodzinach', 'min', s => s.overtime.work_min],
+  ['overtime_share_pct', 'Udział nadgodzin w pracy na projektach', 'udzial', s => s.overtime.work_share_pct],
 ];
 function kpis(s) { return Object.fromEntries(KPI.map(([k, , , f]) => [k, f(s)])); }
 function deltas(cur, prev) {
   return Object.fromEntries(KPI.map(([k]) => {
     const a = cur[k], b = prev[k];
     if (a === null || a === undefined || b === null || b === undefined) return [k, { diff: null, pct: null }];
-    return [k, { diff: a - b, pct: b ? Math.round(((a - b) / Math.abs(b)) * 100) : null }];
+    return [k, { diff: Math.round((a - b) * 10) / 10, pct: b ? Math.round(((a - b) / Math.abs(b)) * 100) : null }];
   }));
 }
 
@@ -238,7 +256,8 @@ function yearStats(db, year, { untilMd } = {}) {
   let totals = null;
   if (parts.length) {
     totals = {};
-    for (const [k] of KPI) if (k !== 'tasks_diff_pct') totals[k] = parts.reduce((s, x) => s + (x[k] || 0), 0);
+    for (const [k] of KPI) if (k !== 'tasks_diff_pct' && k !== 'overtime_share_pct') totals[k] = parts.reduce((s, x) => s + (x[k] || 0), 0);
+    totals.overtime_share_pct = pct(totals.overtime_work_min, totals.worked_min);
     // odchylenie liczone z sum zakończonych zadań w okresie, nie średnia procentów
     const from = `${year}-01-01`;
     const to = untilMd ? [`${year}-${untilMd}`, T.lastDayOfMonth(`${year}-${untilMd.slice(0, 2)}`)].sort()[0] : `${year}-12-31`;

@@ -13,6 +13,7 @@ const SETTINGS = [
   ['deviation_threshold_min', '60', 'Próg odchylenia (min) — oba progi muszą być przekroczone'],
   ['employee_sees_all_projects', 'nie', 'Czy pracownik widzi wszystkie projekty (tak/nie); domyślnie tylko te, w których ma zadanie, jest odpowiedzialny albo które są na tablicy maszyn'],
   ['employee_sees_project_hours', 'nie', 'Czy pracownik widzi godziny projektu: przepracowane, plan i wynik (tak/nie); domyślnie tylko kierownik i przełożony'],
+  ['overtime_year_limit_min', '9000', 'Roczny limit nadgodzin na pracownika w minutach (KP art. 151 § 3: 150 h, chyba że regulamin/umowa stanowi inaczej) — ostrzeżenie przy przekroczeniu; do potwierdzenia przez kadry'],
   ['project_delay_warn_pct', '5', 'Opóźnienie projektu (punkty %) powyżej którego projekt jest oznaczany jako „opóźniony”'],
   ['project_delay_alert_pct', '15', 'Opóźnienie projektu (punkty %) powyżej którego projekt jest „zagrożony” (także po terminie)'],
   ['login_max_failures', '5', 'Liczba błędnych haseł, po której konto jest czasowo blokowane'],

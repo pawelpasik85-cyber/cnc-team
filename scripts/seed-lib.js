@@ -155,7 +155,7 @@ function seedDemo(db) {
   mk(p1, 'URUCHOMIENIE', 'Uruchomienie na Hartford', 90, { assignee_id: celina, operation_id: 'OP10' });
   mk(p1, 'WYKONANIE', 'Wykonanie detalu', null, { operation_id: 'OP10' });
   const t6 = mk(p2, 'TECHNOLOGIA', 'Dobór mocowania 5X', 120, { assignee_id: bartosz, operation_id: 'OP10' });
-  mk(p2, 'NX', 'Programowanie 5X', 360, { assignee_id: bartosz, operation_id: 'OP10', difficulty: 5 });
+  const t7 = mk(p2, 'NX', 'Programowanie 5X', 360, { assignee_id: bartosz, operation_id: 'OP10', difficulty: 5 });
   mk(p3, 'ANALIZA_DOK', 'Analiza dokumentacji', 45, { assignee_id: adam, operation_id: 'OP10' });
 
   P.addTimeEntry(db, admin, { task_id: t1, employee_id: adam, work_date: '2026-10-01', active_min: 55 });
@@ -177,6 +177,14 @@ function seedDemo(db) {
     done_text: 'OP10: kieszenie zgrubnie i wykańczająco, postprocesor Heidenhain.', remaining_text: 'Weryfikacja kolizji oprawki przy ściance 3; fazowania.',
     stopped_at_text: 'Operacja „FAZY_ZEW” — nie wygenerowano', tooling_notes: 'Frez Ø6 wymaga oprawki BT50 z tulejką ER32 — sprawdzić dostępność', checklist: ['Sprawdzić bazę Z na płycie', 'Porównać rev 03 z rysunkiem C'] });
   P.addManualTechData(db, admin, p1, { operation_id: 'OP10', nx_time_min: 95, machine_est_min: 110 });
+
+  // Nadgodziny: sobota i niedziela na nocnej zmianie (dni dodatkowe) oraz zmiana wydłużona do 12 h z powodu braków kadrowych
+  People.addScheduleEntry(db, admin, { employee_id: bartosz, work_date: '2026-10-03', shift_template_id: tpl.III, mode: 'dodatkowa', reason: 'Termin ZL-26-0420 — programowanie 5X w sobotę' });
+  People.addScheduleEntry(db, admin, { employee_id: adam, work_date: '2026-10-04', shift_template_id: tpl.III, mode: 'dodatkowa', reason: 'Termin ZL-26-0420 — niedziela, noc', confirm_holiday: true });
+  P.addTimeEntry(db, admin, { task_id: t7, employee_id: bartosz, work_date: '2026-10-03', active_min: 360 });
+  P.addTimeEntry(db, admin, { task_id: t7, employee_id: adam, work_date: '2026-10-04', active_min: 300 });
+  People.bulkShiftMode(db, admin, { employee_ids: [celina], from: '2026-10-06', to: '2026-10-06', start_time: '14:00', end_time: '02:00', mode: 'wydluzona', reason: 'Braki kadrowe — dwie osoby na zmianach zamiast trzech' });
+  P.addTimeEntry(db, admin, { task_id: t7, employee_id: celina, work_date: '2026-10-06', active_min: 420 });
   seedHistory(db, admin, emps, tt);
 
   // Gość (np. klient lub inny dział): widzi tylko status projektu ZL-26-0412

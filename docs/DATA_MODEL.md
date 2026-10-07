@@ -11,6 +11,8 @@ Schemat: `server/migrations/001_init.sql`. Konwencje: czasy trwania w **minutach
 | `users`, `sessions` | Konta i sesje | `role` (admin/supervisor/employee), `employee_id`, `can_view_confidential` |
 | `shift_templates` | Szablony zmian | godziny lokalne, przerwa niewliczana |
 | `schedule_entries` | Grafik | `work_date` (dzień rozpoczęcia = przypisanie do miesiąca), `start_at/end_at` UTC, `planned_min` (z DST) |
+| `schedule_entries` (migracja 008) | Tryb pracy i nadgodziny | `mode` (standardowa / wydluzona / nieregularna / dodatkowa), `overtime_min` (przeliczane na dobę pracownika), `reason` (powód trybu), `updated_at` |
+| `work_orders` (migracja 007) | Plan pracy: polecenie kierownika na dzień | `work_date`, `employee_id`, `seq`, `title`, `details`, `project_id`/`task_id`/`machine_id`, `planned_min`, `status` (zaplanowane / wykonane / czesciowo / niewykonane / anulowane), `result_note`, `ack_at` (potwierdzenie przeczytania), `carried_from` |
 | `holidays` | Święta i dni wolne | `kind`: ustawowe / firmowe |
 | `attendance_records` | Ręczna ewidencja obecności i nadgodzin | `kind`: obecnosc / nadgodziny — **oddzielone** od odrabiania |
 
@@ -43,6 +45,7 @@ Saldo wyjścia = minuty − Σ przypisań z **zatwierdzonych** odrabiań. Przypi
 | Tabela | Opis |
 |---|---|
 | `machines` | Stabilny identyfikator (`M-HARTFORD`, `M-GRIMME`), osie, sterowanie, model (do uzupełnienia) |
+| `machines` (migracja 006) | Dodatkowo `tool_holder` (Hartford HCMC-18: BT50; Grimme PSF-M 25/17: HSK40) i `plate` — dane z tabliczki znamionowej |
 | `projects` | Stabilny identyfikator `PRJ-RRRR-NNNN`, zlecenie, detal, rewizja, rodzina, maszyna, termin, priorytet, folder, odpowiedzialni, obowiązujący program NC i rewizja, blokada; unikalność (zlecenie, detal, rewizja) |
 | `task_types` | Typy zadań z etapem (przygotowanie/wykonanie) i wagą domyślną; rozszerzalne |
 | `tasks` | Zadanie: operacja, zakres, trudność, rodzina, etap, waga, **pierwotny** i obowiązujący plan, rezultat oczekiwany i potwierdzony, termin, osoba, blokada |

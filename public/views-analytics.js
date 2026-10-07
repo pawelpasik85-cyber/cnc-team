@@ -2,11 +2,12 @@
 // zapisane raporty (migawki) z udostępnianiem przełożonemu. Dane analizy — tylko kierownik.
 'use strict';
 
-const KPI_DIR = { tasks_done: 1, projects_done: 1, rework_min: -1, blocked_min: -1, tasks_diff_pct: -1, absence_min: -1, exits_min: -1, overtime_min: -1, worked_min: 0 };
+const KPI_DIR = { tasks_done: 1, projects_done: 1, rework_min: -1, blocked_min: -1, tasks_diff_pct: -1, absence_min: -1, exits_min: -1, overtime_min: -1, worked_min: 0, extra_days: -1, overtime_work_min: -1, overtime_share_pct: -1 };
 function kpiVal(v, unit) {
   if (v === null || v === undefined) return '—';
   if (unit === 'min') return hShort(v);
   if (unit === '%') return `${v > 0 ? '+' : ''}${v}%`;
+  if (unit === 'udzial') return `${v}%`;
   return String(v);
 }
 function deltaChip(key, d, unit) {
@@ -15,8 +16,8 @@ function deltaChip(key, d, unit) {
   const dir = KPI_DIR[key] || 0;
   const better = dir === 0 ? null : (d.diff > 0) === (dir > 0);
   const arrow = d.diff > 0 ? '▲' : '▼';
-  const diffTxt = unit === 'min' ? `${d.diff > 0 ? '+' : '−'}${hShort(Math.abs(d.diff))}` : unit === '%' ? `${d.diff > 0 ? '+' : ''}${d.diff} pkt %` : `${d.diff > 0 ? '+' : ''}${d.diff}`;
-  return `<span class="dchip ${better === null ? '' : better ? 'good' : 'bad'}">${arrow} ${esc(diffTxt)}${d.pct !== null && unit !== '%' ? ` (${d.pct > 0 ? '+' : ''}${d.pct}%)` : ''}${better === null ? '' : better ? ' · lepiej' : ' · gorzej'}</span>`;
+  const diffTxt = unit === 'min' ? `${d.diff > 0 ? '+' : '−'}${hShort(Math.abs(d.diff))}` : (unit === '%' || unit === 'udzial') ? `${d.diff > 0 ? '+' : ''}${d.diff} pkt %` : `${d.diff > 0 ? '+' : ''}${d.diff}`;
+  return `<span class="dchip ${better === null ? '' : better ? 'good' : 'bad'}">${arrow} ${esc(diffTxt)}${d.pct !== null && unit !== '%' && unit !== 'udzial' ? ` (${d.pct > 0 ? '+' : ''}${d.pct}%)` : ''}${better === null ? '' : better ? ' · lepiej' : ' · gorzej'}</span>`;
 }
 const hoursFmt = (v) => `${Math.round(v * 10) / 10} h`;
 const toH = (m) => (m === null || m === undefined ? null : Math.round((m / 60) * 10) / 10);
@@ -46,9 +47,26 @@ function renderMonth(d) {
     { key: id => erow(prev.by_employee, id).worked_min ?? 0, label: `Przepracowane ${prev.year_month}`, fmt: hShort },
     { key: id => erow(cur.by_employee, id).rework_min ?? 0, label: `Poprawki ${cur.year_month}`, fmt: hShort },
   ], emps, { empty: 'Brak wpisów czasu.' });
+  const ot = cur.overtime || { by_project: [] }, otPrev = prev.overtime || {};
+  const otChart = ot.by_project.length > 1 ? svgBarChart({ title: 'Praca na projektach w nadgodzinach', categories: ot.by_project.slice(0, 8).map(r => r.order_no || '—'), fmt: hoursFmt,
+    series: [{ name: 'W nadgodzinach', color: 'var(--c-warn)', values: ot.by_project.slice(0, 8).map(r => toH(r.overtime_work_min)) }] }) : '';
+  const otTable = table([
+    { key: r => r, label: 'Projekt', fmt: r => `<span class="mono">${esc(r.order_no || '')}</span> ${esc(r.part_no || '')}` },
+    { key: 'overtime_work_min', label: 'W nadgodzinach', fmt: hShort },
+    { key: 'extra_day_work_min', label: 'w tym dni dodatkowe', fmt: hShort },
+    { key: 'worked_min', label: 'Cała praca na projekcie w miesiącu', fmt: hShort },
+    { key: 'share_pct', label: '% pracy projektu w nadgodzinach', fmt: v => `${v}%` },
+  ], ot.by_project, { empty: 'W tym miesiącu nie było pracy na projektach w nadgodzinach.' });
+  const otSection = `<section class="panel"><h3><span class="mode-badge dod">DOD</span> Nadgodziny i dni dodatkowe</h3>
+      <p class="small">Dni dodatkowe: <b>${ot.extra_days || 0}</b> (rok wcześniej ${otPrev.extra_days ?? '—'}) · zmiany wydłużone / nieregularne z nadgodzinami: <b>${ot.extended_shifts || 0}</b> ·
+      nadgodziny z grafiku <b>${hShort(ot.schedule_min || 0)}</b>${ot.records_min ? `, z ewidencji ${hShort(ot.records_min)}` : ''} ·
+      praca na projektach w nadgodzinach <b>${hShort(ot.work_min || 0)}</b> = <b>${ot.work_share_pct || 0}%</b> całej pracy na projektach (rok wcześniej ${otPrev.work_share_pct ?? '—'}%).</p>
+      ${otChart}${otTable}
+      <p class="small muted">Czas na projekcie w danym dniu przypisany do nadgodzin proporcjonalnie: wpis czasu × (nadgodziny ÷ planowany czas zmian tej osoby w tym dniu). Dzień dodatkowy liczy się w całości, a przy innych zmianach — godziny ponad dobową normę. Wpis czasu z nocnej zmiany należy do dnia jej rozpoczęcia. Ręczne wpisy nadgodzin pokrywające się z grafikiem nie są liczone podwójnie. Rozliczenie i limity — do potwierdzenia przez kadry.</p></section>`;
   const partialNote = d.partial ? `<p class="notice info">Miesiąc w toku: porównanie dni 1–${d.partial.until_day} z tym samym okresem rok wcześniej.</p>` : '';
   return `${partialNote}<div class="kpis">${tiles}</div>
     <section class="panel">${chart}</section>
+    ${otSection}
     <div class="cols-2"><section class="panel"><h3>Maszyny</h3>${machineTable}</section><section class="panel"><h3>Ludzie</h3>${empTable}</section></div>
     <section class="panel"><h3>Zakończone projekty</h3><p class="small">${plMonth(cur.year_month)}: ${cur.projects_done.map(p => `<span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}`).join(', ') || 'brak'}<br>
       ${plMonth(prev.year_month)}: ${prev.projects_done.map(p => `<span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}`).join(', ') || 'brak'}</p>
@@ -61,7 +79,7 @@ function renderYear(d, metric = 'worked_min') {
   const months = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
   const chart = svgLineChart({
     title: `${k.label} — miesiące`, labels: months, labelEvery: 1,
-    fmt: k.unit === 'min' ? hoursFmt : k.unit === '%' ? (v) => `${v}%` : (v) => String(v),
+    fmt: k.unit === 'min' ? hoursFmt : (k.unit === '%' || k.unit === 'udzial') ? (v) => `${v}%` : (v) => String(v),
     series: d.years.map(y => ({ name: String(y.year), color: yearColor(y.year), values: y.months.map(m => (k.unit === 'min' ? toH(m[k.key]) : m[k.key])) })),
   });
   const base = d.years[0].year;
@@ -98,6 +116,7 @@ function processCharts(pr) {
       <div class="kpi"><span>Wobec terminu</span><b>${s.due_delta_days === null ? '—' : s.due_delta_days > 0 ? `+${s.due_delta_days} dni` : s.due_delta_days < 0 ? `${s.due_delta_days} dni` : 'w terminie'}</b><small>termin ${plDate(s.due_date)}</small>${s.due_delta_days !== null ? `<span class="dchip ${s.due_delta_days > 0 ? 'bad' : 'good'}">${s.due_delta_days > 0 ? 'po terminie' : 'w terminie'}</span>` : ''}</div>
       <div class="kpi"><span>Godziny: wykonanie / plan</span><b>${hShort(s.worked_min)}</b><small>plan ${hShort(s.planned_min)}</small>${s.diff_pct !== null ? `<span class="dchip ${s.diff_pct > 0 ? 'bad' : 'good'}">${s.diff_pct > 0 ? '+' : ''}${s.diff_pct}% wobec planu</span>` : ''}</div>
       <div class="kpi"><span>Poprawki</span><b>${hShort(s.rework_min)}</b><small>${s.rework_share_pct ?? '—'}% przepracowanego czasu</small></div>
+      <div class="kpi"><span>W nadgodzinach</span><b>${hShort(s.overtime_work_min || 0)}</b><small>${s.overtime_share_pct || 0}% pracy nad projektem (dni dodatkowe i godziny ponad normę)</small></div>
     </div>`;
   return `<div class="theme-${th}">${sum}${hours}${prog}
     <h3>Zadania: wykonanie wobec planu</h3><div class="pa">${taskBars}</div>

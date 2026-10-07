@@ -152,6 +152,24 @@ function scheduleSettings(db) {
   return { warnPct: C.getSettingInt(db, 'project_delay_warn_pct', 5), alertPct: C.getSettingInt(db, 'project_delay_alert_pct', 15) };
 }
 
+// Czas pracy na projektach przypadający na nadgodziny: wpis czasu z dnia (dzień rozpoczęcia zmiany), w którym pracownik ma nadgodziny,
+// liczony proporcjonalnie: praca × (nadgodziny dnia / planowany czas zmian tego dnia); część z dni dodatkowych — praca × (zmiany dodatkowe / wszystkie zmiany dnia).
+// worked_min — cała praca na projekcie w tym okresie (do udziału nadgodzin w pracy projektu).
+function overtimeWork(db, { from = '0000-01-01', to = '9999-12-31', projectId = null } = {}) {
+  const ot = db.all(`SELECT t.project_id, SUM((e.active_min + e.verify_min + e.rework_min) * 1.0 * s.ot / s.pm) AS w,
+      SUM((e.active_min + e.verify_min + e.rework_min) * 1.0 * s.epm / s.pm) AS extra_day_w
+    FROM task_time_entries e JOIN tasks t ON t.id = e.task_id
+    JOIN (SELECT employee_id, work_date, SUM(overtime_min) ot, SUM(planned_min) pm, SUM(CASE WHEN mode = 'dodatkowa' THEN planned_min ELSE 0 END) epm
+          FROM schedule_entries GROUP BY employee_id, work_date) s ON s.employee_id = e.employee_id AND s.work_date = e.work_date
+    WHERE s.ot > 0 AND s.pm > 0 AND e.work_date BETWEEN ? AND ? AND (? IS NULL OR t.project_id = ?) GROUP BY t.project_id`, from, to, projectId, projectId);
+  const all = new Map(db.all(`SELECT t.project_id, SUM(e.active_min + e.verify_min + e.rework_min) w FROM task_time_entries e JOIN tasks t ON t.id = e.task_id
+    WHERE e.work_date BETWEEN ? AND ? AND (? IS NULL OR t.project_id = ?) GROUP BY t.project_id`, from, to, projectId, projectId).map(r => [r.project_id, r.w || 0]));
+  return ot.map(r => {
+    const worked = all.get(r.project_id) || 0, w = Math.round(r.w);
+    return { project_id: r.project_id, overtime_work_min: w, extra_day_work_min: Math.round(r.extra_day_w), worked_min: worked, share_pct: worked ? Math.round((w / worked) * 1000) / 10 : 0 };
+  });
+}
+
 // Godziny projektu: przepracowane (aktywna praca + weryfikacja/uruchomienie + poprawki; bez blokad i czasu nieprzypisanego),
 // plan (obowiązujące plany zadań), wynik na zakończonych zadaniach (rzeczywiste − plan) i prognoza całości.
 function projectHours(db, id, tasks) {
@@ -171,7 +189,9 @@ function projectHours(db, id, tasks) {
   // praca na zadaniach anulowanych też jest przepracowanym czasem projektu
   for (const t of tasks) if (t.status === 'anulowane') forecast += worked.get(t.id) || 0;
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : null);
+  const ot = overtimeWork(db, { projectId: id })[0];
   return {
+    overtime_work_min: ot ? ot.overtime_work_min : 0, overtime_share_pct: workedAll && ot ? Math.round((ot.overtime_work_min / workedAll) * 1000) / 10 : 0,
     worked_min: workedAll, planned_min: planned || null, use_pct: pct(workedAll, planned),
     remaining_min: planned ? planned - workedAll : null, over_min: planned && workedAll > planned ? workedAll - planned : 0,
     done: doneCount ? { tasks: doneCount, planned_min: donePlanned, worked_min: doneWorked, diff_min: doneWorked - donePlanned, diff_pct: donePlanned ? Math.round(((doneWorked - donePlanned) / donePlanned) * 100) : null } : null,
@@ -453,5 +473,5 @@ function guestStatus(db, id) {
 
 module.exports = {
   CAUSES, saveMachine, saveTaskType, saveProject, setNcRevision, projectDetail, listProjects, createTask, updateTask, changeTaskPlan,
-  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus, projectHours,
+  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus, projectHours, overtimeWork,
 };

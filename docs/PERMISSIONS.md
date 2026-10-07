@@ -23,6 +23,8 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Historia zmian (audyt), konta, ustawienia firmy | ✔ | ✘ | ✘ | ✘ |
 | Analiza: przebieg projektu, podobne projekty, miesiąc i rok wobec lat poprzednich, CSV | ✔ | ✘ | ✘ | ✘ |
 | Zapisane raporty kierownika | ✔ wszystkie (zapis, udostępnienie, usunięcie) | ✔ tylko udostępnione (podgląd, druk) | ✘ | ✘ |
+| Plan pracy: wypisywanie poleceń, kolejność, ocena, przeniesienie | ✔ | ✔ (podgląd dnia) | ✘ (403); widzi tylko własne polecenia i potwierdza przeczytanie | ✘ |
+| Grafik: tryb pracy (12 h, nieregularny, dzień dodatkowy), zamiana osób, zmiana trybu na okres, usunięcie zmiany | ✔ (zawsze z powodem, w historii) | ✘ (403) | ✘ (403); w kalendarzu widzi oznaczenie trybu (DOD / 12h / NR), bez powodu i minut nadgodzin | ✘ |
 | Zmiana własnego hasła | ✔ | ✔ | ✔ | ✔ |
 
 Dodatkowo:

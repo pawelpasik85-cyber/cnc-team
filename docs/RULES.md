@@ -81,6 +81,20 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Tryby pracy, zamiany i nadgodziny (do potwierdzenia przez kadry)
+- Każda zmiana w grafiku ma tryb: **standardowa**, **wydłużona** (np. 12 h przy brakach kadrowych), **nieregularna**, **dzień dodatkowy / nadgodziny** (np. sobota lub niedziela na nocnej zmianie). Tryb inny niż standardowy wymaga powodu; każda zmiana godzin, trybu, osoby, zamiana i usunięcie trafia do historii z autorem i powodem.
+- **Nadgodziny liczone na dobę pracownika** (dzień rozpoczęcia zmiany): dzień dodatkowy — cała zmiana; pozostałe zmiany tego dnia — wszystko ponad dobową normę z warunków zatrudnienia (`employment_terms.daily_norm_min`), niezależnie od nazwy trybu. Dzień dzielony (dwie zmiany jednego dnia) liczony łącznie.
+- **Odpoczynek dobowy 11 h** sprawdzany między zmianami z różnych dni; skrócenie tylko ze świadomym potwierdzeniem (wyjątki art. 132 § 2 KP — do potwierdzenia przez kadry). Niedziela / święto w dniu rozpoczęcia wymaga potwierdzenia; zmiana nocna przechodząca w niedzielę lub święto daje ostrzeżenie (godziny w dniu wolnym do rozliczenia).
+- **Limit roczny** nadgodzin z ustawienia `overtime_year_limit_min` (domyślnie 150 h) — tylko ostrzeżenie przy zapisie; obowiązujący limit i rozliczenie (dodatki, dni wolne za nadgodziny) — do potwierdzenia przez kadry.
+- **Zamiana osób** między dwiema zmianami (± 7 dni): sprawdzane nakładanie i odpoczynek obu osób, nadgodziny przeliczane dla obu; wyjście prywatne zarejestrowane na zmianie blokuje zamianę.
+- **Zmiana trybu na okres** (do 93 dni, wybrane osoby i dni tygodnia) zmienia istniejące zmiany; dni dodatkowe i zmiany, których nie da się zmienić, są pomijane i wypisane.
+- **Praca na projektach w nadgodzinach** = Σ wpisów czasu (aktywna + weryfikacja + poprawki) × (nadgodziny doby ÷ planowany czas zmian tej doby); część z dni dodatkowych analogicznie. Wpis czasu z nocnej zmiany należy do dnia jej rozpoczęcia. Pokazywane: w projekcie (godziny i % pracy projektu), w miesiącu (dni dodatkowe, zmiany wydłużone, nadgodziny z grafiku, praca w nadgodzinach i jej udział, podział na projekty) i w porównaniu rok do roku. Ręczne wpisy nadgodzin w ewidencji pokrywające się ze zmianą z nadgodzinami nie są liczone drugi raz.
+
+### Plan pracy (polecenia na zmianę)
+- Kierownik wypisuje każdemu programiście polecenia na dany dzień (kolejność, zadanie i projekt lub dowolna treść, planowany czas). Ostrzeżenia: brak zmiany w grafiku, nieobecność, obciążenie ponad długość zmiany.
+- Programista widzi tylko swoje polecenia i może jedynie potwierdzić przeczytanie; zmiana treści przez kierownika wymaga ponownego potwierdzenia.
+- Ocena wykonania (wykonane / częściowo / niewykonane / anulowane) — tylko kierownik; „częściowo” i „niewykonane” wymagają opisu, anulowanie — powodu. Niedokończone polecenia można przenieść na kolejny dzień (bez duplikatów, z odnośnikiem do oryginału).
+
 ### Godziny projektu
 - **Przepracowano** = Σ czasu ludzi na zadaniach projektu: aktywna praca + weryfikacja/uruchomienie + poprawki (bez blokad/oczekiwania i czasu nieprzypisanego).
 - **Plan** = Σ obowiązujących planów zadań (bez anulowanych); zadania bez planu są liczone osobno („bez planu: N zad.”).

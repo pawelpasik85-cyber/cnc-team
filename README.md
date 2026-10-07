@@ -32,6 +32,11 @@ Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je
 
 Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewnętrznych. Kierownik, programiści (także z domu, z telefonu) i goście wchodzą pod jeden adres HTTPS w domenie firmy. Instalacja, wymagania i zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`, paczka: `npm run package` → `dist/cnc-team-serwer.zip`.
 
+## Plan pracy i grafik (kierownik)
+- **Plan pracy** — polecenia dla każdego programisty na dany dzień (kolejność, zadanie z projektu, czas); programista widzi tylko swoje i potwierdza przeczytanie; ocena i przeniesienie niedokończonych — kierownik.
+- **Kalendarz** — kliknięcie zmiany: tryb pracy (standardowa / wydłużona np. 12 h / nieregularna / dzień dodatkowy), godziny, przeniesienie na inną osobę, **zamiana osób** między zmianami, usunięcie — zawsze z powodem w historii. Przyciski **Dzień dodatkowy / nadgodziny** (np. sobota, niedziela na nocnej zmianie) i **Zmiana trybu pracy** na okres przy brakach kadrowych.
+- Dni dodatkowe są w kalendarzu kreskowane z plakietką **DOD**, zmiany wydłużone — **12h**, nieregularne — **NR**. Godziny na projektach w nadgodzinach (i ich udział %) pokazuje analiza projektu i miesiąca.
+
 ## Analiza i raporty (tylko kierownik)
 
 Po zakończeniu projektu: wykres przebiegu (godziny narastająco i postęp wobec planu, zadania plan vs wykonanie) oraz porównanie z podobnymi zakończonymi projektami — propozycje można odrzucać. Miesiąc wobec tego samego miesiąca rok wcześniej i cały rok wobec innych lat. Każdy widok można zapisać jako raport (z komentarzem), wydrukować / zapisać jako PDF, pobrać CSV i — według decyzji kierownika — udostępnić przełożonemu.

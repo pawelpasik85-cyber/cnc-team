@@ -36,6 +36,12 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 6 — analiza i raporty kierownika (7.10.2026)
 **41 / 41 zaliczonych.** Nowe: `test/analytics.test.js` — przebieg projektu (dni, narastające godziny, postęp wg zakończeń, czas trwania, termin), podobne projekty (punktacja, kolejność, odrzucenie z powodem → poza listą i średnią, przywrócenie, wpis w historii), miesiąc wobec roku wcześniej (wskaźniki, różnice, zakończone projekty), rok wobec lat (sumy, miesiące, przyszłe miesiące = brak danych), dostęp przez HTTP (analiza: przełożony i pracownik 403; raport zapisany: przełożony widzi tylko udostępniony, nie może zmieniać; migawka nie zmienia się po zmianie danych). Zrzuty `67…74` (miesiąc, rok, przebieg projektu z odrzuceniem propozycji, zapisane raporty, raport, wydruk, widok przełożonego, telefon) — bez błędów konsoli; skrypt sprawdza też, że przełożony dostaje 403 na danych analizy.
 
+### Runda 7 — plan pracy (7.10.2026)
+**44 / 44 zaliczonych.** Nowe: `test/orders.test.js` — polecenia z zadaniem i maszyną z projektu, kolejność, ostrzeżenia (brak zmiany, obciążenie 113%), ocena wymaga opisu / powodu, przeniesienie niedokończonych bez duplikatów; dostęp: programista widzi tylko swoje, potwierdza tylko swoje, nie tworzy i nie ocenia (403), przełożony tylko podgląd, gość 403; zmiana treści kasuje potwierdzenie.
+
+### Runda 8 — tryby pracy, zamiany, dni dodatkowe i nadgodziny (7.10.2026)
+**49 / 49 zaliczonych.** Nowe: `test/shifts.test.js` — dzień dodatkowy (sobota noc, niedziela z potwierdzeniem, wymagany powód), zmiana trybu na okres 8 → 12 h, odpoczynek 11 h, zamiana osób, nadgodziny liczone z godzin na dobę (także dla trybu „standardowa” i dnia dzielonego), szablon nie nadpisuje godzin przy edycji samego powodu, zmiana trybu na okres pomija dni dodatkowe, ostrzeżenie o nocnej zmianie przechodzącej w niedzielę, praca w nadgodzinach w projekcie i miesiącu (proporcjonalnie, udział w pracy projektu), brak podwójnego liczenia wpisów ewidencji. Niezależny przegląd znalazł 12 uwag (m.in. nadgodziny zależne od etykiety trybu, zmiana trybu na okres przerabiająca dni dodatkowe, szablon przywracający godziny, podwójne liczenie z ewidencją, niewłaściwy procent w tabeli projektów) — poprawione i pokryte testami. Zrzuty `75…83` (plan pracy, kalendarz z oznaczeniami, edycja zmiany, zamiana, zmiana trybu, analiza nadgodzin, projekt, telefon) — bez błędów konsoli.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

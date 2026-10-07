@@ -1,4 +1,4 @@
-# Znane ograniczenia (wersja 0.3)
+# Znane ograniczenia (wersja 0.7)
 
 ## Prawo i kadry
 - **Przepisy niezweryfikowane w źródłach urzędowych w tej wersji** — wszystkie reguły ustawowe oznaczone „do potwierdzenia przez kadry” (szczegóły: `docs/RULES.md`).
@@ -26,6 +26,12 @@
 - Brak powiadomień (e-mail, push) o nowym zgłoszeniu i o decyzji — pracownik widzi decyzję po wejściu do aplikacji, kierownik — na pulpicie „Dzisiaj”.
 - Opóźnienie projektu zakłada liniowy plan między datą rozpoczęcia a terminem; nie uwzględnia kalendarza pracy ani nierównych etapów.
 - Bez internetu zgłoszenia nie da się wysłać (telefon nie przechowuje danych) — trzeba spróbować ponownie, gdy jest zasięg.
+
+## Grafik i nadgodziny
+- Nadgodziny liczone z grafiku (planu), nie z rzeczywistych godzin wejścia i wyjścia — brak integracji z RCP.
+- Nie jest liczony system równoważny ani okres rozliczeniowy (nadgodziny średniotygodniowe); limit roczny jest tylko ostrzeżeniem — oba do potwierdzenia przez kadry.
+- Przypisanie pracy do nadgodzin jest proporcjonalne w obrębie doby (wpis czasu nie ma godzin od–do).
+- Zamiana osób dotyczy dwóch istniejących zmian; przeniesienie zmiany na inną osobę bez zamiany — przez edycję zmiany (pole „Osoba”).
 
 ## Analiza
 - Porównania z poprzednimi latami mają sens od chwili, gdy zespół wpisuje czas pracy w aplikacji — wcześniejszych danych aplikacja nie ma (ewentualny import historii — do ustalenia).

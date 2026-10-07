@@ -127,37 +127,203 @@ function buildShift(workDate, startTime, endTime, breakMin) {
   return { start_at, end_at, planned_min: gross - breakMin };
 }
 
-function addScheduleEntry(db, user, body, { allowHoliday = false } = {}) {
-  const employeeId = reqInt(body.employee_id, 'Pracownik');
-  const emp = C.employeeOrThrow(db, employeeId);
-  const workDate = reqStr(body.work_date, 'Data');
-  let startTime = body.start_time, endTime = body.end_time, breakMin = body.break_min ?? 0;
-  let tplId = body.shift_template_id ? reqInt(body.shift_template_id, 'Szablon zmiany') : null;
-  if (tplId) {
+const SHIFT_MODES = ['standardowa', 'wydluzona', 'nieregularna', 'dodatkowa'];
+const MODE_LABEL = { standardowa: 'standardowa', wydluzona: 'wydłużona', nieregularna: 'nieregularna', dodatkowa: 'dzień dodatkowy / nadgodziny' };
+
+// Nadgodziny liczone na dobę pracownika (nie na pojedynczą zmianę): dzień dodatkowy — cała zmiana;
+// pozostałe zmiany tego dnia — wszystko ponad normę dobową z warunków zatrudnienia, niezależnie od etykiety trybu.
+function dailyNorm(db, employeeId, workDate) {
+  const terms = C.termsAt(db, employeeId, workDate);
+  return terms && terms.daily_norm_min ? terms.daily_norm_min : 480;
+}
+function recomputeDayOvertime(db, employeeId, workDate) {
+  const norm = dailyNorm(db, employeeId, workDate);
+  let used = 0;
+  for (const r of db.all('SELECT id, mode, planned_min, overtime_min FROM schedule_entries WHERE employee_id=? AND work_date=? ORDER BY start_at', employeeId, workDate)) {
+    let ot;
+    if (r.mode === 'dodatkowa') ot = r.planned_min;
+    else { const within = Math.max(0, Math.min(r.planned_min, norm - used)); used += r.planned_min; ot = r.planned_min - within; }
+    if (ot !== r.overtime_min) db.run('UPDATE schedule_entries SET overtime_min=? WHERE id=?', ot, r.id);
+  }
+}
+function dayOvertime(db, employeeId, workDate) {
+  return db.get('SELECT COALESCE(SUM(overtime_min),0) m FROM schedule_entries WHERE employee_id=? AND work_date=?', employeeId, workDate).m;
+}
+
+// Odpoczynek dobowy (11 h, art. 132 KP) między sąsiednimi zmianami tego pracownika z innych dni
+// (zmiany tego samego dnia — dzień dzielony / dzień dodatkowy po zmianie — liczą się jako jedna doba pracy)
+function restGaps(db, employeeId, startAt, endAt, excludeId = 0, workDate = '') {
+  const minRest = C.getSettingInt(db, 'min_daily_rest_min', 660);
+  const prev = db.get('SELECT end_at, work_date FROM schedule_entries WHERE employee_id=? AND id != ? AND work_date != ? AND end_at <= ? ORDER BY end_at DESC LIMIT 1', employeeId, excludeId, workDate, startAt);
+  const next = db.get('SELECT start_at, work_date FROM schedule_entries WHERE employee_id=? AND id != ? AND work_date != ? AND start_at >= ? ORDER BY start_at LIMIT 1', employeeId, excludeId, workDate, endAt);
+  const out = [];
+  if (prev) { const g = T.minutesBetween(prev.end_at, startAt); if (g < minRest) out.push(`odpoczynek po zmianie z ${prev.work_date}: ${T.fmtHM(g)} (wymagane ${T.fmtHM(minRest)})`); }
+  if (next) { const g = T.minutesBetween(endAt, next.start_at); if (g < minRest) out.push(`odpoczynek przed zmianą z ${next.work_date}: ${T.fmtHM(g)} (wymagane ${T.fmtHM(minRest)})`); }
+  return out;
+}
+
+// Ostrzeżenie o rocznym limicie — liczone po zapisie, z faktycznego stanu grafiku
+function overtimeYearWarning(db, employeeId, year) {
+  const limit = C.getSettingInt(db, 'overtime_year_limit_min', 9000);
+  const total = db.get(`SELECT COALESCE(SUM(overtime_min),0) s FROM schedule_entries WHERE employee_id=? AND substr(work_date,1,4)=?`, employeeId, String(year)).s;
+  if (total <= limit) return null;
+  const e = db.get('SELECT first_name, last_name FROM employees WHERE id=?', employeeId);
+  return `Nadgodziny w roku ${year}${e ? ` (${e.first_name} ${e.last_name})` : ''}: ${T.fmtHM(total)} — powyżej limitu ${T.fmtHM(limit)} (do potwierdzenia przez kadry).`;
+}
+
+// Szablon nadaje godziny tylko wtedy, gdy został wybrany w żądaniu; bez pola szablonu zostają dotychczasowe godziny zmiany.
+function resolveShiftTimes(db, body, base = {}) {
+  let startTime = body.start_time || null, endTime = body.end_time || null;
+  let breakMin = body.break_min ?? null;
+  const given = body.shift_template_id !== undefined && body.shift_template_id !== null && body.shift_template_id !== '';
+  const tplId = given ? reqInt(body.shift_template_id, 'Szablon zmiany') : (body.shift_template_id === undefined ? base.shift_template_id ?? null : null);
+  if (given) {
     const tpl = db.get('SELECT * FROM shift_templates WHERE id=?', tplId);
     if (!tpl) throw bad('Nieznany szablon zmiany.');
     startTime = startTime || tpl.start_time; endTime = endTime || tpl.end_time;
-    breakMin = body.break_min ?? tpl.break_min;
+    breakMin = breakMin ?? tpl.break_min;
   }
-  breakMin = reqInt(breakMin, 'Przerwa', { min: 0, max: 240 });
-  const sh = buildShift(workDate, startTime, endTime, breakMin);
+  startTime = startTime || (base.start_at ? T.utcToLocal(base.start_at).time : null);
+  endTime = endTime || (base.end_at ? T.utcToLocal(base.end_at).time : null);
+  breakMin = reqInt(breakMin ?? base.break_min ?? 0, 'Przerwa', { min: 0, max: 240 });
+  if (!startTime || !endTime) throw bad('Podaj godziny zmiany albo wybierz szablon.');
+  return { startTime, endTime, breakMin, tplId };
+}
+
+// Wspólne kontrole: zatrudnienie, święto/niedziela, nakładanie, odpoczynek; zwraca ostrzeżenia
+function checkShift(db, emp, workDate, sh, body, excludeId = 0) {
   C.assertMonthOpen(db, T.monthOf(workDate));
-  if (workDate < emp.employment_start || (emp.employment_end && workDate > emp.employment_end)) {
-    throw conflict('Data poza okresem zatrudnienia.');
-  }
+  if (workDate < emp.employment_start || (emp.employment_end && workDate > emp.employment_end)) throw conflict('Data poza okresem zatrudnienia.');
   const hol = db.get('SELECT * FROM holidays WHERE date=?', workDate);
-  if (hol && !allowHoliday && !body.confirm_holiday) {
-    throw conflict(`${workDate} to dzień wolny (${hol.name}). Potwierdź świadomie zaplanowanie pracy.`, { code: 'holiday' });
+  const sunday = T.weekday(workDate) === 7;
+  if ((hol || sunday) && !body.confirm_holiday) {
+    throw conflict(`${workDate} to ${hol ? `dzień wolny (${hol.name})` : 'niedziela'}. Potwierdź świadomie zaplanowanie pracy.`, { code: 'holiday' });
   }
-  const clash = C.scheduleIn(db, employeeId, sh.start_at, sh.end_at);
+  const clash = C.scheduleIn(db, emp.id, sh.start_at, sh.end_at).filter(c => c.id !== excludeId);
   if (clash.length) throw conflict('Zmiana nakłada się na inną zmianę w grafiku tego pracownika.', { ids: clash.map(c => c.id) });
-  return db.tx(() => {
-    const r = db.run(`INSERT INTO schedule_entries(employee_id,work_date,start_at,end_at,break_min,planned_min,shift_template_id,note,created_at)
-      VALUES (?,?,?,?,?,?,?,?,?)`, employeeId, workDate, sh.start_at, sh.end_at, breakMin, sh.planned_min, tplId, body.note || null, T.nowIso());
-    const id = Number(r.lastInsertRowid);
-    audit(db, user, 'schedule', id, 'utworzenie', null, { employee_id: employeeId, work_date: workDate, ...sh, break_min: breakMin });
-    return id;
+  const rest = restGaps(db, emp.id, sh.start_at, sh.end_at, excludeId, workDate);
+  if (rest.length && !body.confirm_rest) throw conflict(`Naruszenie odpoczynku dobowego: ${rest.join('; ')}. Zaznacz świadome potwierdzenie (np. akcja ratownicza, art. 132 § 2 KP — do potwierdzenia przez kadry).`, { code: 'rest' });
+  const warnings = [];
+  // zmiana nocna przechodząca w niedzielę / święto: godziny w dniu wolnym — ostrzeżenie do rozliczenia
+  const endLocal = T.utcToLocal(sh.end_at);
+  if (endLocal.date > workDate && endLocal.time !== '00:00') {
+    const h2 = db.get('SELECT * FROM holidays WHERE date=?', endLocal.date);
+    if (h2 || T.weekday(endLocal.date) === 7) warnings.push(`Zmiana z ${workDate} trwa do ${endLocal.time} w ${h2 ? `dniu wolnym (${h2.name})` : 'niedzielę'} ${endLocal.date} — godziny w dniu wolnym do rozliczenia przez kadry.`);
+  }
+  if (rest.length) warnings.push(`Świadomie skrócony odpoczynek: ${rest.join('; ')}.`);
+  if (sh.planned_min > 12 * 60) warnings.push(`Zmiana dłuższa niż 12 h (${T.fmtHM(sh.planned_min)}).`);
+  return warnings;
+}
+
+function addScheduleEntry(db, user, body, { allowHoliday = false, withWarnings = false } = {}) {
+  const employeeId = reqInt(body.employee_id, 'Pracownik');
+  const emp = C.employeeOrThrow(db, employeeId);
+  const workDate = reqStr(body.work_date, 'Data');
+  const mode = oneOf(body.mode || 'standardowa', 'Tryb pracy', SHIFT_MODES);
+  const reason = reqStr(body.reason, 'Powód', { optional: true, max: 300 });
+  if (mode !== 'standardowa' && !reason) throw bad('Dzień dodatkowy i zmiana trybu pracy wymagają powodu (np. braki kadrowe, termin projektu).');
+  const t = resolveShiftTimes(db, body);
+  const sh = buildShift(workDate, t.startTime, t.endTime, t.breakMin);
+  const warnings = checkShift(db, emp, workDate, sh, allowHoliday ? { ...body, confirm_holiday: true } : body);
+  const id = db.tx(() => {
+    const before = dayOvertime(db, employeeId, workDate);
+    const r = db.run(`INSERT INTO schedule_entries(employee_id,work_date,start_at,end_at,break_min,planned_min,shift_template_id,note,mode,overtime_min,reason,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,0,?,?)`, employeeId, workDate, sh.start_at, sh.end_at, t.breakMin, sh.planned_min, t.tplId, body.note || null, mode, reason, T.nowIso());
+    const nid = Number(r.lastInsertRowid);
+    recomputeDayOvertime(db, employeeId, workDate);
+    audit(db, user, 'schedule', nid, 'utworzenie', null, { employee_id: employeeId, work_date: workDate, ...sh, break_min: t.breakMin, mode, nadgodziny_dnia_min: dayOvertime(db, employeeId, workDate), nadgodziny_dnia_przed_min: before }, reason);
+    return nid;
   });
+  if (dayOvertime(db, employeeId, workDate)) { const ow = overtimeYearWarning(db, employeeId, workDate.slice(0, 4)); if (ow) warnings.push(ow); }
+  return withWarnings ? { id, warnings } : id;
+}
+
+function exitsOnShift(db, s) {
+  return db.get(`SELECT COUNT(*) n FROM private_exits WHERE employee_id=? AND status!='anulowane' AND start_at < ? AND end_at > ?`, s.employee_id, s.end_at, s.start_at).n;
+}
+
+// Zmiana godzin / trybu / przeniesienie na inną osobę lub dzień — zawsze z powodem
+function updateScheduleEntry(db, user, id, body) {
+  const old = db.get('SELECT * FROM schedule_entries WHERE id=?', id);
+  if (!old) throw notFound();
+  C.assertMonthOpen(db, T.monthOf(old.work_date));
+  const reason = reqStr(body.reason, 'Powód zmiany', { max: 300 });
+  const employeeId = body.employee_id ? reqInt(body.employee_id, 'Pracownik') : old.employee_id;
+  const emp = C.employeeOrThrow(db, employeeId);
+  const workDate = body.work_date ? reqStr(body.work_date, 'Data') : old.work_date;
+  const mode = oneOf(body.mode || old.mode, 'Tryb pracy', SHIFT_MODES);
+  const t = resolveShiftTimes(db, body, old);
+  const sh = buildShift(workDate, t.startTime, t.endTime, t.breakMin);
+  const timesChanged = sh.start_at !== old.start_at || sh.end_at !== old.end_at || employeeId !== old.employee_id;
+  if (timesChanged && exitsOnShift(db, old)) throw conflict('Na tej zmianie zarejestrowano wyjście prywatne — najpierw je anuluj lub skoryguj.');
+  const warnings = checkShift(db, emp, workDate, sh, body, id);
+  // powód trybu (widoczny w grafiku) zmienia się tylko przy zmianie trybu; powód każdej zmiany trafia do historii
+  const modeReason = mode !== old.mode || !old.reason ? reason : old.reason;
+  db.tx(() => {
+    db.run(`UPDATE schedule_entries SET employee_id=?, work_date=?, start_at=?, end_at=?, break_min=?, planned_min=?, shift_template_id=?, mode=?, reason=?, updated_at=? WHERE id=?`,
+      employeeId, workDate, sh.start_at, sh.end_at, t.breakMin, sh.planned_min, t.tplId, mode, modeReason, T.nowIso(), id);
+    recomputeDayOvertime(db, old.employee_id, old.work_date);
+    recomputeDayOvertime(db, employeeId, workDate);
+    const now = db.get('SELECT * FROM schedule_entries WHERE id=?', id);
+    const pick = (x) => ({ employee_id: x.employee_id, work_date: x.work_date, start_at: x.start_at, end_at: x.end_at, break_min: x.break_min, planned_min: x.planned_min, shift_template_id: x.shift_template_id, mode: x.mode, overtime_min: x.overtime_min });
+    audit(db, user, 'schedule', id, employeeId !== old.employee_id ? 'zmiana_osoby' : 'zmiana_trybu', pick(old), pick(now), reason);
+  });
+  if (dayOvertime(db, employeeId, workDate)) { const ow = overtimeYearWarning(db, employeeId, workDate.slice(0, 4)); if (ow) warnings.push(ow); }
+  return { id, warnings };
+}
+
+// Zamiana osób między dwiema zmianami (np. Jan bierze nocną Ewy, Ewa — poranną Jana)
+function swapShifts(db, user, body) {
+  const a = db.get('SELECT * FROM schedule_entries WHERE id=?', reqInt(body.a_id, 'Zmiana 1'));
+  const b = db.get('SELECT * FROM schedule_entries WHERE id=?', reqInt(body.b_id, 'Zmiana 2'));
+  if (!a || !b) throw notFound('Nie znaleziono zmiany.');
+  if (a.employee_id === b.employee_id) throw bad('Wybierz zmiany dwóch różnych osób.');
+  const reason = reqStr(body.reason, 'Powód zamiany', { max: 300 });
+  for (const s of [a, b]) { C.assertMonthOpen(db, T.monthOf(s.work_date)); if (exitsOnShift(db, s)) throw conflict(`Na zmianie z ${s.work_date} zarejestrowano wyjście prywatne — najpierw je skoryguj.`); }
+  const warnings = [];
+  return db.tx(() => {
+    // tymczasowo zwalniamy obie zmiany, żeby sprawdzić nakładanie po zamianie
+    db.run('UPDATE schedule_entries SET employee_id=? WHERE id=?', b.employee_id, a.id);
+    db.run('UPDATE schedule_entries SET employee_id=? WHERE id=?', a.employee_id, b.id);
+    for (const [s, emp] of [[a, b.employee_id], [b, a.employee_id]]) {
+      const e = C.employeeOrThrow(db, emp);
+      warnings.push(...checkShift(db, e, s.work_date, s, body, s.id));
+      db.run('UPDATE schedule_entries SET updated_at=? WHERE id=?', T.nowIso(), s.id);
+    }
+    for (const s of [a, b]) { recomputeDayOvertime(db, a.employee_id, s.work_date); recomputeDayOvertime(db, b.employee_id, s.work_date); }
+    // osobny wpis historii dla każdej zmiany, żeby był widoczny w historii tej zmiany
+    for (const [s, other] of [[a, b], [b, a]]) {
+      const now = db.get('SELECT employee_id, overtime_min FROM schedule_entries WHERE id=?', s.id);
+      audit(db, user, 'schedule', s.id, 'zamiana_zmian', { employee_id: s.employee_id, overtime_min: s.overtime_min }, { employee_id: now.employee_id, overtime_min: now.overtime_min, zamiana_ze_zmiana: other.id }, reason);
+    }
+    for (const emp of [a.employee_id, b.employee_id]) for (const y of new Set([a.work_date.slice(0, 4), b.work_date.slice(0, 4)])) { const ow = overtimeYearWarning(db, emp, y); if (ow) warnings.push(ow); }
+    return { swapped: [a.id, b.id], warnings: [...new Set(warnings)] };
+  });
+}
+
+// Zmiana trybu pracy na okres (np. 8 h → 12 h z powodu braków kadrowych) dla istniejących zmian w grafiku
+function bulkShiftMode(db, user, body) {
+  const ids = (Array.isArray(body.employee_ids) ? body.employee_ids : [body.employee_id]).filter(Boolean).map(Number);
+  if (!ids.length) throw bad('Wybierz pracownika.');
+  const from = reqStr(body.from, 'Od'), to = reqStr(body.to, 'Do');
+  T.assertDate(from); T.assertDate(to);
+  if (to < from || T.dateRange(from, to).length > 93) throw bad('Zakres do 93 dni.');
+  const reason = reqStr(body.reason, 'Powód', { max: 300 });
+  const weekdays = Array.isArray(body.weekdays) && body.weekdays.length ? body.weekdays.map(Number) : [1, 2, 3, 4, 5, 6, 7];
+  const changed = [], skipped = [];
+  for (const empId of ids) {
+    for (const s of db.all('SELECT * FROM schedule_entries WHERE employee_id=? AND work_date BETWEEN ? AND ? ORDER BY start_at', empId, from, to)) {
+      if (!weekdays.includes(T.weekday(s.work_date))) continue;
+      if (s.mode === 'dodatkowa') { skipped.push({ id: s.id, work_date: s.work_date, employee_id: empId, reason: 'dzień dodatkowy — zmień go pojedynczo w kalendarzu' }); continue; }
+      try {
+        const r = db.tx(() => updateScheduleEntry(db, user, s.id, { ...(body.shift_template_id ? { shift_template_id: body.shift_template_id } : {}), start_time: body.start_time, end_time: body.end_time, break_min: body.break_min, mode: body.mode, reason, confirm_holiday: body.confirm_holiday, confirm_rest: body.confirm_rest }));
+        changed.push({ id: s.id, work_date: s.work_date, employee_id: empId, warnings: r.warnings });
+      } catch (e) {
+        if (e.status === 409 || e.status === 400) skipped.push({ id: s.id, work_date: s.work_date, employee_id: empId, reason: e.message }); else throw e;
+      }
+    }
+  }
+  return { changed: changed.length, skipped, warnings: [...new Set(changed.flatMap(c => c.warnings))] };
 }
 
 // Generowanie grafiku dla zakresu dat wg dni tygodnia (święta pomijane).
@@ -186,10 +352,11 @@ function deleteScheduleEntry(db, user, id, reason) {
   if (!s) throw notFound();
   C.assertMonthOpen(db, T.monthOf(s.work_date));
   if (!reason) throw bad('Usunięcie zmiany z grafiku wymaga powodu.');
-  const used = db.get(`SELECT COUNT(*) n FROM private_exits WHERE employee_id=? AND status!='anulowane' AND start_at < ? AND end_at > ?`, s.employee_id, s.end_at, s.start_at).n;
+  const used = exitsOnShift(db, s);
   if (used) throw conflict('Na tej zmianie zarejestrowano wyjście prywatne — najpierw je anuluj lub skoryguj.');
   db.tx(() => {
     db.run('DELETE FROM schedule_entries WHERE id=?', id);
+    recomputeDayOvertime(db, s.employee_id, s.work_date);
     audit(db, user, 'schedule', id, 'usunięcie', s, null, reason);
   });
 }
@@ -309,5 +476,5 @@ function saveUser(db, user, body, id) {
 
 module.exports = {
   listEmployees, saveEmployee, approveInitialSettlement, addTerms, saveShiftTemplate, buildShift, addScheduleEntry,
-  generateSchedule, deleteScheduleEntry, listSchedule, addAttendance, ensureHolidays, polishHolidays, saveHoliday, saveUser, easter,
+  generateSchedule, deleteScheduleEntry, listSchedule, updateScheduleEntry, swapShifts, bulkShiftMode, SHIFT_MODES, MODE_LABEL, recomputeDayOvertime, dailyNorm, addAttendance, ensureHolidays, polishHolidays, saveHoliday, saveUser, easter,
 };

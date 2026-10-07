@@ -198,9 +198,12 @@ function buildRoutes() {
     requireCap(user, 'view.calendar');
     const from = query.from || `${T.today().slice(0, 7)}-01`; const to = query.to || T.lastDayOfMonth(from.slice(0, 7));
     T.assertDate(from); T.assertDate(to);
-    return People.listSchedule(db, from, to, int(query.employee_id)).map(s => user.role === 'employee' ? { id: s.id, employee_id: s.employee_id, work_date: s.work_date, start_local: s.start_local, end_local: s.end_local, shift_template_id: s.shift_template_id, planned_min: s.planned_min } : s);
+    return People.listSchedule(db, from, to, int(query.employee_id)).map(s => user.role === 'employee' ? { id: s.id, employee_id: s.employee_id, work_date: s.work_date, start_local: s.start_local, end_local: s.end_local, shift_template_id: s.shift_template_id, planned_min: s.planned_min, mode: s.mode } : s);
   });
-  add('POST', '/schedule', ({ db, user, body }) => { requireAdmin(user); return { id: People.addScheduleEntry(db, user, body) }; });
+  add('POST', '/schedule', ({ db, user, body }) => { requireAdmin(user); return People.addScheduleEntry(db, user, body, { withWarnings: true }); });
+  add('PATCH', '/schedule/:id', ({ db, user, body, params }) => { requireAdmin(user); return People.updateScheduleEntry(db, user, Number(params.id), body); });
+  add('POST', '/schedule/swap', ({ db, user, body }) => { requireAdmin(user); return People.swapShifts(db, user, body); });
+  add('POST', '/schedule/bulk-mode', ({ db, user, body }) => { requireAdmin(user); return People.bulkShiftMode(db, user, body); });
   add('POST', '/schedule/generate', ({ db, user, body }) => { requireAdmin(user); return People.generateSchedule(db, user, body); });
   add('DELETE', '/schedule/:id', ({ db, user, params, body, query }) => { requireAdmin(user); People.deleteScheduleEntry(db, user, Number(params.id), body.reason || query.reason); });
   add('POST', '/shift-templates', ({ db, user, body }) => { requireAdmin(user); return { id: People.saveShiftTemplate(db, user, body) }; });
