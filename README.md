@@ -38,6 +38,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - Dni dodatkowe są w kalendarzu kreskowane z plakietką **DOD**, zmiany wydłużone — **12h**, nieregularne — **NR**. Godziny na projektach w nadgodzinach (i ich udział %) pokazuje analiza projektu i miesiąca.
 
 ## Analiza i raporty (tylko kierownik)
+- **Powrót do projektu (poprawki)** — przy zakończonym projekcie; analiza projektu pokazuje czas przed poprawkami, ile doszło w każdej rundzie (i o ile %), same poprawki łącznie i razem.
 
 Po zakończeniu projektu: wykres przebiegu (godziny narastająco i postęp wobec planu, zadania plan vs wykonanie) oraz porównanie z podobnymi zakończonymi projektami — propozycje można odrzucać. Miesiąc wobec tego samego miesiąca rok wcześniej i cały rok wobec innych lat. Każdy widok można zapisać jako raport (z komentarzem), wydrukować / zapisać jako PDF, pobrać CSV i — według decyzji kierownika — udostępnić przełożonemu.
 

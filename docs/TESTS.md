@@ -46,6 +46,10 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 **50 / 50 zaliczonych.** Nowe: `test/analytics-privacy.test.js` — programista, gość i przełożony dostają 403 na każdej trasie analizy (przebieg projektu, miesiąc, rok, CSV, odrzucanie propozycji, zapis i usuwanie raportów); programista i gość nie widzą zapisanych raportów; przełożony widzi wyłącznie raport udostępniony (prywatny → 404); dane o nadgodzinach w projekcie widzi tylko kierownik, nawet gdy programiści mają włączony podgląd godzin projektu.
 
 
+### Runda 10 — powroty do projektu (9.10.2026)
+**52 / 52 zaliczonych.** Nowe: `test/returns.test.js` — powrót tylko po zakończeniu (nie dla anulowanych), daty (nie przed ostatnią pracą, nie w przyszłości), runda z zadaniem poprawek, ponownie otwarte zadanie pierwotne w rundzie, czas przed poprawkami / doszło (z %) / same poprawki / razem, zakończenie wymaga zakończonych zadań i opisu, druga runda, blokada wpisów czasu poza rundą i zadań rundy poza jej okresem, blokada ręcznej zmiany statusu w trakcie rundy, wskaźnik miesiąca, projekt nadal zakończony w miesiącu pierwszego zakończenia, wskaźniki projektu dla pierwotnej realizacji; dostęp: programista, przełożony i gość nie otwierają rund i nie widzą ich powodów. Niezależny przegląd: 11 uwag (m.in. czas po zamknięciu rundy liczony do rundy, przesuwanie zakończenia projektu do innego miesiąca, zawyżanie porównań z podobnymi projektami, brak opisu przy zamknięciu, widoczność dla przełożonego) — poprawione i pokryte testami. Zrzuty `84…87`.
+
+## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |
 |---|---|
