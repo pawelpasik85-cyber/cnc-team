@@ -12,7 +12,7 @@ VIEWS.pracownicy = async (main) => {
   const leaveBy = new Map(leave.map(x => [x.employee_id, x]));
   const yearNav = leave.length ? `<span class="lc-yearnav"><span class="muted small">Urlopy</span><a class="btn" href="#/pracownicy?rok=${year - 1}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${year}</span><a class="btn" href="#/pracownicy?rok=${year + 1}" aria-label="Następny rok">›</a></span>` : '';
   const machines = new Map(S.boot.machines.map(m => [m.id, m]));
-  main.innerHTML = head('Pracownicy', `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
+  main.innerHTML = peopleTabs('pracownicy') + head('Pracownicy', `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
     `<div class="cols">${emps.map(e => {
       const t = e.current_terms; const b = balances.find(x => x.employee_id === e.id);
       return `<section class="panel"><div class="page-head" style="margin:0 0 var(--sp-2)"><h3>${person(e.id)}</h3>${e.active ? tag('aktywny', 'ok') : tag('nieaktywny')}</div>
@@ -81,7 +81,7 @@ VIEWS.wyjscia = async (main) => {
   const closed = mStatus.status === 'zamkniety';
   const nav = `<a class="btn" href="#/wyjscia?m=${addMonths(ym, -1)}">‹</a><span class="btn" aria-live="polite">${plMonth(ym)}</span><a class="btn" href="#/wyjscia?m=${addMonths(ym, 1)}">›</a>`;
   const tools = nav + (isAdmin() && !closed ? btn('addExit', 'Wyjście prywatne') + btn('addMk', 'Odrabianie', 'makeup', '') : '');
-  main.innerHTML = head('Wyjścia i odrabianie', `Rozliczenie w miesiącu kalendarzowym (zasada firmy, nie termin ustawowy). Miesiąc: ${closed ? tag(`zamknięty, wersja ${mStatus.version}`, 'danger', 'lock') : tag('otwarty', 'ok')}`, tools) + `
+  main.innerHTML = peopleTabs('wyjscia') + head('Wyjścia i odrabianie', `Rozliczenie w miesiącu kalendarzowym (zasada firmy, nie termin ustawowy). Miesiąc: ${closed ? tag(`zamknięty, wersja ${mStatus.version}`, 'danger', 'lock') : tag('otwarty', 'ok')}`, tools) + `
     ${exitCalendar(ym, calFrom, calTo, exits, makeups, sched)}
     <div class="notice info small">Wpis administratora nie zastępuje pisemnego wniosku pracownika. Nadgodziny nie są automatycznie zamieniane na odrobienie, a nadwyżka odrabiania nie tworzy kredytu.</div>
     <section class="panel"><h3>Salda</h3>${table([
@@ -226,7 +226,7 @@ VIEWS.absencje = async (main) => {
     ], S.boot.categories)}</section>`;
   }
   const tools = isAdmin() ? (tab === 'lista' || tab === 'kalendarz' ? btn('addAbs', 'Dodaj nieobecność') : tab === 'urlop' ? btn('addPool', 'Pula urlopu (z kadr)') : tab === 'katalog' ? btn('addCat', 'Nowa kategoria') : '') : '';
-  main.innerHTML = head('Urlopy i absencje', 'Planowane, wykorzystane i anulowane nieobecności. Bez obliczeń wynagrodzeń i zasiłków.', tools) +
+  main.innerHTML = peopleTabs('absencje') + head('Urlopy i absencje', 'Planowane, wykorzystane i anulowane nieobecności. Bez obliczeń wynagrodzeń i zasiłków.', tools) +
     `<div class="tabs" role="tablist">${tabs.map(([id, l]) => `<button role="tab" class="${tab === id ? 'active' : ''}" data-tab="${id}">${esc(l)}</button>`).join('')}</div>${body}`;
   $$('[data-tab]').forEach(b => b.onclick = () => { location.hash = `#/absencje?t=${b.dataset.tab}`; });
   if ($('#absF')) $('#absF').onsubmit = (e) => { e.preventDefault(); location.hash = `#/absencje?t=lista&${new URLSearchParams([...new FormData(e.target)].filter(([, v]) => v))}`; };

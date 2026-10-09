@@ -32,7 +32,9 @@ Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je
 
 Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewnętrznych. Kierownik, programiści (także z domu, z telefonu) i goście wchodzą pod jeden adres HTTPS w domenie firmy. Instalacja, wymagania i zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`, paczka: `npm run package` → `dist/cnc-team-serwer.zip`.
 
-## Urlopy
+## Pracownicy, urlopy, wyjścia
+- Menu boczne: **Pracownicy** ma zakładki *Pracownicy · Urlopy i absencje · Wyjścia i odrabianie*. Tablica maszyn usunięta z menu (te same dane są w Centrum programowania).
+- **Kalendarz**: za godzinami zmiany danej osoby widać, co zmieniło jej dzień — nieobecność (godziny przekreślone), wyjście prywatne z godzinami, odrabianie, przekazanie zmiany.
 - **Kalendarz urlopów** (Urlopy i absencje): miesiąc w kafelkach — kto i jaka nieobecność.
 - **Wyjścia i odrabianie**: nad saldami kalendarz miesiąca — kto, którego dnia, na której zmianie wyszedł / odrabiał.
 - **Pracownicy**: pod każdą osobą zestawienie na wybrany rok — urlop wypoczynkowy (wykorzystano / zostało / zaległy), na żądanie, siła wyższa, art. 188, inne nieobecności.

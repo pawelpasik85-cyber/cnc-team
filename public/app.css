@@ -500,3 +500,18 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .xc-sub { font-size: 10px; color: var(--c-ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-item.done { opacity: .55; }
 @media (max-width: 700px) { .xc-sub { white-space: normal; font-size: 9px; line-height: 1.15; } }
+/* Zakładki sekcji (Pracownicy / Urlopy i absencje / Wyjścia i odrabianie) */
+.section-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 var(--sp-3); padding: 4px; background: var(--c-paper); border: 1px solid var(--c-line); border-radius: var(--r-md); width: fit-content; max-width: 100%; }
+.section-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: var(--r-sm); color: var(--c-ink-soft); text-decoration: none; font-weight: 600; font-size: var(--fs-sm); }
+.section-tabs a svg { width: 16px; height: 16px; }
+.section-tabs a:hover { color: var(--c-ink); background: var(--c-surface); }
+.section-tabs a.active { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), inset 0 -2px 0 var(--c-accent); }
+@media (max-width: 700px) { .section-tabs { width: 100%; } .section-tabs a { flex: 1; justify-content: center; padding: 7px 6px; font-size: 12px; } .section-tabs a svg { display: none; } }
+/* Zdarzenia przy zmianie w kalendarzu */
+.ev-tag { display: inline-flex; align-items: center; margin-left: 4px; padding: 0 4px; border-radius: 3px; font-size: 10px; font-weight: 700; line-height: 1.5; white-space: nowrap;
+  background: color-mix(in srgb, var(--tone) 20%, var(--c-surface)); border: 1px solid var(--tone); color: var(--c-ink); }
+.ev-tag.plan { border-style: dashed; background: transparent; }
+.ev-tag.cancel { text-decoration: line-through; opacity: .6; }
+.shift-off { text-decoration: line-through; opacity: .6; }
+.chip.has-ev { background: color-mix(in srgb, var(--c-warn) 6%, var(--c-paper)); }
+.chip.has-ev { flex-wrap: wrap; white-space: normal; row-gap: 2px; }
