@@ -6,8 +6,13 @@ VIEWS.pracownicy = async (main) => {
   const emps = await api('/employees');
   S.emp = new Map(emps.map(e => [e.id, e]));
   const balances = await api(`/balances?month=${S.me.today.slice(0, 7)}`).catch(() => []);
+  const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  const year = /^20\d{2}$/.test(q.get('rok') || '') ? Number(q.get('rok')) : Number(S.me.today.slice(0, 4));
+  const leave = can('view.leave.all') ? await api(`/leave/summary?year=${year}`).catch(() => []) : [];
+  const leaveBy = new Map(leave.map(x => [x.employee_id, x]));
+  const yearNav = leave.length ? `<span class="lc-yearnav"><span class="muted small">Urlopy</span><a class="btn" href="#/pracownicy?rok=${year - 1}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${year}</span><a class="btn" href="#/pracownicy?rok=${year + 1}" aria-label="Następny rok">›</a></span>` : '';
   const machines = new Map(S.boot.machines.map(m => [m.id, m]));
-  main.innerHTML = head('Pracownicy', 'Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny.', isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '') +
+  main.innerHTML = head('Pracownicy', `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
     `<div class="cols">${emps.map(e => {
       const t = e.current_terms; const b = balances.find(x => x.employee_id === e.id);
       return `<section class="panel"><div class="page-head" style="margin:0 0 var(--sp-2)"><h3>${person(e.id)}</h3>${e.active ? tag('aktywny', 'ok') : tag('nieaktywny')}</div>
@@ -20,6 +25,7 @@ VIEWS.pracownicy = async (main) => {
           ${e.initial_settlement_note !== undefined ? `<dt class="muted">Dane początkowe</dt><dd style="margin:0">${esc(e.initial_settlement_note || '—')} ${e.initial_settlement_approved_at ? tag('zatwierdzone', 'ok', 'check') : tag('niezatwierdzone', 'warn')}</dd>` : ''}
           ${e.hr_reference ? `<dt class="muted">Referencja kadrowa</dt><dd style="margin:0">${icon('lock')} ${esc(e.hr_reference)}</dd>` : ''}
         </dl>
+        ${leaveBy.has(e.id) ? `<div class="lc-emp"><h4>Urlopy i nieobecności ${year}</h4>${leaveRows(leaveBy.get(e.id), year)}</div>` : ''}
         ${e.terms && e.terms.length > 1 ? `<details class="small"><summary>Historia etatu (${e.terms.length})</summary>${table([{ key: 'valid_from', label: 'Od', fmt: 'date' }, { key: r => `${r.fte_num}/${r.fte_den}`, label: 'Etat' }, { key: 'daily_norm_min', label: 'Norma dobowa', fmt: 'hm' }, { key: 'note', label: 'Uwagi' }], e.terms)}</details>` : ''}
         ${isAdmin() ? `<div class="toolbar" style="margin-top:var(--sp-3)"><button data-edit="${e.id}">Edytuj</button><button data-terms="${e.id}">Zmiana etatu</button>${!e.initial_settlement_approved_at ? `<button data-approve="${e.id}">Zatwierdź dane początkowe</button>` : ''}</div>` : ''}
       </section>`;
@@ -254,17 +260,13 @@ const minAsDays = (min, dayMin) => (dayMin ? daysTxt(Math.round((min / dayMin) *
 async function leaveCalendar(q) {
   const mq = q.get('m') || '';
   const ym = /^(20\d{2})-(0[1-9]|1[0-2])$/.test(mq) ? mq : S.me.today.slice(0, 7);
-  const sumYear = /^20\d{2}$/.test(q.get('rok') || '') ? Number(q.get('rok')) : Number(ym.slice(0, 4));
   const empF = /^\d+$/.test(q.get('osoba') || '') ? q.get('osoba') : '';
   const first = `${ym}-01`, last = lastDay(ym);
   const from = addDays(first, 1 - weekday(first)), to = addDays(last, 7 - weekday(last));
-  const [list, summary] = await Promise.all([
-    api(`/absences?from=${from}&to=${to}${empF ? `&employee_id=${empF}` : ''}`),
-    api(`/leave/summary?year=${sumYear}`),
-  ]);
+  const list = await api(`/absences?from=${from}&to=${to}${empF ? `&employee_id=${empF}` : ''}`);
   const abs = list.filter(a => a.status !== 'anulowana');
   const holidays = new Map(S.boot.holidays.map(h => [h.date, h.name]));
-  const link = (o) => `#/absencje?${new URLSearchParams({ t: 'kalendarz', m: ym, rok: sumYear, ...(empF ? { osoba: empF } : {}), ...o })}`;
+  const link = (o) => `#/absencje?${new URLSearchParams({ t: 'kalendarz', m: ym, ...(empF ? { osoba: empF } : {}), ...o })}`;
   let workdays = 0;
   let cells = DOW.map(d => `<div class="lc-dow">${d}</div>`).join('');
   const used = new Map();
@@ -285,18 +287,15 @@ async function leaveCalendar(q) {
       <span class="lc-num">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}<div class="lc-items">${items}</div></div>`;
   }
   const legend = [...used].map(([label, tone]) => `<span class="lc-leg tone-${tone}"><b></b>${esc(label)}</span>`).join('');
-  const cards = summary.filter(e => !empF || String(e.employee_id) === empF).map(e => leaveCard(e, sumYear)).join('');
   const html = `<section class="panel lc-panel">
-      <div class="lc-head"><a class="btn" href="${link({ m: addMonths(ym, -1), rok: addMonths(ym, -1).slice(0, 4) })}" aria-label="Poprzedni miesiąc">‹</a><h2>${esc(plMonth(ym))}</h2><a class="btn" href="${link({ m: addMonths(ym, 1), rok: addMonths(ym, 1).slice(0, 4) })}" aria-label="Następny miesiąc">›</a>
-        <a class="btn" href="${link({ m: S.me.today.slice(0, 7), rok: S.me.today.slice(0, 4) })}">Dziś</a>
+      <div class="lc-head"><a class="btn" href="${link({ m: addMonths(ym, -1) })}" aria-label="Poprzedni miesiąc">‹</a><h2>${esc(plMonth(ym))}</h2><a class="btn" href="${link({ m: addMonths(ym, 1) })}" aria-label="Następny miesiąc">›</a>
+        <a class="btn" href="${link({ m: S.me.today.slice(0, 7) })}">Dziś</a>
         <label class="field">Osoba<select id="lcEmp"><option value="">wszyscy</option>${empOptions(false).map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label></div>
       <div class="lcal">${cells}</div>
       <p class="small"><b>${workdays}</b> dni roboczych w miesiącu (bez weekendów i świąt). ${legend ? `<span class="lc-legend">${legend}</span>` : '<span class="muted">Brak nieobecności w tym miesiącu.</span>'}</p>
       <p class="small muted">Kafelek: skrót nieobecności i inicjały osoby. Obramowanie przerywane — planowana. ${isAdmin() ? 'Kliknij dzień, aby dodać nieobecność.' : ''}</p>
     </section>
-    <section class="panel"><div class="lc-head"><h2>Zestawienie</h2><a class="btn" href="${link({ rok: sumYear - 1 })}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${sumYear}</span><a class="btn" href="${link({ rok: sumYear + 1 })}" aria-label="Następny rok">›</a></div>
-      <div class="lc-cards">${cards || '<p class="muted">Brak aktywnych pracowników.</p>'}</div>
-      <p class="small muted">Urlop wypoczynkowy rozliczany w godzinach wg grafiku; dni = godziny ÷ przelicznik dnia urlopu pracownika. Zostało = zaległy na początek roku + wymiar roku − wykorzystano (zaplanowane nie są odejmowane). Wpisy liczone w roku dnia rozpoczęcia. Limity — do potwierdzenia przez kadry.</p></section>`;
+    <p class="small"><a href="#/pracownicy?rok=${ym.slice(0, 4)}">Ile kto wykorzystał i ile zostało — w zakładce Pracownicy ›</a></p>`;
   const bind = (main) => {
     const sel = $('#lcEmp', main); if (sel) sel.onchange = (ev) => { location.hash = link({ osoba: ev.target.value }); };
     $$('[data-day]', main).forEach(t => { const go = () => absenceForm(t.dataset.day); t.addEventListener('click', go); t.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); }); });
@@ -304,7 +303,7 @@ async function leaveCalendar(q) {
   return { html, bind };
 }
 
-function leaveCard(e, year) {
+function leaveRows(e, year) {
   const L = e.leave, dm = e.day_min;
   const pool = L.start_balance_min + (L.entitlement_min || 0);
   const pct = pool > 0 ? Math.min(100, Math.round((L.used_min / pool) * 100)) : 0;
@@ -320,16 +319,14 @@ function leaveCard(e, year) {
   };
   const uwLeftDays = dm ? Math.floor(L.remaining_min / dm) : Infinity;
   const uzLeft = Math.max(0, Math.min(e.on_demand.limit_days - e.on_demand.used_days, uwLeftDays));
-  const e2 = S.emp.get(e.employee_id);
-  return `<article class="lc-card"><header><i style="background:${esc(e.color || '#888')}">${esc(initials(e2))}</i><h3>${esc(e.name)}</h3></header>
-    ${L.has_pool ? row('uw', 'UW', 'Urlop wypoczynkowy', `wykorzystano ${minAsDays(L.used_min, dm)}${L.planned_min ? ` · zaplanowano ${minAsDays(L.planned_min, dm)}` : ''}`,
+  return `${L.has_pool ? row('uw', 'UW', 'Urlop wypoczynkowy', `wykorzystano ${minAsDays(L.used_min, dm)}${L.planned_min ? ` · zaplanowano ${minAsDays(L.planned_min, dm)}` : ''}`,
       `zostało ${minAsDays(L.remaining_min, dm)}`, `${L.entitlement_min !== null ? `z ${minAsDays(L.entitlement_min, dm)} na ${year}` : `brak wymiaru na ${year}`}${L.start_balance_min ? ` + zaległy ${minAsDays(L.start_balance_min, dm)}` : ''}`, pct)
       : `<p class="small muted">Brak puli urlopu — wprowadź wymiar z kadr (zakładka „Urlop wypoczynkowy”).</p>`}
     ${row('uz', 'UŻ', 'Urlop na żądanie', `wykorzystano ${daysTxt(e.on_demand.used_days)}${e.on_demand.planned_days ? ` · zaplanowano ${daysTxt(e.on_demand.planned_days)}` : ''}`, `zostało ${daysTxt(uzLeft)}`, `z ${e.on_demand.limit_days} (w ramach UW)`, undefined)}
     ${unitRow(e.force, 'SW', 'Siła wyższa (art. 148¹)')}
     ${unitRow(e.care188, '188', 'Opieka nad dzieckiem (art. 188)')}
     ${e.other.map(o => row(absTone(o.icon, ''), o.short || '•', o.name, `${o.used_days || o.used_min ? `wykorzystano ${dh(o.used_days, o.used_min)}` : 'tylko zaplanowane'}${o.planned_days || o.planned_min ? ` · zaplanowano ${dh(o.planned_days, o.planned_min)}` : ''}`, `${o.count} ${o.count === 1 ? 'wpis' : o.count < 5 ? 'wpisy' : 'wpisów'}`, `w ${year}`, undefined)).join('')}
-  </article>`;
+    <p class="small muted lc-note">Zostało = zaległy na początek roku + wymiar − wykorzystano (zaplanowane nie są odejmowane); dni wg przelicznika dnia urlopu. Limity — do potwierdzenia przez kadry.</p>`;
 }
 
 async function findPoolOwner(poolId) {

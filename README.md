@@ -33,7 +33,8 @@ Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je
 Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewnętrznych. Kierownik, programiści (także z domu, z telefonu) i goście wchodzą pod jeden adres HTTPS w domenie firmy. Instalacja, wymagania i zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`, paczka: `npm run package` → `dist/cnc-team-serwer.zip`.
 
 ## Urlopy
-- **Kalendarz urlopów** (Urlopy i absencje): miesiąc w kafelkach — kto i jaka nieobecność; pod spodem karta każdego programisty: urlop wypoczynkowy (wykorzystano / zostało / zaległy), na żądanie, siła wyższa, art. 188, inne nieobecności w roku.
+- **Kalendarz urlopów** (Urlopy i absencje): miesiąc w kafelkach — kto i jaka nieobecność.
+- **Pracownicy**: pod każdą osobą zestawienie na wybrany rok — urlop wypoczynkowy (wykorzystano / zostało / zaległy), na żądanie, siła wyższa, art. 188, inne nieobecności.
 
 ## Plan pracy i grafik (kierownik)
 - **Plan pracy** — polecenia dla każdego programisty na dany dzień (kolejność, zadanie z projektu, czas); programista widzi tylko swoje i potwierdza przeczytanie; ocena i przeniesienie niedokończonych — kierownik.

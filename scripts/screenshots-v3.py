@@ -135,6 +135,7 @@ with sync_playwright() as p:
     shot(page, "87-analiza-miesiac-powroty", "#/analiza?t=miesiac&ym=2026-08", settle=900)
     shot(page, "88-kalendarz-urlopow", "#/absencje?t=kalendarz&m=2026-10&rok=2026", settle=900)
     shot(page, "89-kalendarz-urlopow-wrzesien", "#/absencje?t=kalendarz&m=2026-09&rok=2026", settle=900)
+    shot(page, "91-pracownicy-urlopy", "#/pracownicy?rok=2026", settle=900)
     ctx.close()
     ctx, page = ctx_page(b)
     login(page, "przelozony")
@@ -149,6 +150,7 @@ with sync_playwright() as p:
     shot(page, "74-telefon-analiza-miesiac", "#/analiza?t=miesiac&ym=2026-09", settle=900)
     shot(page, "83-telefon-kalendarz", "#/kalendarz?tryb=tydzien&data=2026-10-05", settle=800)
     shot(page, "90-telefon-kalendarz-urlopow", "#/absencje?t=kalendarz&m=2026-10&rok=2026", settle=900)
+    shot(page, "92-telefon-pracownicy-urlopy", "#/pracownicy?rok=2026", settle=900)
     ctx.close()
     # Pracownik — komputer i telefon
     ctx, page = ctx_page(b)

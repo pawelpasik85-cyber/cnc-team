@@ -490,3 +490,7 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
   .lc-head .field { margin-left: 0; width: 100%; }
   .lc-cards { grid-template-columns: 1fr; }
 }
+.lc-emp { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--c-line); display: flex; flex-direction: column; gap: 8px; }
+.lc-emp h4 { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--c-ink-soft); }
+.lc-note { margin: 0; }
+.lc-yearnav { display: inline-flex; align-items: center; gap: 4px; margin-right: var(--sp-2); }

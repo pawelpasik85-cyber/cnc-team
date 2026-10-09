@@ -83,7 +83,7 @@ Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zada
 
 ### Kalendarz urlopów (Urlopy i absencje → Kalendarz urlopów)
 - Miesiąc w kafelkach: skrót nieobecności i inicjały osoby; przerywane obramowanie = planowana; weekendy i święta kreskowane (pokazują tylko wpisy jednodniowe z tego dnia, bez środka wielodniowego L4). Kategorie poufne — ogólna etykieta dla osób bez uprawnienia.
-- Karty pracowników na wybrany rok: **urlop wypoczynkowy** — zostało = zaległy na początek roku + wymiar roku − wykorzystano w roku (minuty wg grafiku, dni = minuty ÷ przelicznik dnia urlopu); zaplanowane pokazywane osobno, nie są odejmowane. **Urlop na żądanie** — wykorzystano z limitu (4), „zostało” nie więcej niż saldo UW. **Siła wyższa, art. 188** — wykorzystanie i limit w wybranej jednostce. **Inne nieobecności** — dni (wpisy dzienne) i godziny (wpisy godzinowe) w roku.
+- Zestawienie urlopów na wybrany rok — w zakładce **Pracownicy**, pod profilem każdej osoby (tylko kierownik i przełożony): **urlop wypoczynkowy** — zostało = zaległy na początek roku + wymiar roku − wykorzystano w roku (minuty wg grafiku, dni = minuty ÷ przelicznik dnia urlopu); zaplanowane pokazywane osobno, nie są odejmowane. **Urlop na żądanie** — wykorzystano z limitu (4), „zostało” nie więcej niż saldo UW. **Siła wyższa, art. 188** — wykorzystanie i limit w wybranej jednostce. **Inne nieobecności** — dni (wpisy dzienne) i godziny (wpisy godzinowe) w roku.
 - Wpisy liczone w roku dnia rozpoczęcia; urlop wypoczynkowy na przełomie roku wpisuje się jako dwa wpisy.
 
 ### Powroty do projektu (rundy poprawek) — tylko kierownik
