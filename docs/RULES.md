@@ -81,6 +81,9 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Kalendarz wyjść i odrabiania (Wyjścia i odrabianie)
+- Nad saldami: miesiąc w kafelkach — WP (wyjście prywatne) i OD (odrabianie) z inicjałami, zmianą (I / II / III lub godziny zmiany; „poza grafikiem”) i godzinami. Wyjście z nocnej zmiany — w dniu jej rozpoczęcia. Odrabianie oczekujące — przerywane obramowanie; wyjście odrobione — wyblakłe; anulowane i odrzucone niewidoczne.
+
 ### Kalendarz urlopów (Urlopy i absencje → Kalendarz urlopów)
 - Miesiąc w kafelkach: skrót nieobecności i inicjały osoby; przerywane obramowanie = planowana; weekendy i święta kreskowane (pokazują tylko wpisy jednodniowe z tego dnia, bez środka wielodniowego L4). Kategorie poufne — ogólna etykieta dla osób bez uprawnienia.
 - Zestawienie urlopów na wybrany rok — w zakładce **Pracownicy**, pod profilem każdej osoby (tylko kierownik i przełożony): **urlop wypoczynkowy** — zostało = zaległy na początek roku + wymiar roku − wykorzystano w roku (minuty wg grafiku, dni = minuty ÷ przelicznik dnia urlopu); zaplanowane pokazywane osobno, nie są odejmowane. **Urlop na żądanie** — wykorzystano z limitu (4), „zostało” nie więcej niż saldo UW. **Siła wyższa, art. 188** — wykorzystanie i limit w wybranej jednostce. **Inne nieobecności** — dni (wpisy dzienne) i godziny (wpisy godzinowe) w roku.

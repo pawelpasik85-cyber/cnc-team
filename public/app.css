@@ -494,3 +494,9 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .lc-emp h4 { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--c-ink-soft); }
 .lc-note { margin: 0; }
 .lc-yearnav { display: inline-flex; align-items: center; gap: 4px; margin-right: var(--sp-2); }
+/* Kalendarz wyjść i odrabiania */
+.xc-item { flex-direction: column; align-items: stretch; gap: 0; }
+.xc-top { display: flex; justify-content: space-between; align-items: center; gap: 3px; }
+.xc-sub { font-size: 10px; color: var(--c-ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-item.done { opacity: .55; }
+@media (max-width: 700px) { .xc-sub { white-space: normal; font-size: 9px; line-height: 1.15; } }

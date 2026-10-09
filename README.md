@@ -34,6 +34,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 
 ## Urlopy
 - **Kalendarz urlopów** (Urlopy i absencje): miesiąc w kafelkach — kto i jaka nieobecność.
+- **Wyjścia i odrabianie**: nad saldami kalendarz miesiąca — kto, którego dnia, na której zmianie wyszedł / odrabiał.
 - **Pracownicy**: pod każdą osobą zestawienie na wybrany rok — urlop wypoczynkowy (wykorzystano / zostało / zaległy), na żądanie, siła wyższa, art. 188, inne nieobecności.
 
 ## Plan pracy i grafik (kierownik)

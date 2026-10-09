@@ -72,14 +72,17 @@ const EXIT_STATE = { do_odrobienia: ['do odrobienia', 'warn'], czesciowo_rozlicz
 VIEWS.wyjscia = async (main) => {
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const ym = q.get('m') || S.me.today.slice(0, 7);
-  const [exits, makeups, balances, months] = await Promise.all([
+  const calFrom = addDays(`${ym}-01`, 1 - weekday(`${ym}-01`)), calTo = addDays(lastDay(ym), 7 - weekday(lastDay(ym)));
+  const [exits, makeups, balances, months, sched] = await Promise.all([
     api(`/exits?month=${ym}`), api(`/makeups?month=${ym}`), api(`/balances?month=${ym}`), can('view.months') ? api('/months') : Promise.resolve([]),
+    api(`/schedule?from=${calFrom}&to=${calTo}`).catch(() => []),
   ]);
   const mStatus = months.find(m => m.year_month === ym) || { status: 'otwarty', version: 0 };
   const closed = mStatus.status === 'zamkniety';
   const nav = `<a class="btn" href="#/wyjscia?m=${addMonths(ym, -1)}">‹</a><span class="btn" aria-live="polite">${plMonth(ym)}</span><a class="btn" href="#/wyjscia?m=${addMonths(ym, 1)}">›</a>`;
   const tools = nav + (isAdmin() && !closed ? btn('addExit', 'Wyjście prywatne') + btn('addMk', 'Odrabianie', 'makeup', '') : '');
   main.innerHTML = head('Wyjścia i odrabianie', `Rozliczenie w miesiącu kalendarzowym (zasada firmy, nie termin ustawowy). Miesiąc: ${closed ? tag(`zamknięty, wersja ${mStatus.version}`, 'danger', 'lock') : tag('otwarty', 'ok')}`, tools) + `
+    ${exitCalendar(ym, calFrom, calTo, exits, makeups, sched)}
     <div class="notice info small">Wpis administratora nie zastępuje pisemnego wniosku pracownika. Nadgodziny nie są automatycznie zamieniane na odrobienie, a nadwyżka odrabiania nie tworzy kredytu.</div>
     <section class="panel"><h3>Salda</h3>${table([
       { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) }, { key: 'exits_count', label: 'Wyjścia', num: true }, { key: 'exits_min', label: 'Czas wyjść', fmt: 'hm' },
@@ -327,6 +330,35 @@ function leaveRows(e, year) {
     ${unitRow(e.care188, '188', 'Opieka nad dzieckiem (art. 188)')}
     ${e.other.map(o => row(absTone(o.icon, ''), o.short || '•', o.name, `${o.used_days || o.used_min ? `wykorzystano ${dh(o.used_days, o.used_min)}` : 'tylko zaplanowane'}${o.planned_days || o.planned_min ? ` · zaplanowano ${dh(o.planned_days, o.planned_min)}` : ''}`, `${o.count} ${o.count === 1 ? 'wpis' : o.count < 5 ? 'wpisy' : 'wpisów'}`, `w ${year}`, undefined)).join('')}
     <p class="small muted lc-note">Zostało = zaległy na początek roku + wymiar − wykorzystano (zaplanowane nie są odejmowane); dni wg przelicznika dnia urlopu. Limity — do potwierdzenia przez kadry.</p>`;
+}
+
+// Kalendarz wyjść i odrabiania: w kafelku dnia — kto, na której zmianie, godziny wyjścia (WP) i odrabiania (OD)
+function exitCalendar(ym, from, to, exits, makeups, sched) {
+  const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t.short]));
+  const holidays = new Map(S.boot.holidays.map(h => [h.date, h.name]));
+  const shiftOf = (emp, d) => { const s = sched.find(x => x.employee_id === emp && x.work_date === d); return s ? (tpl.get(s.shift_template_id) || `${s.start_local.time}–${s.end_local.time}`) : null; };
+  const item = (kind, r) => {
+    const e = S.emp.get(r.employee_id);
+    const sh = shiftOf(r.employee_id, r.work_date);
+    const shTxt = sh ? `zm. ${sh}` : 'poza grafikiem';
+    const time = `${r.start_local.time}–${r.end_local.time}`;
+    const cls = kind === 'WP' ? `tone-force ${r.state === 'rozliczone' ? 'done' : ''}` : `tone-uw ${r.status === 'oczekuje' ? 'plan' : ''}`;
+    const st = kind === 'WP' ? (EXIT_STATE[r.state] || [r.state])[0] : r.status;
+    const who = e ? `${e.first_name} ${e.last_name}` : '';
+    return `<span class="lc-item xc-item ${cls}" title="${esc(`${kind === 'WP' ? 'Wyjście prywatne' : 'Odrabianie'} — ${who}, ${shTxt}, ${time} (${hShort(r.minutes)}), ${st}`)}">
+      <span class="xc-top"><b>${kind}</b><i style="background:${esc(e?.color || '#888')}">${esc(initials(e))}</i></span><span class="xc-sub">${esc(sh || '—')} · ${time}</span></span>`;
+  };
+  const ex = exits.filter(x => x.status !== 'anulowane' && x.state !== 'anulowane'), mk = makeups.filter(m => m.status !== 'odrzucone');
+  let cells = DOW.map(d => `<div class="lc-dow">${d}</div>`).join('');
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const inMonth = d.slice(0, 7) === ym;
+    const off = holidays.has(d) || weekday(d) >= 6;
+    const items = [...ex.filter(x => x.work_date === d).map(x => item('WP', x)), ...mk.filter(m => m.work_date === d).map(m => item('OD', m))].join('');
+    cells += `<div class="lc-day ${inMonth ? '' : 'other'} ${off ? 'off' : ''} ${d === S.me.today ? 'today' : ''} ${items ? 'has' : ''}"><span class="lc-num">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}<div class="lc-items">${items}</div></div>`;
+  }
+  return `<section class="panel"><h3>Kalendarz ${esc(plMonth(ym))}</h3><div class="lcal xcal">${cells}</div>
+    <p class="small"><span class="lc-legend" style="margin-left:0"><span class="lc-leg tone-force"><b></b>WP — wyjście prywatne (dzień i zmiana, z której wyszedł)</span><span class="lc-leg tone-uw"><b></b>OD — odrabianie</span></span></p>
+    <p class="small muted">W kafelku: inicjały, zmiana (I / II / III lub godziny) i czas. Przerywane obramowanie — odrabianie oczekuje na zatwierdzenie; wyblakłe — wyjście już odrobione. Wyjście z nocnej zmiany widnieje w dniu jej rozpoczęcia.</p></section>`;
 }
 
 async function findPoolOwner(poolId) {
