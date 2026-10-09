@@ -97,8 +97,8 @@ function seedDemo(db) {
 
   // Pule urlopu (wymiar z kadr, w minutach)
   for (const id of emps) {
-    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2025, entitlement_min: id === celina ? 960 : 0, reason: 'Saldo zaległego urlopu wg kadr na 01.01.2026', opening: true });
-    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2026, entitlement_min: id === celina ? 23 * 480 : 26 * 480, reason: id === celina ? 'Wymiar proporcjonalny do etatu 7/8 wg kadr' : 'Wymiar 26 dni wg kadr' });
+    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2025, entitlement_min: id === celina ? 2 * 420 : 0, reason: 'Saldo zaległego urlopu wg kadr na 01.01.2026', opening: true });
+    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2026, entitlement_min: id === celina ? 23 * 420 : 26 * 480, reason: id === celina ? 'Wymiar proporcjonalny do etatu 7/8 wg kadr' : 'Wymiar 26 dni wg kadr' });
   }
   const pool2026adam = db.get('SELECT id FROM leave_pools WHERE employee_id=? AND acquisition_year=2026', adam).id;
   Abs.adjustPool(db, admin, pool2026adam, { minutes: -480, reason: 'Korekta ewidencji: urlop udzielony w 2026 przed wdrożeniem aplikacji', hr_document_ref: 'KADRY/2026/014' });
@@ -117,6 +117,10 @@ function seedDemo(db) {
   }
   const a2 = shiftDate(adam, '2026-10-19');
   Abs.createAbsence(db, admin, { employee_id: adam, category_id: cat.URLOP_WYP, status: 'planowana', start_date: a2, end_date: T.addDays(a2, 2), employee_request: true });
+  // Kalendarz urlopów: urlop na żądanie, urlop dwutygodniowy i urlop wcześniejszy w roku
+  Abs.createAbsence(db, admin, { employee_id: celina, category_id: cat.URLOP_NA_ZADANIE, status: 'planowana', start_date: '2026-10-09', end_date: '2026-10-09', employee_request: true });
+  Abs.createAbsence(db, admin, { employee_id: bartosz, category_id: cat.URLOP_WYP, status: 'planowana', start_date: '2026-10-26', end_date: '2026-10-30', employee_request: true });
+  Abs.createAbsence(db, admin, { employee_id: bartosz, category_id: cat.URLOP_WYP, status: 'wykorzystana', start_date: '2026-09-14', end_date: '2026-09-25', employee_request: true });
 
   // Wyjścia i odrabianie
   const exitOn = (emp, date, offStartMin, dur, extra = {}) => {

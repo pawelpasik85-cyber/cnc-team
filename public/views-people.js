@@ -160,11 +160,15 @@ function makeupForm(ym, exits) {
 const STATUS_TAG = { planowana: ['planowana', ''], wykorzystana: ['wykorzystana', 'ok'], anulowana: ['anulowana', ''] };
 VIEWS.absencje = async (main) => {
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
-  const tab = q.get('t') || 'lista';
+  const tab = q.get('t') || 'kalendarz';
   const year = Number(q.get('rok') || S.me.today.slice(0, 4));
-  const tabs = [['lista', 'Nieobecności'], ['urlop', 'Urlop wypoczynkowy'], ['jednostki', 'Siła wyższa i art. 188'], ['katalog', 'Katalog kategorii']];
+  const tabs = [['kalendarz', 'Kalendarz urlopów'], ['lista', 'Nieobecności'], ['urlop', 'Urlop wypoczynkowy'], ['jednostki', 'Siła wyższa i art. 188'], ['katalog', 'Katalog kategorii']];
   let body = '';
-  if (tab === 'lista') {
+  let leaveCal = null;
+  if (tab === 'kalendarz') {
+    leaveCal = await leaveCalendar(q);
+    body = leaveCal.html;
+  } else if (tab === 'lista') {
     const from = q.get('from') || `${year}-01-01`, to = q.get('to') || `${year}-12-31`;
     const list = await api(`/absences?from=${from}&to=${to}${q.get('osoba') ? `&employee_id=${q.get('osoba')}` : ''}${q.get('kat') ? `&category_id=${q.get('kat')}` : ''}`);
     body = `<form class="panel toolbar" id="absF"><label class="field">Od<input type="date" name="from" value="${from}"></label><label class="field">Do<input type="date" name="to" value="${to}"></label>
@@ -212,12 +216,13 @@ VIEWS.absencje = async (main) => {
       ...(isAdmin() ? [{ key: r => r, label: '', fmt: r => `<button class="link" data-cat="${r.id}">Edytuj</button>` }] : []),
     ], S.boot.categories)}</section>`;
   }
-  const tools = isAdmin() ? (tab === 'lista' ? btn('addAbs', 'Dodaj nieobecność') : tab === 'urlop' ? btn('addPool', 'Pula urlopu (z kadr)') : tab === 'katalog' ? btn('addCat', 'Nowa kategoria') : '') : '';
+  const tools = isAdmin() ? (tab === 'lista' || tab === 'kalendarz' ? btn('addAbs', 'Dodaj nieobecność') : tab === 'urlop' ? btn('addPool', 'Pula urlopu (z kadr)') : tab === 'katalog' ? btn('addCat', 'Nowa kategoria') : '') : '';
   main.innerHTML = head('Urlopy i absencje', 'Planowane, wykorzystane i anulowane nieobecności. Bez obliczeń wynagrodzeń i zasiłków.', tools) +
     `<div class="tabs" role="tablist">${tabs.map(([id, l]) => `<button role="tab" class="${tab === id ? 'active' : ''}" data-tab="${id}">${esc(l)}</button>`).join('')}</div>${body}`;
   $$('[data-tab]').forEach(b => b.onclick = () => { location.hash = `#/absencje?t=${b.dataset.tab}`; });
   if ($('#absF')) $('#absF').onsubmit = (e) => { e.preventDefault(); location.hash = `#/absencje?t=lista&${new URLSearchParams([...new FormData(e.target)].filter(([, v]) => v))}`; };
   on('addAbs', () => absenceForm());
+  if (leaveCal) leaveCal.bind(main);
   on('addPool', () => poolForm());
   on('addCat', () => categoryForm());
   $$('[data-use]').forEach(b => b.onclick = async () => { try { await post(`/absences/${b.dataset.use}`, { status: 'wykorzystana' }, undefined, 'PATCH'); } catch (e) { toast(describeError(e), 'err'); } });
@@ -239,12 +244,100 @@ VIEWS.absencje = async (main) => {
   $$('[data-cat]').forEach(b => b.onclick = () => categoryForm(S.cat.get(Number(b.dataset.cat))));
 };
 
+// ---------- Kalendarz urlopów: kafelki dni z nieobecnościami, pod spodem karty programistów z wykorzystaniem ----------
+// Kolor kategorii według rodzaju (ikony) — ten sam w kalendarzu i na kartach
+const ABS_TONE = { leave: 'uw', medical: 'l4', care: 'care', force: 'force', family: 'family', event: 'event', unpaid: 'unpaid', training: 'train', blood: 'event', summons: 'other', military: 'other', exit: 'other', other: 'other', absence: 'other' };
+const absTone = (icon, code) => (code === 'URLOP_NA_ZADANIE' ? 'uz' : ABS_TONE[icon] || 'other');
+const daysTxt = (d) => `${Number(d.toFixed ? d.toFixed(1) : d).toString().replace('.', ',')} ${Math.abs(d) === 1 ? 'dzień' : 'dni'}`;
+const minAsDays = (min, dayMin) => (dayMin ? daysTxt(Math.round((min / dayMin) * 10) / 10) : hShort(min));
+
+async function leaveCalendar(q) {
+  const mq = q.get('m') || '';
+  const ym = /^(20\d{2})-(0[1-9]|1[0-2])$/.test(mq) ? mq : S.me.today.slice(0, 7);
+  const sumYear = /^20\d{2}$/.test(q.get('rok') || '') ? Number(q.get('rok')) : Number(ym.slice(0, 4));
+  const empF = /^\d+$/.test(q.get('osoba') || '') ? q.get('osoba') : '';
+  const first = `${ym}-01`, last = lastDay(ym);
+  const from = addDays(first, 1 - weekday(first)), to = addDays(last, 7 - weekday(last));
+  const [list, summary] = await Promise.all([
+    api(`/absences?from=${from}&to=${to}${empF ? `&employee_id=${empF}` : ''}`),
+    api(`/leave/summary?year=${sumYear}`),
+  ]);
+  const abs = list.filter(a => a.status !== 'anulowana');
+  const holidays = new Map(S.boot.holidays.map(h => [h.date, h.name]));
+  const link = (o) => `#/absencje?${new URLSearchParams({ t: 'kalendarz', m: ym, rok: sumYear, ...(empF ? { osoba: empF } : {}), ...o })}`;
+  let workdays = 0;
+  let cells = DOW.map(d => `<div class="lc-dow">${d}</div>`).join('');
+  const used = new Map();
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const inMonth = d.slice(0, 7) === ym;
+    const off = holidays.has(d) || weekday(d) >= 6;
+    if (inMonth && !off) workdays++;
+    // w weekend / święto pokazujemy tylko wpisy z tego dnia (np. praca w sobotę zamieniona na urlop), nie środek wielodniowego L4
+    const day = abs.filter(a => a.start_date <= d && a.end_date >= d && (!off || (a.start_date === d && a.end_date === d)));
+    const items = day.map(a => {
+      const e = S.emp.get(a.employee_id);
+      const tone = absTone(a.icon, a.code);
+      used.set(a.category_label, tone);
+      const who = e ? `${e.first_name} ${e.last_name}` : '';
+      return `<span class="lc-item tone-${tone} ${a.status === 'planowana' ? 'plan' : ''}" title="${esc(`${who}: ${a.category_label}${a.status === 'planowana' ? ' (planowana)' : ''}`)}"><b>${esc(a.category_short || '•')}</b><i style="background:${esc(e?.color || '#888')}">${esc(initials(e))}</i></span>`;
+    }).join('');
+    cells += `<div class="lc-day ${inMonth ? '' : 'other'} ${off ? 'off' : ''} ${d === S.me.today ? 'today' : ''} ${day.length ? 'has' : ''}" ${isAdmin() && inMonth && !off ? `data-day="${d}" role="button" tabindex="0" title="Dodaj nieobecność ${plDate(d)}"` : ''}>
+      <span class="lc-num">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}<div class="lc-items">${items}</div></div>`;
+  }
+  const legend = [...used].map(([label, tone]) => `<span class="lc-leg tone-${tone}"><b></b>${esc(label)}</span>`).join('');
+  const cards = summary.filter(e => !empF || String(e.employee_id) === empF).map(e => leaveCard(e, sumYear)).join('');
+  const html = `<section class="panel lc-panel">
+      <div class="lc-head"><a class="btn" href="${link({ m: addMonths(ym, -1), rok: addMonths(ym, -1).slice(0, 4) })}" aria-label="Poprzedni miesiąc">‹</a><h2>${esc(plMonth(ym))}</h2><a class="btn" href="${link({ m: addMonths(ym, 1), rok: addMonths(ym, 1).slice(0, 4) })}" aria-label="Następny miesiąc">›</a>
+        <a class="btn" href="${link({ m: S.me.today.slice(0, 7), rok: S.me.today.slice(0, 4) })}">Dziś</a>
+        <label class="field">Osoba<select id="lcEmp"><option value="">wszyscy</option>${empOptions(false).map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label></div>
+      <div class="lcal">${cells}</div>
+      <p class="small"><b>${workdays}</b> dni roboczych w miesiącu (bez weekendów i świąt). ${legend ? `<span class="lc-legend">${legend}</span>` : '<span class="muted">Brak nieobecności w tym miesiącu.</span>'}</p>
+      <p class="small muted">Kafelek: skrót nieobecności i inicjały osoby. Obramowanie przerywane — planowana. ${isAdmin() ? 'Kliknij dzień, aby dodać nieobecność.' : ''}</p>
+    </section>
+    <section class="panel"><div class="lc-head"><h2>Zestawienie</h2><a class="btn" href="${link({ rok: sumYear - 1 })}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${sumYear}</span><a class="btn" href="${link({ rok: sumYear + 1 })}" aria-label="Następny rok">›</a></div>
+      <div class="lc-cards">${cards || '<p class="muted">Brak aktywnych pracowników.</p>'}</div>
+      <p class="small muted">Urlop wypoczynkowy rozliczany w godzinach wg grafiku; dni = godziny ÷ przelicznik dnia urlopu pracownika. Zostało = zaległy na początek roku + wymiar roku − wykorzystano (zaplanowane nie są odejmowane). Wpisy liczone w roku dnia rozpoczęcia. Limity — do potwierdzenia przez kadry.</p></section>`;
+  const bind = (main) => {
+    const sel = $('#lcEmp', main); if (sel) sel.onchange = (ev) => { location.hash = link({ osoba: ev.target.value }); };
+    $$('[data-day]', main).forEach(t => { const go = () => absenceForm(t.dataset.day); t.addEventListener('click', go); t.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); }); });
+  };
+  return { html, bind };
+}
+
+function leaveCard(e, year) {
+  const L = e.leave, dm = e.day_min;
+  const pool = L.start_balance_min + (L.entitlement_min || 0);
+  const pct = pool > 0 ? Math.min(100, Math.round((L.used_min / pool) * 100)) : 0;
+  const row = (tone, code, title, sub, right, rightSub, bar) => `<div class="lc-row tone-${tone}"><span class="lc-badge">${esc(code)}</span>
+      <div class="lc-body"><b>${esc(title)}</b><span>${sub}</span>${bar !== undefined ? `<div class="lc-bar"><i style="width:${bar}%"></i></div>` : ''}</div>
+      <div class="lc-right"><b>${right}</b><span>${rightSub}</span></div></div>`;
+  const dh = (days, min) => [days ? daysTxt(days) : '', min ? hShort(min) : ''].filter(Boolean).join(' + ') || '0 dni';
+  const unitRow = (u, code, title) => {
+    const used = u.unit === 'godziny' ? hShort(u.used_min) : u.unit === 'dni' ? daysTxt(u.used_days) : dh(u.used_days, u.used_min);
+    const lim = u.unit === 'godziny' ? hShort(u.limit_min) : u.unit === 'dni' ? daysTxt(u.limit_days) : `${daysTxt(u.limit_days)} lub ${hShort(u.limit_min)}`;
+    const plan = u.planned_days || u.planned_min ? ` · zaplanowano ${dh(u.planned_days, u.planned_min)}` : '';
+    return row(code === 'SW' ? 'force' : 'care', code, title, `wykorzystano ${used}${plan}`, `limit ${lim}`, u.limit_confirmed ? `jednostka: ${esc(u.unit_label)}` : 'limit do potwierdzenia', undefined);
+  };
+  const uwLeftDays = dm ? Math.floor(L.remaining_min / dm) : Infinity;
+  const uzLeft = Math.max(0, Math.min(e.on_demand.limit_days - e.on_demand.used_days, uwLeftDays));
+  const e2 = S.emp.get(e.employee_id);
+  return `<article class="lc-card"><header><i style="background:${esc(e.color || '#888')}">${esc(initials(e2))}</i><h3>${esc(e.name)}</h3></header>
+    ${L.has_pool ? row('uw', 'UW', 'Urlop wypoczynkowy', `wykorzystano ${minAsDays(L.used_min, dm)}${L.planned_min ? ` · zaplanowano ${minAsDays(L.planned_min, dm)}` : ''}`,
+      `zostało ${minAsDays(L.remaining_min, dm)}`, `${L.entitlement_min !== null ? `z ${minAsDays(L.entitlement_min, dm)} na ${year}` : `brak wymiaru na ${year}`}${L.start_balance_min ? ` + zaległy ${minAsDays(L.start_balance_min, dm)}` : ''}`, pct)
+      : `<p class="small muted">Brak puli urlopu — wprowadź wymiar z kadr (zakładka „Urlop wypoczynkowy”).</p>`}
+    ${row('uz', 'UŻ', 'Urlop na żądanie', `wykorzystano ${daysTxt(e.on_demand.used_days)}${e.on_demand.planned_days ? ` · zaplanowano ${daysTxt(e.on_demand.planned_days)}` : ''}`, `zostało ${daysTxt(uzLeft)}`, `z ${e.on_demand.limit_days} (w ramach UW)`, undefined)}
+    ${unitRow(e.force, 'SW', 'Siła wyższa (art. 148¹)')}
+    ${unitRow(e.care188, '188', 'Opieka nad dzieckiem (art. 188)')}
+    ${e.other.map(o => row(absTone(o.icon, ''), o.short || '•', o.name, `${o.used_days || o.used_min ? `wykorzystano ${dh(o.used_days, o.used_min)}` : 'tylko zaplanowane'}${o.planned_days || o.planned_min ? ` · zaplanowano ${dh(o.planned_days, o.planned_min)}` : ''}`, `${o.count} ${o.count === 1 ? 'wpis' : o.count < 5 ? 'wpisy' : 'wpisów'}`, `w ${year}`, undefined)).join('')}
+  </article>`;
+}
+
 async function findPoolOwner(poolId) {
   const ov = await api('/leave/overview');
   return ov.find(e => e.pools.some(p => p.id === poolId)).employee_id;
 }
 
-function absenceForm() {
+function absenceForm(date) {
   const cats = S.boot.categories.filter(c => c.active && c.code !== 'WYJSCIE_PRYWATNE' && c.code !== 'OKOLICZNOSCIOWY');
   const catOf = (v) => S.cat.get(Number(v.category_id));
   openForm({
@@ -253,7 +346,7 @@ function absenceForm() {
       { name: 'category_id', label: 'Kategoria', type: 'select', options: cats.map(c => [c.id, c.subtype ? `${c.name} — ${c.subtype}` : c.name]), required: true },
       { name: 'status', label: 'Status', type: 'select', options: [['planowana', 'planowana'], ['wykorzystana', 'wykorzystana']], value: 'planowana', placeholder: false },
       { name: 'unit', label: 'Jednostka (zgodnie z wnioskiem pracownika)', type: 'select', options: [['dni', 'dni'], ['godziny', 'godziny']], show: v => catOf(v)?.unit === 'dni_lub_godziny' },
-      { name: 'start_date', label: 'Od dnia', type: 'date', value: S.me.today, required: true }, { name: 'end_date', label: 'Do dnia', type: 'date' },
+      { name: 'start_date', label: 'Od dnia', type: 'date', value: date || S.me.today, required: true }, { name: 'end_date', label: 'Do dnia', type: 'date' },
       { name: 'start_time', label: 'Od godz.', type: 'time', show: v => { const c = catOf(v); return c && (c.unit === 'godziny' || (c.unit === 'dni_lub_godziny' && v.unit === 'godziny')); } },
       { name: 'end_time', label: 'Do godz.', type: 'time', show: v => { const c = catOf(v); return c && (c.unit === 'godziny' || (c.unit === 'dni_lub_godziny' && v.unit === 'godziny')); } },
       { name: 'pool_id', label: 'Pula urlopu (domyślnie najstarsza z saldem)', type: 'select', options: [], show: v => catOf(v)?.pool_kind === 'wypoczynkowy', placeholder: 'automatycznie — najstarsza' },

@@ -81,6 +81,11 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Kalendarz urlopów (Urlopy i absencje → Kalendarz urlopów)
+- Miesiąc w kafelkach: skrót nieobecności i inicjały osoby; przerywane obramowanie = planowana; weekendy i święta kreskowane (pokazują tylko wpisy jednodniowe z tego dnia, bez środka wielodniowego L4). Kategorie poufne — ogólna etykieta dla osób bez uprawnienia.
+- Karty pracowników na wybrany rok: **urlop wypoczynkowy** — zostało = zaległy na początek roku + wymiar roku − wykorzystano w roku (minuty wg grafiku, dni = minuty ÷ przelicznik dnia urlopu); zaplanowane pokazywane osobno, nie są odejmowane. **Urlop na żądanie** — wykorzystano z limitu (4), „zostało” nie więcej niż saldo UW. **Siła wyższa, art. 188** — wykorzystanie i limit w wybranej jednostce. **Inne nieobecności** — dni (wpisy dzienne) i godziny (wpisy godzinowe) w roku.
+- Wpisy liczone w roku dnia rozpoczęcia; urlop wypoczynkowy na przełomie roku wpisuje się jako dwa wpisy.
+
 ### Powroty do projektu (rundy poprawek) — tylko kierownik
 - Po zakończeniu projektu (wszystkie zadania zakończone albo status „zakończony”) kierownik może otworzyć **powrót do projektu** — rundę poprawek z powodem i przyczyną (np. zmiana zakresu, błąd programowania); opcjonalnie od razu zadanie poprawek. Jedna otwarta runda naraz; projekty anulowane i wstrzymane — nie. Dzień powrotu nie wcześniej niż ostatni dzień pracy i nie w przyszłości.
 - **Przypisanie czasu**: zadanie założone w czasie rundy należy do tej rundy (czas tylko z dni rundy); praca na zadaniach pierwotnych w okresie rundy (od dnia powrotu do zakończenia) też należy do rundy. Po zakończeniu rundy czasu nie dopisuje się do projektu poza rundą (trzeba otworzyć kolejny powrót).

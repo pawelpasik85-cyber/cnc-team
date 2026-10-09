@@ -305,6 +305,7 @@ function createAbsence(db, user, body) {
   const a = computeAbsence(db, b, cat);
   const warnings = validateAbsence(db, a, cat, 0);
   return db.tx(() => {
+    if (cat.pool_kind === 'wypoczynkowy' && a.end_date.slice(0, 4) !== a.start_date.slice(0, 4)) throw bad('Urlop na przełomie roku wpisz jako dwa wpisy (do 31.12 i od 1.01) — każdy rok rozliczany osobno.');
     if (cat.pool_kind === 'wypoczynkowy') a.pool_id = pickPool(db, a, body.pool_id, 0);
     if (cat.pool_kind === 'sila_wyzsza' || cat.pool_kind === 'opieka_188') {
       const ch = checkUnitRules(db, a, cat, 0);
@@ -376,7 +377,54 @@ function listAbsences(db, { from, to, employeeId, categoryId, status } = {}) {
      LEFT JOIN leave_pools lp ON lp.id=a.pool_id WHERE ${w.join(' AND ')} ORDER BY a.start_date`, ...p);
 }
 
+// Zestawienie urlopów i nieobecności na rok dla każdego pracownika (karty pod kalendarzem urlopów).
+// Urlop wypoczynkowy: na początek roku (zaległy) + wymiar roku − wykorzystano w roku = zostało (liczone w minutach wg grafiku).
+// Wpisy rozliczane rokiem dnia rozpoczęcia (urlop wypoczynkowy nie może obejmować dwóch lat).
+const HOURLY = `(a.unit = 'godziny' OR (a.unit IS NULL AND c.unit IN ('godziny','minuty')))`;
+function leaveSummary(db, year) {
+  const y = String(year), y0 = `${y}-01-01`, y1 = `${y}-12-31`;
+  return db.all('SELECT id, first_name, last_name, color FROM employees WHERE active=1 ORDER BY last_name, first_name').map(e => {
+    const terms = C.termsAt(db, e.id, y1) || C.termsAt(db, e.id, T.today());
+    const dayMin = terms ? terms.leave_day_min : null;
+    const pools = db.all('SELECT id, acquisition_year FROM leave_pools WHERE employee_id=? AND acquisition_year <= ?', e.id, year);
+    const ledger = (ids) => (ids.length ? db.get(`SELECT COALESCE(SUM(minutes),0) s FROM leave_ledger WHERE pool_id IN (${ids.map(() => '?').join(',')})`, ...ids).s : 0);
+    const older = pools.filter(p => p.acquisition_year < Number(year)).map(p => p.id);
+    const cur = pools.filter(p => p.acquisition_year === Number(year)).map(p => p.id);
+    const usedBefore = db.get(`SELECT COALESCE(SUM(a.minutes),0) s FROM absences a JOIN absence_categories c ON c.id = a.category_id
+      WHERE a.employee_id = ? AND c.pool_kind = 'wypoczynkowy' AND a.status = 'wykorzystana' AND a.start_date < ?`, e.id, y0).s;
+    const leaveRows = db.all(`SELECT a.status, a.days, a.minutes, c.code FROM absences a JOIN absence_categories c ON c.id = a.category_id
+      WHERE a.employee_id = ? AND c.pool_kind = 'wypoczynkowy' AND a.status != 'anulowana' AND a.start_date BETWEEN ? AND ?`, e.id, y0, y1);
+    const sumBy = (rows, k) => rows.reduce((s2, r) => s2 + (r[k] || 0), 0);
+    const used = leaveRows.filter(r => r.status === 'wykorzystana'), planned = leaveRows.filter(r => r.status === 'planowana');
+    const startMin = Math.max(0, ledger(older) - usedBefore);
+    const entMin = cur.length ? ledger(cur) : null;
+    const usedMin = sumBy(used, 'minutes');
+    const uz = leaveRows.filter(r => r.code === 'URLOP_NA_ZADANIE');
+    const uzCat = db.get(`SELECT limit_value FROM absence_categories WHERE code = 'URLOP_NA_ZADANIE'`);
+    const uzLimit = (() => { try { return JSON.parse(uzCat.limit_value).max_days_per_year; } catch { return 4; } })();
+    const other = db.all(`SELECT a.category_id, c.code, c.name AS category_name, c.short, c.icon, c.visibility, c.public_label, c.subtype,
+        SUM(CASE WHEN a.status = 'wykorzystana' AND NOT ${HOURLY} THEN a.days ELSE 0 END) used_days,
+        SUM(CASE WHEN a.status = 'wykorzystana' AND ${HOURLY} THEN a.minutes ELSE 0 END) used_min,
+        SUM(CASE WHEN a.status = 'planowana' AND NOT ${HOURLY} THEN a.days ELSE 0 END) planned_days,
+        SUM(CASE WHEN a.status = 'planowana' AND ${HOURLY} THEN a.minutes ELSE 0 END) planned_min, COUNT(*) n
+      FROM absences a JOIN absence_categories c ON c.id = a.category_id
+      WHERE a.employee_id = ? AND a.status != 'anulowana' AND a.start_date BETWEEN ? AND ? AND COALESCE(c.pool_kind, '') NOT IN ('wypoczynkowy', 'sila_wyzsza', 'opieka_188')
+      GROUP BY a.category_id ORDER BY c.id`, e.id, y0, y1);
+    return {
+      employee_id: e.id, name: `${e.first_name} ${e.last_name}`, color: e.color, day_min: dayMin,
+      leave: {
+        has_pool: pools.length > 0, start_balance_min: startMin, entitlement_min: entMin,
+        used_min: usedMin, used_days: sumBy(used, 'days'), planned_min: sumBy(planned, 'minutes'), planned_days: sumBy(planned, 'days'),
+        remaining_min: startMin + (entMin || 0) - usedMin,
+      },
+      on_demand: { used_days: sumBy(uz.filter(r => r.status === 'wykorzystana'), 'days'), planned_days: sumBy(uz.filter(r => r.status === 'planowana'), 'days'), limit_days: uzLimit },
+      force: unitChoice(db, e.id, Number(year), 'sila_wyzsza'), care188: unitChoice(db, e.id, Number(year), 'opieka_188'),
+      other,
+    };
+  });
+}
+
 module.exports = {
   saveCategory, poolBalance, listPools, overdueStatus, createPool, adjustPool, previewAdjust, unitChoice, correctUnitChoice,
-  setUnitLimit, createAbsence, updateAbsence, listAbsences, STD_LIMIT_MIN,
+  setUnitLimit, createAbsence, updateAbsence, listAbsences, STD_LIMIT_MIN, leaveSummary,
 };

@@ -52,6 +52,7 @@ Dla każdej uwagi: **waga** (krytyczna / istotna / drobna), **miejsce**, **opis 
 | 6 | 2026-10-07 | Analiza kierownika: przebieg projektu i podobne projekty (z odrzucaniem), miesiąc vs rok wcześniej, rok vs lata, zapisane raporty (migawki) z udostępnianiem przełożonemu; testy 41/41 |
 | 5 | 2026-10-07 | Grafika 2.5D: logo, emblematy Hartford (szarości) i Grimme (błękit), paski postępu 3D w kolorach maszyny, godziny projektu (przepracowano / plan / wynik / prognoza); testy 37/37 |
 | 4 | 2026-10-07 | Wyłącznie serwer firmowy: usunięta chmura (Supabase), aplikacja w chmurze i APK; instrukcja dla IT bez wariantów (Windows Server + IIS + HTTPS); paczka instalacyjna; testy 36/36 |
+| 11 | 2026-10-09 | Kalendarz urlopów: kafelki dni z nieobecnościami i osobami, karty programistów (wykorzystano / zostało); przegląd 8 uwag — poprawione; testy 53/53 |
 | 10 | 2026-10-09 | Powroty do projektu (rundy poprawek): czas przed poprawkami, doszło, same poprawki; analiza tylko dla kierownika; przegląd 11 uwag — poprawione; testy 52/52 |
 | 8 | 2026-10-07 | Tryby pracy (12 h, nieregularny, dzień dodatkowy), zamiana osób, zmiana trybu na okres, nadgodziny w projekcie i miesiącu; niezależny przegląd 12 uwag — poprawione; testy 49/49 |
 | 7 | 2026-10-07 | Plan pracy: polecenia kierownika na zmianę, potwierdzenie przeczytania, ocena, przeniesienie; testy 44/44 |

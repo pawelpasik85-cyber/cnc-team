@@ -49,6 +49,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 10 — powroty do projektu (9.10.2026)
 **52 / 52 zaliczonych.** Nowe: `test/returns.test.js` — powrót tylko po zakończeniu (nie dla anulowanych), daty (nie przed ostatnią pracą, nie w przyszłości), runda z zadaniem poprawek, ponownie otwarte zadanie pierwotne w rundzie, czas przed poprawkami / doszło (z %) / same poprawki / razem, zakończenie wymaga zakończonych zadań i opisu, druga runda, blokada wpisów czasu poza rundą i zadań rundy poza jej okresem, blokada ręcznej zmiany statusu w trakcie rundy, wskaźnik miesiąca, projekt nadal zakończony w miesiącu pierwszego zakończenia, wskaźniki projektu dla pierwotnej realizacji; dostęp: programista, przełożony i gość nie otwierają rund i nie widzą ich powodów. Niezależny przegląd: 11 uwag (m.in. czas po zamknięciu rundy liczony do rundy, przesuwanie zakończenia projektu do innego miesiąca, zawyżanie porównań z podobnymi projektami, brak opisu przy zamknięciu, widoczność dla przełożonego) — poprawione i pokryte testami. Zrzuty `84…87`.
 
+### Runda 11 — kalendarz urlopów (9.10.2026)
+**53 / 53 zaliczonych.** Nowy test w `test/absences.test.js`: zestawienie — zaległy na początek roku + wymiar − wykorzystano, stan poprzedniego roku niezależny od późniejszych wpisów, urlop na żądanie, inne nieobecności (dni i godziny osobno), urlop na przełomie roku odrzucany (dwa wpisy), przełożony widzi kategorię poufną pod ogólną etykietą, programista 403. Niezależny przegląd: 8 uwag (m.in. niespójne „wykorzystano/zostało”, godziny liczone jako dni, ukryte wpisy w pracującą sobotę, walidacja miesiąca) — poprawione. Zrzuty `88…90`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

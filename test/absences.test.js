@@ -126,3 +126,47 @@ test('niepełny etat: proporcjonalny limit godzinowy oznaczony do potwierdzenia 
   Abs.setUnitLimit(w.db, w.admin, { employee_id: e, year: 2026, kind: 'sila_wyzsza', limit_min: 480, limit_days: 2, reason: 'Potwierdzone przez kadry pismem 1/2026' });
   assert.equal(Abs.unitChoice(w.db, e, 2026, 'sila_wyzsza').limit_confirmed, true);
 });
+
+test('zestawienie urlopów: wykorzystano / zostało (z zaległym), urlop na żądanie, inne nieobecności; poufne kategorie ukryte', async () => {
+  const w = setup('2026-10-06');
+  const cat = Object.fromEntries(w.db.all('SELECT id, code FROM absence_categories').map(c => [c.code, c.id]));
+  Abs.createPool(w.db, w.admin, { employee_id: w.e, acquisition_year: 2025, entitlement_min: 960, reason: 'saldo z kadr', opening: true });
+  Abs.createPool(w.db, w.admin, { employee_id: w.e, acquisition_year: 2026, entitlement_min: 26 * 480, reason: 'wymiar z kadr' });
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.URLOP_WYP, status: 'wykorzystana', start_date: '2026-09-07', end_date: '2026-09-08', employee_request: true });
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.URLOP_WYP, status: 'wykorzystana', start_date: '2026-09-09', end_date: '2026-09-11', employee_request: true });
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.URLOP_NA_ZADANIE, status: 'wykorzystana', start_date: '2026-09-14', end_date: '2026-09-14', employee_request: true });
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.URLOP_WYP, status: 'planowana', start_date: '2026-10-19', end_date: '2026-10-20', employee_request: true });
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.L4, status: 'wykorzystana', start_date: '2026-09-21', end_date: '2026-09-22' });
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.NIEUSPRAW, status: 'wykorzystana', start_date: '2026-09-23', end_date: '2026-09-23' });
+  const s = Abs.leaveSummary(w.db, 2026).find(x => x.employee_id === w.e);
+  assert.equal(s.leave.used_days, 6); assert.equal(s.leave.planned_days, 2);
+  assert.equal(s.leave.entitlement_min, 26 * 480); assert.equal(s.leave.start_balance_min, 960, 'zaległy na początek roku');
+  assert.equal(s.leave.remaining_min, 960 + 26 * 480 - 6 * 480, 'zaległy + wymiar − wykorzystano');
+  // poprzedni rok: stan z tamtego roku, nie dzisiejszy
+  const s25 = Abs.leaveSummary(w.db, 2025).find(x => x.employee_id === w.e);
+  assert.equal(s25.leave.used_min, 0); assert.equal(s25.leave.remaining_min, 960);
+  // urlop na przełomie roku — dwa wpisy
+  throwsStatus(assert, () => Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.URLOP_WYP, status: 'planowana', start_date: '2026-12-28', end_date: '2027-01-04' }), 400, /przełomie roku/);
+  assert.equal(s.on_demand.used_days, 1); assert.equal(s.on_demand.limit_days, 4);
+  assert.deepEqual(s.other.map(o => [o.code, o.used_days]), [['L4', 2], ['NIEUSPRAW', 1]]);
+  // nieobecność godzinowa liczona w godzinach, nie jako dzień
+  Abs.createAbsence(w.db, w.admin, { employee_id: w.e, category_id: cat.BADANIA_PROFIL, status: 'wykorzystana', start_date: '2026-09-24', end_date: '2026-09-24', start_time: '08:00', end_time: '09:00' });
+  const bp = Abs.leaveSummary(w.db, 2026).find(x => x.employee_id === w.e).other.find(o => o.code === 'BADANIA_PROFIL');
+  assert.equal(bp.used_days, 0); assert.equal(bp.used_min, 60);
+  // przez API: przełożony bez uprawnienia do danych poufnych widzi ogólną etykietę; programista — 403
+  const People = require('../server/domain/people');
+  const { createApp } = require('../server/app');
+  People.saveUser(w.db, w.admin, { login: 'szef', display_name: 'Przełożony', role: 'supervisor', password: 'haslo-testowe-1' });
+  People.saveUser(w.db, w.admin, { login: 'jan', display_name: 'Jan', role: 'employee', employee_id: w.e, password: 'haslo-testowe-1' });
+  const srv = createApp(w.db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${srv.address().port}/api`;
+  const login = async (l) => { const r = await fetch(`${base}/login`, { method: 'POST', headers: { 'X-CNC-Request': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ login: l, password: 'haslo-testowe-1' }) }); return r.headers.get('set-cookie').split(';')[0]; };
+  try {
+    const szef = await login('szef'), jan = await login('jan');
+    const sv = await (await fetch(`${base}/leave/summary?year=2026`, { headers: { Cookie: szef } })).json();
+    const names = sv.find(x => x.employee_id === w.e).other.map(o => o.name);
+    assert.ok(names.some(n => /Chorobowe/.test(n)));
+    assert.ok(!names.some(n => /nieusprawiedliwiona/i.test(n)), 'kategoria poufna pod ogólną etykietą');
+    assert.equal((await fetch(`${base}/leave/summary?year=2026`, { headers: { Cookie: jan } })).status, 403);
+  } finally { srv.close(); }
+});

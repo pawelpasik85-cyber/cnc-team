@@ -238,6 +238,23 @@ function buildRoutes() {
     requireCap(user, 'view.leave.all');
     return db.all('SELECT id, first_name, last_name FROM employees WHERE active=1 ORDER BY last_name').map(e => ({ employee_id: e.id, name: `${e.first_name} ${e.last_name}`, pools: Abs.listPools(db, e.id).map(p => ({ ...p, ledger: undefined })) }));
   });
+  add('GET', '/leave/summary', ({ db, user, query }) => {
+    requireCap(user, 'view.leave.all');
+    const year = int(query.year) || Number(T.today().slice(0, 4));
+    if (year < 2000 || year > 2100) throw bad('Nieprawidłowy rok.');
+    // inne nieobecności: nazwa kategorii poufnej tylko dla uprawnionych (jak w kalendarzu)
+    return Abs.leaveSummary(db, year).map(e => {
+      const groups = new Map();
+      for (const o of e.other) {
+        const vis = categoryVisibleName(user, o);
+        const key = vis.name === o.category_name ? `c${o.category_id}` : `g${vis.name}`;
+        const g = groups.get(key) || { key, name: vis.name === o.category_name && o.subtype ? `${o.category_name} — ${o.subtype}` : vis.name, short: vis.short, icon: vis.icon, used_days: 0, used_min: 0, planned_days: 0, planned_min: 0, count: 0 };
+        g.used_days += o.used_days; g.used_min += o.used_min; g.planned_days += o.planned_days; g.planned_min += o.planned_min; g.count += o.n;
+        groups.set(key, g);
+      }
+      return { ...e, other: [...groups.values()] };
+    });
+  });
   add('POST', '/leave/pools', ({ db, user, body }) => { requireAdmin(user); return { id: Abs.createPool(db, user, body) }; });
   add('GET', '/leave/pools/:id/preview', ({ db, user, params, query }) => { requireAdmin(user); return Abs.previewAdjust(db, Number(params.id), int(query.minutes)); });
   add('POST', '/leave/pools/:id/adjust', ({ db, user, params, body }) => { requireAdmin(user); return Abs.adjustPool(db, user, Number(params.id), body); });
