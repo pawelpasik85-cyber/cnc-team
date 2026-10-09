@@ -10,6 +10,8 @@ VIEWS.pracownicy = async (main) => {
   const year = /^20\d{2}$/.test(q.get('rok') || '') ? Number(q.get('rok')) : Number(S.me.today.slice(0, 4));
   const leave = can('view.leave.all') || isEmployee() ? await api(`/leave/summary?year=${year}`).catch(() => []) : [];
   const leaveBy = new Map(leave.map(x => [x.employee_id, x]));
+  // programista: jego prośby o urlop czekające na decyzję kierownika
+  const pendingReq = isEmployee() ? (await api('/requests').catch(() => [])).filter(r => r.kind === 'nieobecnosc' && r.status === 'nowe') : [];
   const yearNav = leave.length ? `<span class="lc-yearnav"><span class="muted small">Urlopy</span><a class="btn" href="#/pracownicy?rok=${year - 1}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${year}</span><a class="btn" href="#/pracownicy?rok=${year + 1}" aria-label="Następny rok">›</a></span>` : '';
   const machines = new Map(S.boot.machines.map(m => [m.id, m]));
   main.innerHTML = peopleTabs('pracownicy') + head(isEmployee() ? 'Mój profil i urlopy' : 'Pracownicy', isEmployee() ? 'Ile urlopu wykorzystałeś i ile zostało. Urlop wpisuje kierownik — o urlop poproś w „Zgłoś kierownikowi” (nieobecność).' : `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
@@ -26,6 +28,8 @@ VIEWS.pracownicy = async (main) => {
           ${e.hr_reference ? `<dt class="muted">Referencja kadrowa</dt><dd style="margin:0">${icon('lock')} ${esc(e.hr_reference)}</dd>` : ''}
         </dl>
         ${leaveBy.has(e.id) ? `<div class="lc-emp"><h4>Urlopy i nieobecności ${year}</h4>${leaveRows(leaveBy.get(e.id), year)}</div>` : ''}
+        ${isEmployee() ? `<div class="lc-emp"><h4>Moje prośby czekające na akceptację</h4>${pendingReq.length ? `<ul class="plain">${pendingReq.map(r => `<li>${tag('czeka na kierownika', 'warn')} <b>${esc(WANTED_LABEL[r.wanted_code] || 'Nieobecność')}</b> · ${reqWhen(r)}</li>`).join('')}</ul>` : '<p class="small muted">Brak. Urlop zaznaczasz w „Zgłoś kierownikowi” → Nieobecność; przyznaje go i wpisuje kierownik.</p>'}
+          <p><a class="btn" href="#/zglos">${icon('summons')}Poproś o urlop / nieobecność</a></p></div>` : ''}
         ${e.terms && e.terms.length > 1 ? `<details class="small"><summary>Historia etatu (${e.terms.length})</summary>${table([{ key: 'valid_from', label: 'Od', fmt: 'date' }, { key: r => `${r.fte_num}/${r.fte_den}`, label: 'Etat' }, { key: 'daily_norm_min', label: 'Norma dobowa', fmt: 'hm' }, { key: 'note', label: 'Uwagi' }], e.terms)}</details>` : ''}
         ${isAdmin() ? `<div class="toolbar" style="margin-top:var(--sp-3)"><button data-edit="${e.id}">Edytuj</button><button data-terms="${e.id}">Zmiana etatu</button>${!e.initial_settlement_approved_at ? `<button data-approve="${e.id}">Zatwierdź dane początkowe</button>` : ''}</div>` : ''}
       </section>`;

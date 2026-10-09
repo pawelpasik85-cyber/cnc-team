@@ -225,7 +225,8 @@ function seedDemo(db) {
   const as = db.get('SELECT * FROM schedule_entries WHERE employee_id=? AND work_date=?', adam, shiftDate(adam, '2026-10-06'));
   const aEnd = T.utcToLocal(as.end_at), aEnd2 = T.utcToLocal(new Date(Date.parse(as.end_at) + 45 * 60000).toISOString());
   Req.createRequest(db, u('adam'), { kind: 'odrobienie', date_from: aEnd.date, time_from: aEnd.time, time_to: aEnd2.time, note: 'Odrobię resztę wyjścia z 1.10 po zmianie' });
-  Req.createRequest(db, u('bartosz'), { kind: 'nieobecnosc', date_from: '2026-10-09', note: 'Sprawa urzędowa — proszę o dzień wolny' });
+  Req.createRequest(db, u('bartosz'), { kind: 'nieobecnosc', date_from: '2026-10-09', wanted_code: 'WEZWANIE', note: 'Sprawa urzędowa — proszę o dzień wolny' });
+  Req.createRequest(db, u('celina'), { kind: 'nieobecnosc', date_from: '2026-11-02', date_to: '2026-11-06', wanted_code: 'URLOP_WYP', note: 'Wyjazd rodzinny' });
 
   // Zestawienie do druku: opóźnione projekty z notatkami kierownika
   require('../server/domain/bundles').saveBundle(db, admin, { title: 'Opóźnienia projektów — październik 2026', shared: true,

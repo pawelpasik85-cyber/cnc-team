@@ -64,6 +64,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 15 — przegląd maszyn (9.10.2026)
 **56 / 56 zaliczonych.** Nowy test w `test/machine-calendar.test.js`: godziny i projekty zakończone na Hartford / Grimme w miesiącach, przyszłe miesiące = brak danych, ten sam okres rok wcześniej, zestawienie lat. Zrzuty `101`, `102`.
 
+### Runda 16 — prośba o urlop (9.10.2026)
+**57 / 57 zaliczonych.** Nowy test w `test/requests.test.js`: programista zaznacza rodzaj urlopu (nieznany rodzaj → 400), prośba nie tworzy urlopu, programista nie wpisze nieobecności ani nie zaakceptuje zgłoszenia (403). Programista widzi tylko własny profil i urlopy. Zrzuty `50`, `103`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

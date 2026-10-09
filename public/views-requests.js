@@ -8,6 +8,11 @@ const REQ_KIND = {
   odrobienie: ['Odrobienie czasu', 'makeup', 'Kiedy odrobiłeś / odrobisz'],
   inne: ['Inna sprawa', 'other', 'Opisz w uwadze'],
 };
+// O jaki rodzaj nieobecności prosi programista (kierownik decyduje i wpisuje)
+const WANTED_LABEL = { URLOP_WYP: 'Urlop wypoczynkowy', URLOP_NA_ZADANIE: 'Urlop na żądanie', L4: 'Zwolnienie lekarskie (L4)', OPIEKA_ZUS: 'Opieka nad chorym (zasiłek opiekuńczy)',
+  OPIEKA_188: 'Opieka nad dzieckiem (art. 188)', SILA_WYZSZA: 'Siła wyższa (art. 148¹)', OKOL_SLUB: 'Okolicznościowy — ślub', OKOL_NARODZINY: 'Okolicznościowy — narodziny dziecka',
+  OKOL_ZGON_BLISKI: 'Okolicznościowy — zgon osoby bliskiej', OKOL_SLUB_DZIECKA: 'Okolicznościowy — ślub dziecka', OKOL_ZGON_DALSZY: 'Okolicznościowy — zgon dalszej rodziny',
+  BEZPLATNY: 'Urlop bezpłatny', KREW: 'Oddawanie krwi', BADANIA_PROFIL: 'Badania profilaktyczne', SZKOLENIOWY: 'Szkolenie', WEZWANIE: 'Wezwanie (sąd, urząd)', WOJSKO: 'Obowiązki wojskowe', INNE_USTAWOWE: 'Inne zwolnienie ustawowe' };
 const REQ_STATUS = { nowe: ['czeka na decyzję', 'warn'], przyjete: ['przyjęte', 'ok'], odrzucone: ['odrzucone', 'danger'], wycofane: ['wycofane', ''] };
 
 function reqWhen(r) {
@@ -28,6 +33,8 @@ VIEWS.zglos = async (main) => {
       <form id="reqF" class="form-grid" hidden>
         <label class="field">Dzień<input type="date" name="date_from" required value="${S.me.today}"></label>
         <label class="field" data-show="nieobecnosc">Do dnia (opcjonalnie)<input type="date" name="date_to"></label>
+        <label class="field wide" data-show="nieobecnosc">O jaki rodzaj prosisz<select name="wanted_code"><option value="">— nie wiem / opiszę w uwadze —</option>${Object.entries(WANTED_LABEL).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
+          <span class="help">Zaznaczasz tylko prośbę — urlop przyznaje i wpisuje kierownik.</span></label>
         <label class="field" data-show="wyjscie odrobienie nieobecnosc inne">Od godz.<input type="time" name="time_from"></label>
         <label class="field" data-show="spoznienie wyjscie odrobienie nieobecnosc inne"><span data-lbl>Do godz.</span><input type="time" name="time_to"></label>
         <label class="field wide">Uwaga dla kierownika<textarea name="note" maxlength="500" rows="3" placeholder="Np. powód. Bez danych medycznych."></textarea></label>
@@ -35,7 +42,7 @@ VIEWS.zglos = async (main) => {
         <div class="form-error wide" role="alert"></div>
       </form></section>
       <section class="panel"><h3>Moje zgłoszenia</h3>${table([
-        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(REQ_KIND[r.kind][0])}</b><br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
+        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(REQ_KIND[r.kind][0])}</b>${r.wanted_code ? ` — ${esc(WANTED_LABEL[r.wanted_code] || '')}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
         { key: r => r, label: 'Decyzja', fmt: r => `${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small">${esc(r.decision_note)}</span>` : ''}${r.decided_at ? `<br><span class="small muted">${new Date(r.decided_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })}</span>` : ''}` },
         { key: r => r, label: '', fmt: r => r.status === 'nowe' ? `<button class="link" data-withdraw="${r.id}">Wycofaj</button>` : '' },
       ], list, { empty: 'Nie masz jeszcze zgłoszeń.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section></div>`;
@@ -74,7 +81,7 @@ async function localRequestsSection() {
   const list = await api('/requests');
   const html = `<section class="panel"><h3>Zgłoszenia pracowników</h3>${table([
     { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) },
-    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])}` },
+    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])}${r.wanted_code ? `<br><span class="small">prośba: <b>${esc(WANTED_LABEL[r.wanted_code] || r.wanted_code)}</b></span>` : ''}` },
     { key: r => r, label: 'Kiedy', fmt: r => reqWhen(r) },
     { key: 'note', label: 'Uwaga pracownika' },
     { key: r => new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Zgłoszono' },
@@ -108,10 +115,10 @@ function requestAcceptForm(r) {
   const { options, cats, byCode } = requestTargetOptions(r.kind);
   openForm({
     title: `Przyjmij: ${REQ_KIND[r.kind][0]} — ${S.emp.get(r.employee_id)?.first_name || ''}`,
-    intro: `<p class="small">${reqWhen(r)}${r.note ? `<br>Uwaga: ${esc(r.note)}` : ''}</p><p class="small muted">Wpis powstanie z odnośnikiem do zgłoszenia #${r.id}; w historii zapisze się, kto przyjął.</p>`,
+    intro: `<p class="small">${reqWhen(r)}${r.wanted_code ? `<br>Pracownik prosi o: <b>${esc(WANTED_LABEL[r.wanted_code] || r.wanted_code)}</b> (możesz wybrać inną kategorię)` : ''}${r.note ? `<br>Uwaga: ${esc(r.note)}` : ''}</p><p class="small muted">Wpis powstanie z odnośnikiem do zgłoszenia #${r.id}; w historii zapisze się, kto przyjął.</p>`,
     fields: [
       { name: 'target', label: 'Jak rozliczyć', type: 'select', options, value: options[0][0], placeholder: false, wide: true },
-      { name: 'category_id', label: 'Kategoria nieobecności', type: 'select', options: cats.map(c => [c.id, c.subtype ? `${c.name} — ${c.subtype}` : c.name]), value: byCode('INNE_USPRAW'), placeholder: false, wide: true, show: v => v.target === 'absence' },
+      { name: 'category_id', label: 'Kategoria nieobecności', type: 'select', options: cats.map(c => [c.id, c.subtype ? `${c.name} — ${c.subtype}` : c.name]), value: (r.wanted_code && byCode(r.wanted_code)) || byCode('INNE_USPRAW'), placeholder: false, wide: true, show: v => v.target === 'absence' },
       { name: 'unit', label: 'Jednostka (gdy kategoria pozwala)', type: 'select', options: [['dni', 'dni'], ['godziny', 'godziny']], value: r.time_from ? 'godziny' : 'dni', placeholder: false, show: v => v.target === 'absence' },
       { name: 'written_request', label: 'Uznaj zgłoszenie za pisemny wniosek pracownika', type: 'checkbox', wide: true, help: 'Czy forma elektroniczna spełnia wymóg wniosku — do potwierdzenia z kadrami.', show: v => v.target === 'exit' },
       { name: 'day_off_reason', label: 'Uzasadnienie, jeśli odrabianie wypada w dniu wolnym', wide: true, show: v => v.target === 'makeup' },

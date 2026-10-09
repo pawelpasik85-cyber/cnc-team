@@ -224,6 +224,7 @@ test('przegląd: odrobienie omija wyjście zajęte przez oczekujące odrabianie;
   X.createExit(w.db, w.admin, { employee_id: w.e, start_date: '2026-10-02', start_time: '07:00', end_time: '08:00' });
   X.createMakeup(w.db, w.admin, { employee_id: w.e, start_date: '2026-10-01', start_time: '14:00', end_time: '15:00', allocations: [{ exit_id: s1.id, minutes: 60 }] });
   const Req = require('../server/domain/requests');
+  const { throwsStatus } = require('./helpers');
   const jan = w.db.get(`SELECT * FROM users WHERE login='jan'`);
   const r = Req.createRequest(w.db, jan, { kind: 'odrobienie', date_from: '2026-10-05', time_from: '14:00', time_to: '15:00' });
   const d = Req.decideRequest(w.db, w.admin, r.id, { decision: 'przyjete', target: { type: 'makeup' } });
@@ -253,4 +254,21 @@ test('przegląd: odrobienie omija wyjście zajęte przez oczekujące odrabianie;
     const h = (await adm.call('GET', '/audit?entity=setting&entity_id=employee_sees_all_projects')).data;
     assert.deepEqual(h[0].changes, [{ field: 'value', old: 'nie', new: 'tak' }]);
   } finally { s2.close(); }
+});
+
+test('programista zaznacza rodzaj urlopu, ale nie może go sobie przyznać; kierownik przyjmuje i wpisuje', async () => {
+  const w = world();
+  const Req = require('../server/domain/requests');
+  const { throwsStatus } = require('./helpers');
+  const jan = w.db.get(`SELECT id, login, display_name, role, employee_id FROM users WHERE login='jan'`);
+  throwsStatus(assert, () => Req.createRequest(w.db, jan, { kind: 'nieobecnosc', date_from: '2026-10-14', wanted_code: 'NIEUSPRAW' }), 400, /Nieznany rodzaj/);
+  const r = Req.createRequest(w.db, jan, { kind: 'nieobecnosc', date_from: '2026-10-14', date_to: '2026-10-14', wanted_code: 'URLOP_WYP', note: 'wyjazd' });
+  assert.equal(w.db.get('SELECT wanted_code FROM requests WHERE id=?', r.id).wanted_code, 'URLOP_WYP');
+  assert.equal(w.db.get(`SELECT COUNT(*) n FROM absences WHERE employee_id=?`, w.e).n, 0, 'prośba nie tworzy urlopu');
+  const { srv, base } = await startServer(w.db);
+  try {
+    const c = client(base); await c.login('jan');
+    assert.equal((await c.call('POST', '/absences', { employee_id: w.e, category_id: 1, start_date: '2026-10-15' })).status, 403, 'sam sobie nie wystawi');
+    assert.equal((await c.call('POST', `/requests/${r.id}/decide`, { decision: 'przyjete', target: { type: 'none' } })).status, 403, 'sam sobie nie zaakceptuje');
+  } finally { srv.close(); }
 });

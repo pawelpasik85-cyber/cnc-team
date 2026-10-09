@@ -11,6 +11,9 @@ const KINDS = {
   nieobecnosc: 'Nieobecność', spoznienie: 'Spóźnienie', wyjscie: 'Wyjście w trakcie zmiany',
   odrobienie: 'Odrobienie czasu', inne: 'Inna sprawa',
 };
+// Rodzaje nieobecności, o które programista może poprosić (zaznacza — przyjęcie i wpis wyłącznie przez kierownika)
+const WANTED = ['URLOP_WYP', 'URLOP_NA_ZADANIE', 'L4', 'OPIEKA_ZUS', 'OPIEKA_188', 'SILA_WYZSZA', 'OKOL_SLUB', 'OKOL_NARODZINY', 'OKOL_ZGON_BLISKI',
+  'OKOL_SLUB_DZIECKA', 'OKOL_ZGON_DALSZY', 'BEZPLATNY', 'KREW', 'BADANIA_PROFIL', 'SZKOLENIOWY', 'WEZWANIE', 'WOJSKO', 'INNE_USTAWOWE'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_BACK_DAYS = 31;
@@ -22,6 +25,7 @@ function validate(body, today = T.today()) {
     kind: body.kind, date_from: body.date_from, date_to: body.date_to || body.date_from,
     time_from: body.time_from || null, time_to: body.time_to || null,
     note: body.note == null || String(body.note).trim() === '' ? null : String(body.note).trim(),
+    wanted_code: body.kind === 'nieobecnosc' && body.wanted_code ? String(body.wanted_code) : null,
   };
   const errors = [];
   if (typeof r.kind !== 'string' || !Object.hasOwn(KINDS, r.kind)) errors.push('Wybierz rodzaj zgłoszenia.');
@@ -41,6 +45,7 @@ function validate(body, today = T.today()) {
     if (r.date_to !== r.date_from) errors.push('Odrobienie zgłaszasz osobno dla każdego dnia.');
   }
   if (r.kind === 'inne' && !r.note) errors.push('Opisz sprawę w uwadze.');
+  if (r.wanted_code && !WANTED.includes(r.wanted_code)) errors.push('Nieznany rodzaj nieobecności.');
   if (r.note && r.note.length > 500) errors.push('Uwaga może mieć najwyżej 500 znaków.');
   if (errors.length) throw bad(errors.join(' '), { errors });
   return r;
@@ -56,8 +61,8 @@ function createRequest(db, user, body) {
   }
   return db.tx(() => {
     const now = T.nowIso();
-    const res = db.run(`INSERT INTO requests(employee_id,user_id,client_id,kind,date_from,date_to,time_from,time_to,note,status,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,'nowe',?,?)`, user.employee_id, user.id, clientId, r.kind, r.date_from, r.date_to, r.time_from, r.time_to, r.note, now, now);
+    const res = db.run(`INSERT INTO requests(employee_id,user_id,client_id,kind,date_from,date_to,time_from,time_to,note,wanted_code,status,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,'nowe',?,?)`, user.employee_id, user.id, clientId, r.kind, r.date_from, r.date_to, r.time_from, r.time_to, r.note, r.wanted_code, now, now);
     const id = Number(res.lastInsertRowid);
     audit(db, user, 'request', id, 'zgloszenie', null, { ...r, employee_id: user.employee_id }, 'zgłoszenie pracownika do weryfikacji');
     return { id, status: 'nowe' };
@@ -177,4 +182,4 @@ function decideRequest(db, user, id, body) {
   });
 }
 
-module.exports = { KINDS, validate, createRequest, listRequests, withdrawRequest, decideRequest, buildLocalEntry, autoAllocations };
+module.exports = { WANTED, KINDS, validate, createRequest, listRequests, withdrawRequest, decideRequest, buildLocalEntry, autoAllocations };

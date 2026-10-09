@@ -171,7 +171,7 @@ with sync_playwright() as p:
     shot(page, "99-pracownik-kalendarz", "#/kalendarz?tryb=tydzien&data=2026-10-05", settle=900)
     # programista: projekty, pracownicy, centrum programowania — przekierowanie do planu pracy
     shot(page, "103-pracownik-moje-urlopy", "#/pracownicy?rok=2026", settle=900)
-    if page.locator(".lc-emp").count() != 1:
+    if page.locator("main .cols > section.panel").count() != 1:
         errors.append("programistka powinna widzieć tylko swoje urlopy")
     for h in ["#/projekty", "#/projekty/PRJ-2026-0001", "#/dzisiaj", "#/wyjscia", "#/zdarzenia", "#/absencje"]:
         page.goto(base + "/" + h)
