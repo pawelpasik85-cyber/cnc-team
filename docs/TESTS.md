@@ -61,6 +61,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 14 — oba tematy w każdym dniu kalendarza (9.10.2026)
 **55 / 55 zaliczonych.** Nowy `test/machine-calendar.test.js`: każdego dnia obie maszyny; praca ze zmianą z wpisów, dzień bez wpisów = w toku, dziś i dalej = projekt z karty maszyny, brak przed pierwszą pracą i po zakończeniu projektu.
 
+### Runda 15 — przegląd maszyn (9.10.2026)
+**56 / 56 zaliczonych.** Nowy test w `test/machine-calendar.test.js`: godziny i projekty zakończone na Hartford / Grimme w miesiącach, przyszłe miesiące = brak danych, ten sam okres rok wcześniej, zestawienie lat. Zrzuty `101`, `102`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

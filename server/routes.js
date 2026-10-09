@@ -534,6 +534,7 @@ function buildRoutes() {
   add('POST', '/analytics/projects/:id/similar/:other/reject', ({ db, user, params, body }) => { requireAdmin(user); A.rejectSimilar(db, user, params.id, params.other, body); });
   add('POST', '/analytics/projects/:id/similar/:other/restore', ({ db, user, params }) => { requireAdmin(user); A.restoreSimilar(db, user, params.id, params.other); });
   add('GET', '/analytics/month', ({ db, user, query }) => { requireAdmin(user); return A.monthCompare(db, query.ym || T.today().slice(0, 7)); });
+  add('GET', '/analytics/machines', ({ db, user, query }) => { requireAdmin(user); return A.machineOverview(db, query.year || T.today().slice(0, 4)); });
   add('GET', '/analytics/year', ({ db, user, query }) => {
     requireAdmin(user);
     const compare = String(query.compare || '').split(',').filter(x => /^\d{4}$/.test(x));

@@ -23,6 +23,46 @@ const hoursFmt = (v) => `${Math.round(v * 10) / 10} h`;
 const toH = (m) => (m === null || m === undefined ? null : Math.round((m / 60) * 10) / 10);
 
 // ---------- Renderery (używane w widoku na żywo i w zapisanym raporcie) ----------
+// Przegląd maszyn: godziny Hartford / Grimme i zakończone projekty w miesiącach roku oraz w latach — wykresy 3D z wartościami
+const MONTHS_SHORT = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+function renderMachines(d) {
+  const hrs = (m) => (m === null || m === undefined ? null : Math.round(m / 6) / 10);
+  const fmtH = (v) => `${String(v).replace('.', ',')}`;
+  const delta = (cur, prev, unit) => {
+    if (!prev && !cur) return '<span class="dchip">bez danych rok wcześniej</span>';
+    const diff = cur - prev;
+    const pctV = prev ? Math.round((diff / prev) * 100) : null;
+    return `<span class="dchip">${diff > 0 ? '▲' : diff < 0 ? '▼' : '='} ${unit === 'h' ? `${diff > 0 ? '+' : ''}${fmtH(hrs(diff))} h` : `${diff > 0 ? '+' : ''}${diff}`}${pctV !== null ? ` (${pctV > 0 ? '+' : ''}${pctV}%)` : ''} wobec ${d.year - 1}</span>`;
+  };
+  const period = d.partial ? `do ${plDate(d.until)}` : 'cały rok';
+  const tiles = d.machines.map(m => {
+    const th = machineTheme(m);
+    return `<article class="mo-tile theme-${th}"><div class="mo-name">${machineEmblem(th, 52)}</div>
+      <div class="mo-num"><b>${fmtH(hrs(m.total_min))} h</b><span>${esc(m.name)} — godziny na projektach (${period})</span><br>${delta(m.total_min, m.prev_min, 'h')}</div>
+      <div class="mo-num"><b>${m.total_done}</b><span>zakończonych projektów</span><br>${delta(m.total_done, m.prev_done, 'szt')}</div></article>`;
+  }).join('');
+  const series = (key, conv) => d.machines.map(m => ({ name: m.name, tone: machineTheme(m), values: m.months.map(x => (x[key] === null ? null : conv(x[key]))) }));
+  const hoursChart = svgBar3d({ title: `Godziny pracy na projektach — miesiące ${d.year}`, categories: MONTHS_SHORT, series: series('worked_min', hrs), fmt: (v) => fmtH(Math.round(v)), unit: ' h' });
+  const doneChart = svgBar3d({ title: `Zakończone projekty — miesiące ${d.year}`, categories: MONTHS_SHORT, series: series('projects_done', (v) => v), fmt: (v) => String(Math.round(v)), height: 240, integer: true });
+  const ys = d.years;
+  const yearHours = svgBar3d({ title: 'Godziny na projektach — lata', categories: ys.map(y => `${y.year}${y.partial ? '*' : ''}`), series: d.machines.map(m => ({ name: m.name, tone: machineTheme(m), values: ys.map(y => hrs(y.machines.find(x => x.machine_id === m.machine_id).worked_min)) })), fmt: (v) => fmtH(Math.round(v)), unit: ' h', height: 260 });
+  const yearDone = svgBar3d({ title: 'Zakończone projekty — lata', categories: ys.map(y => `${y.year}${y.partial ? '*' : ''}`), series: d.machines.map(m => ({ name: m.name, tone: machineTheme(m), values: ys.map(y => y.machines.find(x => x.machine_id === m.machine_id).projects_done) })), fmt: (v) => String(Math.round(v)), height: 260, integer: true });
+  const rows = MONTHS_SHORT.map((lbl, i) => ({ lbl: plMonth(d.machines[0] ? d.machines[0].months[i].ym : ''), cells: d.machines.map(m => m.months[i]) }));
+  const tbl = table([
+    { key: 'lbl', label: 'Miesiąc' },
+    ...d.machines.map((m, mi) => ({ key: r => r.cells[mi].worked_min, label: `${m.name} — godziny`, fmt: v => (v === null ? '—' : hShort(v)) })),
+    ...d.machines.map((m, mi) => ({ key: r => r.cells[mi].projects_done, label: `${m.name} — projekty`, fmt: v => (v === null ? '—' : String(v)) })),
+    { key: r => (r.cells[0].worked_min === null ? null : r.cells.reduce((a, c) => a + (c.worked_min || 0), 0)), label: 'Razem godziny', fmt: v => (v === null ? '—' : `<b>${hShort(v)}</b>`) },
+    { key: r => (r.cells[0].projects_done === null ? null : r.cells.reduce((a, c) => a + (c.projects_done || 0), 0)), label: 'Razem projekty', fmt: v => (v === null ? '—' : `<b>${v}</b>`) },
+  ], rows);
+  return `<div class="mo-tiles">${tiles}</div>
+    <section class="panel">${hoursChart}</section>
+    <section class="panel">${doneChart}</section>
+    <div class="cols"><section class="panel">${yearHours}</section><section class="panel">${yearDone}</section></div>
+    <section class="panel"><h3>Miesiące ${d.year}</h3>${tbl}
+      <p class="small muted">Godziny = czas pracy ludzi na projektach przypisanych do maszyny (aktywna praca, weryfikacja i uruchomienie, poprawki) — aplikacja nie mierzy czasu pracy samego wrzeciona. Projekt liczy się jako zakończony w miesiącu zakończenia ostatniego zadania (powroty do poprawek nie przesuwają tej daty). ${ys.some(y => y.partial) ? '* rok w toku. ' : ''}Porównanie z rokiem wcześniej — ten sam okres.</p></section>`;
+}
+
 function renderMonth(d) {
   const cur = d.current, prev = d.previous;
   const y1 = cur.year_month.slice(0, 4), y0 = prev.year_month.slice(0, 4);
@@ -230,11 +270,17 @@ function saveReportForm(kind, ref, title, extra = {}) {
 VIEWS.analiza = async (main) => {
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const admin = isAdmin();
-  const tab = admin ? (q.get('t') || 'miesiac') : (q.get('t') === 'zestawienia' ? 'zestawienia' : 'raporty');
-  const tabs = admin ? [['miesiac', 'Miesiąc'], ['rok', 'Rok'], ['raporty', 'Zapisane raporty'], ['zestawienia', 'Zestawienia do druku']] : [['raporty', 'Raporty od kierownika'], ['zestawienia', 'Zestawienia']];
+  const tab = admin ? (q.get('t') || 'maszyny') : (q.get('t') === 'zestawienia' ? 'zestawienia' : 'raporty');
+  const tabs = admin ? [['maszyny', 'Przegląd maszyn'], ['miesiac', 'Miesiąc'], ['rok', 'Rok'], ['raporty', 'Zapisane raporty'], ['zestawienia', 'Zestawienia do druku']] : [['raporty', 'Raporty od kierownika'], ['zestawienia', 'Zestawienia']];
   const tabsHtml = `<div class="tabs no-print">${tabs.map(([id, l]) => `<button class="${tab === id ? 'active' : ''}" data-at="${id}">${esc(l)}</button>`).join('')}</div>`;
   let body = '', tools = '';
-  if (tab === 'miesiac') {
+  if (tab === 'maszyny') {
+    const yQ = q.get('y') || '';
+    const year = /^\d{4}$/.test(yQ) ? yQ : S.me.today.slice(0, 4);
+    const d = await api(`/analytics/machines?year=${year}`);
+    tools = `<label class="field no-print">Rok<select id="moYear">${d.available.map(y => `<option ${String(y) === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label><button id="aprint" class="no-print">${icon('print')}Drukuj / PDF</button>`;
+    body = `<h2 class="print-title">Przegląd maszyn ${esc(year)}</h2>${renderMachines(d)}`;
+  } else if (tab === 'miesiac') {
     const ymQ = q.get('ym') || '';
     const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ymQ) && ymQ <= S.me.today.slice(0, 7) ? ymQ : S.me.today.slice(0, 7);
     const d = await api(`/analytics/month?ym=${ym}`);
@@ -268,6 +314,7 @@ VIEWS.analiza = async (main) => {
   main.innerHTML = head(admin ? 'Analiza i raporty' : 'Raporty od kierownika', admin ? 'Dane widoczne tylko dla Ciebie. Zapisz raport, aby wydrukować go lub udostępnić przełożonemu.' : 'Raporty udostępnione przez kierownika.', tools) + tabsHtml + body;
   bindCharts(main);
   $$('[data-at]').forEach(b => b.onclick = () => { location.hash = `#/analiza?t=${b.dataset.at}`; });
+  const moY = $('#moYear'); if (moY) moY.onchange = () => { location.hash = `#/analiza?t=maszyny&y=${moY.value}`; };
   const m = $('#amonth'); if (m) m.onchange = () => { location.hash = `#/analiza?t=miesiac&ym=${m.value}`; };
   const yearNav = () => {
     const y = $('#ayear').value, c = $$('.years-pick input:checked').map(i => i.value).join(','), mt = $('#ametric').value;

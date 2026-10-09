@@ -545,3 +545,15 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .mc-row.mc-obecnie, .mc-row.mc-w_toku { background: transparent; border-style: dashed; }
 .mc-row.mc-brak { background: transparent; border-style: dotted; opacity: .6; }
 .cal .day.off .mc-row:not(.mc-praca) { opacity: .45; }
+
+/* Wykresy 3D */
+.chart-box .floor3d { fill: var(--c-paper); stroke: var(--c-line); }
+.chart-box .vlab { fill: var(--c-ink); font-size: 11px; font-weight: 700; font-family: var(--f-sans); }
+.chart-box .bar3d-g:hover { filter: brightness(1.1); }
+.mo-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.mo-tile { border-radius: var(--r-md); padding: var(--sp-3); border: 1px solid var(--c-line); border-top: 4px solid var(--m-mid); background: linear-gradient(180deg, var(--m-soft), var(--c-surface) 70%); display: grid; grid-template-columns: auto 1fr 1fr; gap: var(--sp-3); align-items: center; }
+.mo-tile h3 { margin: 0; } .mo-tile .mo-name small { display: block; color: var(--c-ink-soft); font-size: var(--fs-xs); }
+.mo-num b { display: block; font-size: 1.9rem; line-height: 1.1; color: var(--m-ink); font-weight: 800; letter-spacing: -.02em; }
+.mo-num span { font-size: var(--fs-xs); color: var(--c-ink-soft); }
+@media (max-width: 700px) { .mo-tile { grid-template-columns: auto 1fr; } .mo-tile .mo-num:last-child { grid-column: 2; } }
+figure.chart3d { max-width: none; } figure.chart3d .chart-box svg { max-height: 440px; }

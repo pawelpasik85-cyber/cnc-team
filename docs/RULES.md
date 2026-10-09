@@ -81,6 +81,10 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Przegląd maszyn (Analiza i raporty → Przegląd maszyn, pierwsza zakładka)
+- Dla Hartford i Grimme: godziny pracy na projektach maszyny (czas ludzi: aktywna praca + weryfikacja/uruchomienie + poprawki — czasu pracy wrzeciona aplikacja nie mierzy) i liczba zakończonych projektów (miesiąc zakończenia ostatniego zadania pierwotnego).
+- Kafelki roku z porównaniem do tego samego okresu rok wcześniej; wykresy 3D z wartościami: miesiące roku (godziny, projekty) i wszystkie lata; tabela miesięcy z sumami. Miesiące przyszłe — brak danych, nie zero.
+
 ### Centrum programowania i kalendarz maszyn
 - Centrum programowania: obie maszyny (karta jak dotąd), pod każdą — aktualnie obrabiany projekt z kartą jak w „Projekty i zadania” (postęp, godziny, wynik, opóźnienie) i informacją, **kiedy i na której zmianie projekt się zaczął**: pierwszy wpis czasu pracy — dzień, osoba i jej zmiana z grafiku (gdy brak wpisów — data rozpoczęcia z projektu, oznaczona). Pod spodem pozostałe informacje.
 - Kalendarz: na górze **każdego dnia oba tematy** — co idzie na Hartford i na Grimme. *Praca* (pełne tło): wpisy czasu pracy tego dnia z oznaczeniem zmian (I / II / III — zmiana osoby, która wpisała czas; „poza grafikiem”, gdy nie miała zmiany). *W toku* (przerywana ramka): dzień miniony bez wpisów — ostatni projekt pracowany na maszynie, jeśli nie był już zakończony. *Obecnie* (przerywana ramka): dziś i dni przyszłe bez wpisów — projekt z karty maszyny. „—” gdy na maszynie nic nie było. Widok: maszyny i ludzie / tylko maszyny / tylko ludzie.

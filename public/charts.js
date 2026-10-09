@@ -88,6 +88,53 @@ function svgBarChart({ categories, series, fmt = (v) => String(v), height = 240,
     <div class="chart-box"><svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${g}</svg><div class="tip" hidden></div></div></figure>`;
 }
 
+// Słupki 3D (bryły z wierzchem i bokiem) w kolorach maszyn: Hartford — szarości, Grimme — błękit.
+// series: [{ name, tone: 'hartford'|'grimme'|kolor, values: [number|null] }]; wartości nad słupkami dla czytelności.
+const TONES = {
+  hartford: { light: '#dde2e7', mid: '#8a949e', dark: '#4a525b' },
+  grimme: { light: '#9ccbff', mid: '#2a7de0', dark: '#0e468f' },
+};
+function svgBar3d({ categories, series, fmt = (v) => String(v), height = 300, title = '', labels = true, unit = '', integer = false }) {
+  const id = `ch${++CHART_SEQ}`;
+  const W = 720, H = height, L = 52, R = 26, Tp = 26, B = 34, DX = 9, DY = 6;
+  const all = series.flatMap(x => x.values).filter(v => v !== null && v !== undefined);
+  // podziałka „okrągła” co 1/4 zakresu; dla liczebności — liczby całkowite
+  const mx = Math.max(0, ...all);
+  const hi = integer ? Math.max(4, Math.ceil(mx / 4) * 4) : niceMax(mx / 4) * 4;
+  const y = (v) => Tp + (H - Tp - B) * (1 - v / (hi || 1));
+  const groupW = (W - L - R - DX) / Math.max(1, categories.length);
+  const gap = 4, inner = Math.max(6, Math.min(36, (groupW * 0.74 - gap * (series.length - 1)) / series.length));
+  const tone = (x) => TONES[x.tone] || { light: x.tone, mid: x.tone, dark: x.tone };
+  let defs = '';
+  series.forEach((x, si) => { const t = tone(x); defs += `<linearGradient id="${id}f${si}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.light}"/><stop offset=".45" stop-color="${t.mid}"/><stop offset="1" stop-color="${t.dark}"/></linearGradient>`; });
+  let g = '';
+  // tylna ściana i podłoga — efekt głębi
+  g += `<polygon points="${L},${y(0)} ${L + DX},${y(0) - DY} ${W - R},${y(0) - DY} ${W - R - DX},${y(0)}" class="floor3d"/>`;
+  for (let k = 0; k <= 4; k++) {
+    const v = (hi * k) / 4, yy = y(v);
+    g += `<line x1="${L + DX}" x2="${W - R}" y1="${yy - DY}" y2="${yy - DY}" class="grid"/><line x1="${L}" x2="${L + DX}" y1="${yy}" y2="${yy - DY}" class="grid"/><text x="${L - 6}" y="${yy + 4}" class="ylab" text-anchor="end">${esc(fmt(Math.round(v * 10) / 10))}</text>`;
+  }
+  categories.forEach((c, ci) => {
+    const gx = L + ci * groupW + (groupW - (inner * series.length + gap * (series.length - 1))) / 2;
+    series.forEach((x, si) => {
+      const v = x.values[ci];
+      if (v === null || v === undefined) return;
+      const t = tone(x);
+      const x0 = gx + si * (inner + gap), yt = y(Math.max(v, 0)), yb = y(0), h = Math.max(1.5, yb - yt), top = yb - h;
+      g += `<g class="bar3d-g" data-tip="${esc(`${c}${series.length > 1 ? ` · ${x.name}` : ''}: ${fmt(v)}${unit}`)}">
+        <rect x="${x0}" y="${top}" width="${inner}" height="${h}" fill="url(#${id}f${si})"/>
+        <polygon points="${x0 + inner},${top} ${x0 + inner + DX},${top - DY} ${x0 + inner + DX},${yb - DY} ${x0 + inner},${yb}" fill="${t.dark}"/>
+        <polygon points="${x0},${top} ${x0 + DX},${top - DY} ${x0 + inner + DX},${top - DY} ${x0 + inner},${top}" fill="${t.light}"/>
+        ${labels && v > 0 ? `<text x="${x0 + inner / 2 + DX / 2}" y="${top - DY - 4}" class="vlab" text-anchor="middle">${esc(fmt(v))}</text>` : ''}</g>`;
+    });
+    g += `<text x="${L + ci * groupW + groupW / 2}" y="${H - 10}" class="xlab" text-anchor="middle">${esc(c)}</text>`;
+  });
+  CHARTS.set(id, { kind: 'bar' });
+  const legend = series.length > 1 ? `<div class="legend">${series.map(x => `<span><i style="background:${tone(x).mid}"></i>${esc(x.name)}</span>`).join('')}</div>` : '';
+  return `<figure class="chart chart3d" data-chart="${id}">${title ? `<figcaption>${esc(title)}</figcaption>` : ''}${legend}
+    <div class="chart-box"><svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}"><defs>${defs}</defs>${g}</svg><div class="tip" hidden></div></div></figure>`;
+}
+
 // Podpowiedzi: linia — celownik i wartości wszystkich serii w danym punkcie; słupek — wartość słupka.
 function bindCharts(root = document) {
   root.querySelectorAll('figure.chart').forEach(fig => {

@@ -51,6 +51,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - Dni dodatkowe są w kalendarzu kreskowane z plakietką **DOD**, zmiany wydłużone — **12h**, nieregularne — **NR**. Godziny na projektach w nadgodzinach (i ich udział %) pokazuje analiza projektu i miesiąca.
 
 ## Analiza i raporty (tylko kierownik)
+- **Przegląd maszyn** (pierwsza zakładka): godziny na projektach Hartford i Grimme oraz zakończone projekty — miesiące i lata, wykresy 3D z wartościami, porównanie z rokiem wcześniej.
 - **Zestawienia do druku**: kilka tematów (projekty, zapisane raporty, własne) z przyczyną i notatką, np. dlaczego było opóźnienie — druk / PDF, e-mail, udostępnienie przełożonemu.
 - **Powrót do projektu (poprawki)** — przy zakończonym projekcie; analiza projektu pokazuje czas przed poprawkami, ile doszło w każdej rundzie (i o ile %), same poprawki łącznie i razem.
 

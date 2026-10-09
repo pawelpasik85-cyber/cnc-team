@@ -305,6 +305,47 @@ function availableYears(db) {
   return [...ys].sort((a, b) => b - a);
 }
 
+// Przegląd maszyn: godziny pracy na projektach Hartford / Grimme i liczba zakończonych projektów — miesiące roku i wszystkie lata.
+// Godziny = czas ludzi na projektach przypisanych do maszyny (aktywna praca + weryfikacja/uruchomienie + poprawki);
+// czasu pracy samej maszyny (wrzeciona) aplikacja nie mierzy. Projekt zakończony w miesiącu ostatniego zakończenia zadania pierwotnego.
+function machineOverview(db, year) {
+  if (!/^\d{4}$/.test(String(year))) throw bad('Rok w formacie RRRR.');
+  const y = String(year);
+  const machines = db.all('SELECT id, name, axes, control FROM machines WHERE active=1 ORDER BY sort');
+  const hours = db.all(`SELECT substr(e.work_date,1,7) ym, p.machine_id, SUM(${WORK}) w FROM task_time_entries e JOIN tasks t ON t.id = e.task_id JOIN projects p ON p.id = t.project_id
+    WHERE p.machine_id IS NOT NULL GROUP BY ym, p.machine_id`);
+  const doneRows = db.all(`SELECT p.id, p.machine_id, MAX(t.completed_at) last FROM projects p JOIN tasks t ON t.project_id = p.id
+    WHERE (p.status = 'zakonczony' OR EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id)) AND t.status = 'zakonczone' AND t.return_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id AND r.round = 1 AND substr(t.completed_at, 1, 10) >= r.opened_date)
+      AND p.machine_id IS NOT NULL GROUP BY p.id`).map(r => ({ ...r, ym: localDate(r.last).slice(0, 7) }));
+  const today = T.today();
+  const months = Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`);
+  const per = (m) => ({
+    machine_id: m.id, name: m.name, axes: m.axes, control: m.control,
+    months: months.map(ym => ym > today.slice(0, 7) ? { ym, worked_min: null, projects_done: null } : {
+      ym, worked_min: (hours.find(h => h.ym === ym && h.machine_id === m.id) || {}).w || 0,
+      projects_done: doneRows.filter(d => d.ym === ym && d.machine_id === m.id).length,
+    }),
+  });
+  const list = machines.map(per);
+  for (const m of list) {
+    m.total_min = m.months.reduce((s, x) => s + (x.worked_min || 0), 0);
+    m.total_done = m.months.reduce((s, x) => s + (x.projects_done || 0), 0);
+    // ten sam okres rok wcześniej (do bieżącego miesiąca, gdy rok w toku)
+    const lastYm = y === today.slice(0, 4) ? today.slice(0, 7) : `${y}-12`;
+    const prevYm = `${Number(y) - 1}${lastYm.slice(4)}`;
+    m.prev_min = hours.filter(h => h.machine_id === m.machine_id && h.ym.startsWith(String(Number(y) - 1)) && h.ym <= prevYm).reduce((s, h) => s + h.w, 0);
+    m.prev_done = doneRows.filter(d => d.machine_id === m.machine_id && d.ym.startsWith(String(Number(y) - 1)) && d.ym <= prevYm).length;
+  }
+  const years = [...new Set([...hours.map(h => h.ym.slice(0, 4)), ...doneRows.map(d => d.ym.slice(0, 4)), y])].sort();
+  const byYear = years.map(yy => ({ year: Number(yy), partial: yy === today.slice(0, 4), machines: machines.map(m => ({
+    machine_id: m.id,
+    worked_min: hours.filter(h => h.machine_id === m.id && h.ym.startsWith(yy)).reduce((s, h) => s + h.w, 0),
+    projects_done: doneRows.filter(d => d.machine_id === m.id && d.ym.startsWith(yy)).length,
+  })) }));
+  return { year: Number(y), partial: y === today.slice(0, 4), until: today, machines: list, years: byYear, available: years.map(Number).sort((a, b) => b - a) };
+}
+
 function yearCompare(db, year, compare = []) {
   if (!/^\d{4}$/.test(String(year))) throw bad('Rok w formacie RRRR.');
   const years = [Number(year), ...cleanYears(compare, year)];
@@ -373,6 +414,6 @@ function deleteReport(db, user, id) {
 
 module.exports = {
   projectMetrics, projectProcess, similarProjects, rejectSimilar, restoreSimilar, similarityScore,
-  monthStats, monthCompare, yearStats, yearCompare, availableYears, KPI,
+  monthStats, monthCompare, yearStats, yearCompare, availableYears, KPI, machineOverview,
   saveReport, listReports, getReport, updateReport, deleteReport,
 };
