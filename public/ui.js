@@ -32,11 +32,11 @@ async function api(path, { method = 'GET', body, raw, idem } = {}) {
   return data;
 }
 
-function toast(msg, kind = '') {
+function toast(msg, kind = '', ms = 0) {
   const t = document.createElement('div');
   t.className = `toast ${kind}`; t.textContent = msg;
   $('#toasts').appendChild(t);
-  setTimeout(() => t.remove(), kind === 'err' ? 9000 : 5000);
+  setTimeout(() => t.remove(), ms || (kind === 'err' ? 9000 : 5000));
 }
 
 // Czas zawsze jako godziny i minuty

@@ -557,3 +557,17 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .mo-num span { font-size: var(--fs-xs); color: var(--c-ink-soft); }
 @media (max-width: 700px) { .mo-tile { grid-template-columns: auto 1fr; } .mo-tile .mo-num:last-child { grid-column: 2; } }
 figure.chart3d { max-width: none; } figure.chart3d .chart-box svg { max-height: 440px; }
+
+/* Powiadomienia */
+.nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 12px; font-weight: 800; display: inline-grid; place-items: center; box-shadow: 0 0 0 2px var(--c-graphite); animation: badge-pulse 2s ease-in-out infinite; }
+.nav-badge.soft { background: #e0a243; animation: none; }
+.tabbar .nav-badge, #moreBtn .nav-badge { position: absolute; top: 4px; margin-left: 18px; box-shadow: 0 0 0 2px var(--c-surface); }
+.tabbar a, .tabbar button { position: relative; }
+@keyframes badge-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.notify-bar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-3); padding: 10px 14px; border-radius: var(--r-md);
+  background: #fde8e8; border: 2px solid #e5484d; color: #7a1418; font-size: var(--fs-sm); position: sticky; top: 0; z-index: 5; box-shadow: 0 4px 14px rgba(229,72,77,.18); }
+.notify-bar svg { width: 20px; height: 20px; color: #e5484d; flex: none; }
+.notify-bar span { flex: 1; min-width: 200px; }
+:root[data-theme="dark"] .notify-bar { background: #3b1d1b; color: #ffd9d6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .notify-bar { background: #3b1d1b; color: #ffd9d6; } }
+

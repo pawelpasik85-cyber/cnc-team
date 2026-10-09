@@ -67,6 +67,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 16 — prośba o urlop (9.10.2026)
 **57 / 57 zaliczonych.** Nowy test w `test/requests.test.js`: programista zaznacza rodzaj urlopu (nieznany rodzaj → 400), prośba nie tworzy urlopu, programista nie wpisze nieobecności ani nie zaakceptuje zgłoszenia (403). Programista widzi tylko własny profil i urlopy. Zrzuty `50`, `103`.
 
+### Runda 17 — powiadomienia (9.10.2026)
+**58 / 58 zaliczonych.** Nowy test `/notify`: kierownik — zgłoszenia czekające (z rodzajem urlopu), znikają po decyzji; programista — decyzja z wyjaśnieniem; przełożony — bez listy. Skrypt zrzutów: pasek i licznik w menu, nowe zgłoszenie programisty → komunikat bez odświeżania (`104`, `105`).
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

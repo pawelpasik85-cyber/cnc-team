@@ -272,3 +272,24 @@ test('programista zaznacza rodzaj urlopu, ale nie może go sobie przyznać; kier
     assert.equal((await c.call('POST', `/requests/${r.id}/decide`, { decision: 'przyjete', target: { type: 'none' } })).status, 403, 'sam sobie nie zaakceptuje');
   } finally { srv.close(); }
 });
+
+test('powiadomienia: kierownik widzi zgłoszenia czekające na decyzję, programista — decyzje w swoich zgłoszeniach', async () => {
+  const w = world();
+  const Req = require('../server/domain/requests');
+  const jan = w.db.get(`SELECT id, login, display_name, role, employee_id FROM users WHERE login='jan'`);
+  const r = Req.createRequest(w.db, jan, { kind: 'nieobecnosc', date_from: '2026-10-14', wanted_code: 'URLOP_WYP' });
+  const { srv, base } = await startServer(w.db);
+  try {
+    const adm = client(base); await adm.login('admin');
+    const n = (await adm.call('GET', '/notify')).data;
+    assert.deepEqual(n.pending_requests.map(x => x.id), [r.id]); assert.equal(n.pending_requests[0].wanted_code, 'URLOP_WYP');
+    const c = client(base); await c.login('jan');
+    assert.deepEqual((await c.call('GET', '/notify')).data.decided, []);
+    await adm.call('POST', `/requests/${r.id}/decide`, { decision: 'odrzucone', note: 'termin projektu' });
+    assert.equal((await adm.call('GET', '/notify')).data.pending_requests.length, 0);
+    const d = (await c.call('GET', '/notify')).data.decided;
+    assert.equal(d[0].status, 'odrzucone'); assert.equal(d[0].decision_note, 'termin projektu');
+    const s = client(base); await s.login('szef');
+    assert.equal((await s.call('GET', '/notify')).data.pending_requests, undefined, 'przełożony nie decyduje — bez listy');
+  } finally { srv.close(); }
+});

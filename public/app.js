@@ -70,6 +70,81 @@ async function start() {
   renderShell();
   window.addEventListener('hashchange', route);
   route();
+  startNotify();
+}
+
+// ---------- Powiadomienia: licznik w menu, pasek na każdej stronie, powiadomienie systemowe i dźwięk przy nowym zgłoszeniu ----------
+const NOTIFY = { timer: null, seen: null, data: null };
+function notifySeenKey() { return `cnc-notify-${S.me && S.me.id}`; }
+async function pollNotify(first = false) {
+  if (!S.me || (S.me.role !== 'admin' && S.me.role !== 'employee')) return;
+  let d;
+  try { d = await api('/notify'); } catch { return; }
+  NOTIFY.data = d;
+  const ids = d.role === 'admin' ? d.pending_requests.map(r => r.id) : d.decided.map(r => `${r.id}:${r.status}`);
+  let seen;
+  try { seen = new Set(JSON.parse(localStorageGet(notifySeenKey()) || '[]')); } catch { seen = new Set(); }
+  const fresh = ids.filter(x => !seen.has(String(x)));
+  renderNotify(d);
+  if (fresh.length && !first) alertNew(d, fresh);
+  if (fresh.length && first && d.role === 'admin') alertNew(d, fresh, { quiet: true });
+  localStorageSet(notifySeenKey(), JSON.stringify(ids.map(String)));
+}
+function notifyText(d, fresh) {
+  if (d.role === 'admin') {
+    const list = d.pending_requests.filter(r => fresh.includes(r.id));
+    const who = list.map(r => { const e = S.emp.get(r.employee_id); return `${e ? `${e.first_name} ${e.last_name}` : ''}: ${r.wanted_code && typeof WANTED_LABEL !== 'undefined' ? WANTED_LABEL[r.wanted_code] : REQ_KIND[r.kind][0]} ${plDate(r.date_from)}${r.date_to && r.date_to !== r.date_from ? `–${plDate(r.date_to)}` : ''}`; });
+    return { title: list.length === 1 ? 'Nowe zgłoszenie do akceptacji' : `Nowe zgłoszenia do akceptacji: ${list.length}`, body: who.join('\n'), hash: '#/zgloszenia' };
+  }
+  const list = d.decided.filter(r => fresh.includes(`${r.id}:${r.status}`));
+  return { title: 'Decyzja kierownika', body: list.map(r => `${r.wanted_code && typeof WANTED_LABEL !== 'undefined' ? WANTED_LABEL[r.wanted_code] : REQ_KIND[r.kind][0]} ${plDate(r.date_from)}: ${r.status === 'przyjete' ? 'PRZYJĘTE' : 'ODRZUCONE'}${r.decision_note ? ` — ${r.decision_note}` : ''}`).join('\n'), hash: '#/zglos' };
+}
+function alertNew(d, fresh, { quiet = false } = {}) {
+  const t = notifyText(d, fresh);
+  toast(`${t.title}${t.body ? ` — ${t.body.split('\n')[0]}` : ''}`, 'warn', 20000);
+  if (quiet) return;
+  try { // krótki sygnał dźwiękowy
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = 880; g.gain.setValueAtTime(0.15, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.5);
+  } catch { /* przeglądarka zablokowała dźwięk */ }
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const show = (reg) => (reg ? reg.showNotification(t.title, { body: t.body, tag: 'cnc-notify', renotify: true, icon: '/icons/icon-192.png', data: { hash: t.hash } })
+        : new Notification(t.title, { body: t.body, tag: 'cnc-notify', icon: '/icons/icon-192.png' }));
+      if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(show).catch(() => show(null)); else show(null);
+    }
+  } catch { /* brak obsługi powiadomień */ }
+}
+function renderNotify(d) {
+  const n = d.role === 'admin' ? d.pending_requests.length : d.decided.length;
+  const nAll = d.role === 'admin' ? n + (d.pending_makeups || 0) : 0;
+  document.title = d.role === 'admin' && nAll ? `(${nAll}) CNC Team` : 'CNC Team';
+  $$('[data-badge]').forEach(b => b.remove());
+  const badge = (el, count, cls = '') => { if (el && count) el.insertAdjacentHTML('beforeend', `<span class="nav-badge ${cls}" data-badge>${count}</span>`); };
+  if (d.role === 'admin') {
+    badge($('#rail a[data-nav="zgloszenia"]'), n);
+    badge($('#rail a[data-nav="pracownicy"]'), d.pending_makeups, 'soft');
+    badge($('#moreBtn'), nAll);
+    badge($('.tabbar a[data-nav="dzisiaj"]'), n);
+  }
+  // pasek na górze każdej strony (kierownik) — nie da się przeoczyć
+  let bar = $('#notifyBar');
+  if (d.role === 'admin' && (n || d.pending_makeups)) {
+    if (!bar) { bar = document.createElement('div'); bar.id = 'notifyBar'; bar.className = 'notify-bar no-print'; $('#main').prepend(bar); }
+    const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+    bar.innerHTML = `${icon('alert')}<span><b>Czeka na Twoją decyzję:</b> ${n ? `zgłoszenia pracowników: <b>${n}</b>` : ''}${n && d.pending_makeups ? ' · ' : ''}${d.pending_makeups ? `odrabiania do zatwierdzenia: <b>${d.pending_makeups}</b>` : ''}</span>
+      ${n ? '<a class="btn primary" href="#/zgloszenia">Rozpatrz</a>' : ''}${d.pending_makeups ? '<a class="btn" href="#/wyjscia">Odrabiania</a>' : ''}
+      ${perm === 'default' ? '<button type="button" class="btn" id="notifyPerm">Włącz powiadomienia systemowe</button>' : ''}`;
+    const pb = $('#notifyPerm'); if (pb) pb.onclick = async () => { try { await Notification.requestPermission(); } catch { /* */ } renderNotify(d); };
+  } else if (bar) bar.remove();
+}
+function startNotify() {
+  clearInterval(NOTIFY.timer);
+  pollNotify(true);
+  NOTIFY.timer = setInterval(() => pollNotify(false), 30000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pollNotify(false); });
 }
 function localStorageGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function localStorageSet(k, v) { try { localStorage.setItem(k, v); } catch { /* brak */ } }
@@ -143,6 +218,7 @@ async function route() {
   try { await (VIEWS[name] || VIEWS.dzisiaj)(main, rest); } catch (e) {
     main.innerHTML = `<div class="notice danger">${esc(e.status === 403 ? 'Brak uprawnień do tego widoku.' : e.message)}</div>`;
   }
+  if (NOTIFY.data) renderNotify(NOTIFY.data); // pasek powiadomień wraca na każdej stronie
 }
 const rerender = () => route();
 function head(title, sub = '', tools = '') {

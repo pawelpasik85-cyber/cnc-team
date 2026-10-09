@@ -498,6 +498,20 @@ function buildRoutes() {
   add('GET', '/integration/imports', ({ db, user }) => { requireAdmin(user); return db.all('SELECT * FROM tech_imports ORDER BY id DESC'); });
 
   // ---------- Zgłoszenia pracowników (do weryfikacji przez kierownika) ----------
+  // Powiadomienia (sygnalizacja bez wchodzenia w zakładki): kierownik — zgłoszenia i odrabiania czekające na decyzję;
+  // programista — decyzje w jego zgłoszeniach z ostatnich 14 dni. Klient odpytuje co 30 s.
+  add('GET', '/notify', ({ db, user }) => {
+    if (user.role === 'admin') {
+      const pending = db.all(`SELECT id, employee_id, kind, wanted_code, date_from, date_to, time_from, time_to, created_at FROM requests WHERE status='nowe' ORDER BY created_at`);
+      return { role: 'admin', pending_requests: pending, pending_makeups: db.get(`SELECT COUNT(*) n FROM makeups WHERE status='oczekuje'`).n };
+    }
+    if (user.role === 'employee') {
+      const since = new Date(Date.now() - 14 * 86400e3).toISOString();
+      return { role: 'employee', decided: db.all(`SELECT id, kind, wanted_code, date_from, date_to, status, decision_note, decided_at FROM requests
+        WHERE employee_id=? AND status IN ('przyjete','odrzucone') AND decided_at >= ? ORDER BY decided_at DESC`, user.employee_id, since) };
+    }
+    return { role: user.role };
+  });
   add('GET', '/requests', ({ db, user, query }) => {
     if (user.role === 'employee') {
       return Req.listRequests(db, { employeeId: user.employee_id, limit: 100 }).map(({ user_id, client_id, decided_by, ...r }) => r);

@@ -23,7 +23,7 @@
 ## Serwer firmowy i dostęp z domu
 - Wymaga serwera od IT (`docs/DEPLOY.md`): adres HTTPS w domenie firmy opublikowany z internetu. Bez tego dostęp jest tylko w sieci, w której działa aplikacja.
 - Brak logowania kontem Microsoft (SSO) — loginy i hasła są w aplikacji (zakłada je kierownik).
-- Brak powiadomień (e-mail, push) o nowym zgłoszeniu i o decyzji — pracownik widzi decyzję po wejściu do aplikacji, kierownik — na pulpicie „Dzisiaj”.
+- Powiadomienia o nowym zgłoszeniu i o decyzji działają, gdy aplikacja jest otwarta (pasek, licznik, dźwięk, powiadomienie systemowe). Przy zamkniętej aplikacji brak e-maila i Web Push — do uzgodnienia z IT (SMTP).
 - Opóźnienie projektu zakłada liniowy plan między datą rozpoczęcia a terminem; nie uwzględnia kalendarza pracy ani nierównych etapów.
 - Bez internetu zgłoszenia nie da się wysłać (telefon nie przechowuje danych) — trzeba spróbować ponownie, gdy jest zasięg.
 

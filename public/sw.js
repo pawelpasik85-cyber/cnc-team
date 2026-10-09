@@ -2,7 +2,7 @@
 // Zasada prywatności: w pamięci telefonu przechowywany jest WYŁĄCZNIE szkielet aplikacji (HTML/CSS/JS/ikony).
 // Odpowiedzi API (/api/*) — dane osobowe, absencje, rozliczenia — nigdy nie są buforowane.
 'use strict';
-const VERSION = 'cnc-team-shell-v22';
+const VERSION = 'cnc-team-shell-v23';
 const SHELL = [
   '/', '/index.html', '/tokens.css', '/app.css', '/icons.js', '/brand.js', '/charts.js', '/ui.js', '/app.js', '/views-people.js', '/views-projects.js',
   '/views-reports.js', '/views-requests.js', '/views-analytics.js', '/views-bundles.js', '/views-plan.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
@@ -29,4 +29,14 @@ self.addEventListener('fetch', (event) => {
       return res;
     }).catch(() => caches.match(event.request).then(r => r || caches.match('/index.html')))
   );
+});
+
+// Kliknięcie powiadomienia — otwórz aplikację na właściwej zakładce
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const hash = (event.notification.data && event.notification.data.hash) || '#/';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ('focus' in c) { c.navigate ? c.navigate('/' + hash).catch(() => {}) : null; return c.focus(); } }
+    return self.clients.openWindow('/' + hash);
+  }));
 });

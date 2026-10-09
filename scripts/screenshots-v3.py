@@ -55,6 +55,20 @@ with sync_playwright() as p:
     shot(page, "54-konta-gosc", "#/ustawienia?t=konta")
     shot(page, "55-historia-zmian", "#/ustawienia?t=historia", full=False)
     shot(page, "56-kierownik-dzisiaj", "#/dzisiaj")
+    # Powiadomienia: pasek na każdej stronie i licznik w menu; nowe zgłoszenie programisty → komunikat bez odświeżania
+    shot(page, "104-powiadomienia-pasek", "#/kalendarz?tryb=tydzien&data=2026-10-05", full=False, settle=900)
+    if page.locator("#notifyBar").count() != 1 or page.locator('#rail a[data-nav="zgloszenia"] .nav-badge').count() != 1:
+        errors.append("brak paska powiadomień lub licznika w menu")
+    ectx, epage = ctx_page(b)
+    login(epage, "adam")
+    epage.evaluate("""fetch('/api/requests', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CNC-Request': '1' }, body: JSON.stringify({ kind: 'nieobecnosc', date_from: '2026-10-20', date_to: '2026-10-21', wanted_code: 'URLOP_NA_ZADANIE', note: 'sprawy rodzinne' }) })""")
+    epage.wait_for_timeout(300)
+    ectx.close()
+    page.evaluate("pollNotify(false)")
+    page.wait_for_timeout(700)
+    shot(page, "105-powiadomienie-nowe-zgloszenie", full=False, settle=200)
+    if "Nowe zgłoszenie" not in page.inner_text("#toasts"):
+        errors.append("brak komunikatu o nowym zgłoszeniu")
     # Analiza (runda 6)
     shot(page, "101-przeglad-maszyn", "#/analiza?t=maszyny&y=2026", settle=1000)
     shot(page, "67-analiza-miesiac", "#/analiza?t=miesiac&ym=2026-09", settle=900)

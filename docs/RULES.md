@@ -146,6 +146,11 @@ Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zada
 - Dodatkowo: liczba dni po terminie i liczba zadań po swoich terminach.
 - Brak daty rozpoczęcia, terminu albo zadań = „brak danych” (nie zero). Założenie liniowego planu jest uproszczeniem — przy nierównych etapach lepszą miarą są terminy zadań (pokazywane osobno).
 
+### Powiadomienia
+- Kierownik: na każdej stronie czerwony pasek „Czeka na Twoją decyzję” (zgłoszenia, odrabiania) z przyciskiem „Rozpatrz”, licznik przy „Zgłoszenia pracowników” w menu, w telefonie na „Więcej”, liczba w tytule karty przeglądarki. Aplikacja sprawdza nowe zgłoszenia co 30 s; nowe zgłoszenie = komunikat w aplikacji, sygnał dźwiękowy i powiadomienie systemowe (po zgodzie w przeglądarce; kliknięcie otwiera zgłoszenia).
+- Programista: komunikat i powiadomienie systemowe, gdy kierownik przyjmie lub odrzuci jego zgłoszenie.
+- Powiadomienia działają, gdy aplikacja jest otwarta (także w tle lub zminimalizowana). Przy zamkniętej aplikacji — wymaga e-maila (serwer SMTP firmy) albo usługi Web Push; nie wdrożone.
+
 ### Zgłoszenia pracowników do weryfikacji
 - Urlop: programista w zgłoszeniu nieobecności **zaznacza**, kiedy i o jaki rodzaj prosi (urlop wypoczynkowy, na żądanie, okolicznościowy, opieka itd.). To tylko prośba — żaden urlop nie powstaje bez akceptacji kierownika; przy przyjęciu kategoria jest podpowiedziana, kierownik może ją zmienić. Kierownik może też wpisać urlop sam (Pracownicy → Urlopy i absencje). Programista widzi swoje prośby czekające na akceptację w „Mój profil i urlopy”.
 - Pracownik **nie wpisuje** spóźnień, wyjść, odrabiania ani postępu prac. Składa zgłoszenie: spóźnienie (godzina przyjścia), nieobecność (dni), wyjście (od–do), odrobienie (dzień, od–do), inna sprawa (opis). Zgłoszenie najwyżej 31 dni wstecz, najwyżej 60 dni.
