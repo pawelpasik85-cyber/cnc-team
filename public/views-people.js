@@ -4,15 +4,15 @@
 // ---------- Pracownicy ----------
 VIEWS.pracownicy = async (main) => {
   const emps = await api('/employees');
-  S.emp = new Map(emps.map(e => [e.id, e]));
+  if (!isEmployee()) S.emp = new Map(emps.map(e => [e.id, e])); // programista dostaje tylko swój profil — nie nadpisujemy listy z bootstrap
   const balances = await api(`/balances?month=${S.me.today.slice(0, 7)}`).catch(() => []);
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const year = /^20\d{2}$/.test(q.get('rok') || '') ? Number(q.get('rok')) : Number(S.me.today.slice(0, 4));
-  const leave = can('view.leave.all') ? await api(`/leave/summary?year=${year}`).catch(() => []) : [];
+  const leave = can('view.leave.all') || isEmployee() ? await api(`/leave/summary?year=${year}`).catch(() => []) : [];
   const leaveBy = new Map(leave.map(x => [x.employee_id, x]));
   const yearNav = leave.length ? `<span class="lc-yearnav"><span class="muted small">Urlopy</span><a class="btn" href="#/pracownicy?rok=${year - 1}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${year}</span><a class="btn" href="#/pracownicy?rok=${year + 1}" aria-label="Następny rok">›</a></span>` : '';
   const machines = new Map(S.boot.machines.map(m => [m.id, m]));
-  main.innerHTML = peopleTabs('pracownicy') + head('Pracownicy', `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
+  main.innerHTML = peopleTabs('pracownicy') + head(isEmployee() ? 'Mój profil i urlopy' : 'Pracownicy', isEmployee() ? 'Ile urlopu wykorzystałeś i ile zostało. Urlop wpisuje kierownik — o urlop poproś w „Zgłoś kierownikowi” (nieobecność).' : `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
     `<div class="cols">${emps.map(e => {
       const t = e.current_terms; const b = balances.find(x => x.employee_id === e.id);
       return `<section class="panel"><div class="page-head" style="margin:0 0 var(--sp-2)"><h3>${person(e.id)}</h3>${e.active ? tag('aktywny', 'ok') : tag('nieaktywny')}</div>

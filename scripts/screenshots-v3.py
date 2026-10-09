@@ -170,13 +170,16 @@ with sync_playwright() as p:
     shot(page, "57-pracownik-zglos", "#/zglos")
     shot(page, "99-pracownik-kalendarz", "#/kalendarz?tryb=tydzien&data=2026-10-05", settle=900)
     # programista: projekty, pracownicy, centrum programowania — przekierowanie do planu pracy
-    for h in ["#/projekty", "#/projekty/PRJ-2026-0001", "#/pracownicy", "#/dzisiaj", "#/wyjscia", "#/zdarzenia"]:
+    shot(page, "103-pracownik-moje-urlopy", "#/pracownicy?rok=2026", settle=900)
+    if page.locator(".lc-emp").count() != 1:
+        errors.append("programistka powinna widzieć tylko swoje urlopy")
+    for h in ["#/projekty", "#/projekty/PRJ-2026-0001", "#/dzisiaj", "#/wyjscia", "#/zdarzenia", "#/absencje"]:
         page.goto(base + "/" + h)
         page.wait_for_timeout(500)
         if page.locator("main h1").first.inner_text().strip() != "Moje polecenia":
             errors.append(f"pracownica widzi {h}: {page.locator('main h1').first.inner_text()}")
     rail = page.inner_text("#rail")
-    for name in ["Projekty", "Pracownicy", "Centrum programowania", "Lista zdarzeń"]:
+    for name in ["Projekty", "Centrum programowania", "Lista zdarzeń", "Urlopy i absencje"]:
         if name in rail:
             errors.append(f"pracownica ma w menu: {name}")
     ctx.close()

@@ -30,7 +30,7 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Grafik: tryb pracy (12 h, nieregularny, dzień dodatkowy), zamiana osób, zmiana trybu na okres, usunięcie zmiany | ✔ (zawsze z powodem, w historii) | ✘ (403) | ✘ (403); w kalendarzu widzi oznaczenie trybu (DOD / 12h / NR), bez powodu i minut nadgodzin | ✘ |
 | Zmiana własnego hasła | ✔ | ✔ | ✔ | ✔ |
 
-**Programista (od wersji 0.11):** wyłącznie *Zgłoś kierownikowi*, *Kalendarz* (grafik, zdarzenia z ogólnymi etykietami, maszyny i projekty na zmianach — bez godzin), *Plan pracy* (własne polecenia, potwierdzenie przeczytania) i *Moje konto*. Pozostałe widoki i trasy API (Centrum programowania, projekty, pracownicy, wyjścia, urlopy, lista zdarzeń, przekazania, tablica maszyn, raporty) → 403 (lista dozwolonych tras w `server/app.js`, `EMPLOYEE_ALLOWED`). Wcześniejsze wiersze tabeli dotyczące pracownika opisują dane, które teraz widzi tylko przez kalendarz i plan pracy.
+**Programista (od wersji 0.11):** wyłącznie *Zgłoś kierownikowi*, *Kalendarz* (grafik, zdarzenia z ogólnymi etykietami, maszyny i projekty na zmianach — bez godzin), *Plan pracy* (własne polecenia, potwierdzenie przeczytania), *Mój profil i urlopy* (od 0.12: tylko własny profil i własne urlopy — wykorzystano / zostało; kategorie poufne ogólną etykietą) i *Moje konto*. Pozostałe widoki i trasy API (Centrum programowania, projekty, pracownicy, wyjścia, urlopy, lista zdarzeń, przekazania, tablica maszyn, raporty) → 403 (lista dozwolonych tras w `server/app.js`, `EMPLOYEE_ALLOWED`). Wcześniejsze wiersze tabeli dotyczące pracownika opisują dane, które teraz widzi tylko przez kalendarz i plan pracy.
 
 Dodatkowo:
 - Brak sesji → 401 dla każdego API poza logowaniem.

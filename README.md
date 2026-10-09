@@ -36,7 +36,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - **Centrum programowania**: obie maszyny, pod każdą aktualny projekt (postęp, godziny, opóźnienie) z datą i zmianą rozpoczęcia; niżej pozostałe informacje.
 - **Kalendarz**: maszyny i projekty na każdej zmianie danego dnia + grafik ludzi i zdarzenia.
 - **Pracownicy**: zakładki Pracownicy · Urlopy i absencje · Wyjścia i odrabianie · Lista zdarzeń.
-- **Programiści** widzą tylko: Zgłoś kierownikowi, Kalendarz, Plan pracy, Moje konto.
+- **Programiści** widzą tylko: Zgłoś kierownikowi, Kalendarz, Plan pracy, Mój profil i urlopy (własne), Moje konto.
 
 ## Pracownicy, urlopy, wyjścia
 - Menu boczne: **Pracownicy** ma zakładki *Pracownicy · Urlopy i absencje · Wyjścia i odrabianie*. Tablica maszyn usunięta z menu (te same dane są w Centrum programowania).

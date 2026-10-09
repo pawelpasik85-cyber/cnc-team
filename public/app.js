@@ -13,7 +13,7 @@ const NAV = [
   ['kalendarz', 'Kalendarz', 'calendar', null],
   ['plan', 'Plan pracy', 'list', () => S.me && S.me.role !== 'guest'],
   ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee()],
-  ['pracownicy', 'Pracownicy', 'users', notEmp],
+  ['pracownicy', 'Pracownicy', 'users', () => S.me && S.me.role !== 'guest'],
   ['zdarzenia', 'Lista zdarzeń', 'list', notEmp],
   ['wyjscia', 'Wyjścia i odrabianie', 'exit', notEmp],
   ['absencje', 'Urlopy i absencje', 'leave', 'view.leave.all'],
@@ -26,13 +26,14 @@ const NAV = [
   ['ustawienia', 'Ustawienia', 'settings', null],
 ];
 // Programista: tylko zgłoszenia, kalendarz i plan pracy (oraz własne konto) — reszta dla kierownika
-const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'ustawienia']);
+const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'pracownicy', 'ustawienia']);
 
 // Nie w menu bocznym: urlopy i wyjścia są zakładkami w „Pracownicy”; tablica maszyn powielała Centrum programowania.
 const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny', 'zdarzenia']);
 const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy', zdarzenia: 'pracownicy', zestaw: 'analiza', raport: 'analiza' };
 // Zakładki widoku Pracownicy (przełączane w tym samym menu)
 function peopleTabs(active) {
+  if (isEmployee()) return '';
   const tabs = [['pracownicy', 'Pracownicy', 'users'], ...(can('view.leave.all') ? [['absencje', 'Urlopy i absencje', 'leave']] : []), ['wyjscia', 'Wyjścia i odrabianie', 'exit'], ['zdarzenia', 'Lista zdarzeń', 'list']];
   return `<nav class="section-tabs" aria-label="Pracownicy">${tabs.map(([id, l, ic]) => `<a href="#/${id}" class="${id === active ? 'active' : ''}" ${id === active ? 'aria-current="page"' : ''}>${icon(ic)}<span>${esc(l)}</span></a>`).join('')}</nav>`;
 }
@@ -102,7 +103,7 @@ function renderShell() {
     <div class="scrim" id="scrim" hidden></div>
     <nav class="rail" id="rail" aria-label="Menu główne">
     <div class="brand">${appLogo(40)}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
-    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(id === 'ustawienia' && !isAdmin() ? 'Moje konto' : label)}</span></a>`).join('')}
+    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(id === 'ustawienia' && !isAdmin() ? 'Moje konto' : id === 'pracownicy' && isEmployee() ? 'Mój profil i urlopy' : label)}</span></a>`).join('')}
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
       <button type="button" id="installBtn" class="link ${document.documentElement.dataset.installable ? '' : 'mobile-only'}">${icon('download')}Skrót na telefonie</button>

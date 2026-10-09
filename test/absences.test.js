@@ -167,6 +167,8 @@ test('zestawienie urlopów: wykorzystano / zostało (z zaległym), urlop na żą
     const names = sv.find(x => x.employee_id === w.e).other.map(o => o.name);
     assert.ok(names.some(n => /Chorobowe/.test(n)));
     assert.ok(!names.some(n => /nieusprawiedliwiona/i.test(n)), 'kategoria poufna pod ogólną etykietą');
-    assert.equal((await fetch(`${base}/leave/summary?year=2026`, { headers: { Cookie: jan } })).status, 403);
+    const own = await (await fetch(`${base}/leave/summary?year=2026`, { headers: { Cookie: jan } })).json();
+    assert.deepEqual(own.map(x => x.employee_id), [w.e], 'programista widzi tylko swoje urlopy');
+    assert.ok(own[0].other.some(o => /Chorobowe/.test(o.name)) && !own[0].other.some(o => /nieusprawiedliwiona/i.test(o.name)), 'własne L4 z nazwą, kategoria poufna ogólnie');
   } finally { srv.close(); }
 });

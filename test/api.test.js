@@ -70,7 +70,7 @@ test('odmowa dostępu pracownika do raportów, API i eksportów; przełożony be
     const bal = await emp.call('GET', '/balances?month=2026-10');
     assert.deepEqual(bal.data.map(b => b.employee_id), [e]);
     // programista: tylko zgłoszenia, kalendarze i plan pracy — listy wyjść, nieobecności, projektów, pracowników → 403
-    for (const p of [`/exits?month=2026-10`, '/absences?from=2026-10-01&to=2026-10-31', '/projects', '/employees', '/board', '/handovers', '/today', '/makeups']) {
+    for (const p of [`/exits?month=2026-10`, '/absences?from=2026-10-01&to=2026-10-31', '/projects', '/board', '/handovers', '/today', '/makeups']) {
       assert.equal((await emp.call('GET', p)).status, 403, `pracownik: GET ${p}`);
     }
     const ev = await emp.call('GET', '/events?from=2026-10-01&to=2026-10-31');

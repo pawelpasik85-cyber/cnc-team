@@ -184,7 +184,12 @@ function buildRoutes() {
   }));
 
   // ---------- Pracownicy ----------
-  add('GET', '/employees', ({ db, user }) => People.listEmployees(db).map(e => redactEmployee(user, e)));
+  add('GET', '/employees', ({ db, user }) => {
+    // programista: tylko własny profil (etat, przelicznik urlopu) — do zakładki Pracownicy z jego urlopami
+    if (user.role === 'employee') return People.listEmployees(db).filter(e => e.id === user.employee_id)
+      .map(e => ({ ...redactEmployee(user, e), employment_start: e.employment_start, employment_end: e.employment_end, current_terms: e.current_terms }));
+    return People.listEmployees(db).map(e => redactEmployee(user, e));
+  });
   add('POST', '/employees', ({ db, user, body }) => { requireAdmin(user); return { id: People.saveEmployee(db, user, body) }; });
   add('PUT', '/employees/:id', ({ db, user, body, params }) => { requireAdmin(user); return { id: People.saveEmployee(db, user, body, Number(params.id)) }; });
   add('POST', '/employees/:id/terms', ({ db, user, body, params }) => { requireAdmin(user); return { id: People.addTerms(db, user, Number(params.id), body) }; });
@@ -240,14 +245,16 @@ function buildRoutes() {
     return db.all('SELECT id, first_name, last_name FROM employees WHERE active=1 ORDER BY last_name').map(e => ({ employee_id: e.id, name: `${e.first_name} ${e.last_name}`, pools: Abs.listPools(db, e.id).map(p => ({ ...p, ledger: undefined })) }));
   });
   add('GET', '/leave/summary', ({ db, user, query }) => {
-    requireCap(user, 'view.leave.all');
+    const self = user.role === 'employee';
+    if (!self) requireCap(user, 'view.leave.all');
     const year = int(query.year) || Number(T.today().slice(0, 4));
     if (year < 2000 || year > 2100) throw bad('Nieprawidłowy rok.');
     // inne nieobecności: nazwa kategorii poufnej tylko dla uprawnionych (jak w kalendarzu)
-    return Abs.leaveSummary(db, year).map(e => {
+    // programista widzi wyłącznie własne urlopy i nieobecności (nazwy kategorii poufnych — ogólną etykietą)
+    return Abs.leaveSummary(db, year).filter(e => !self || e.employee_id === user.employee_id).map(e => {
       const groups = new Map();
       for (const o of e.other) {
-        const vis = categoryVisibleName(user, o);
+        const vis = self ? (o.visibility === 'poufna' ? { name: o.public_label, short: '•', icon: 'absence' } : { name: o.category_name, short: o.short, icon: o.icon }) : categoryVisibleName(user, o);
         const key = vis.name === o.category_name ? `c${o.category_id}` : `g${vis.name}`;
         const g = groups.get(key) || { key, name: vis.name === o.category_name && o.subtype ? `${o.category_name} — ${o.subtype}` : vis.name, short: vis.short, icon: vis.icon, used_days: 0, used_min: 0, planned_days: 0, planned_min: 0, count: 0 };
         g.used_days += o.used_days; g.used_min += o.used_min; g.planned_days += o.planned_days; g.planned_min += o.planned_min; g.count += o.n;

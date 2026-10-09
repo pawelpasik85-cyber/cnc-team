@@ -35,7 +35,8 @@ const GUEST_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /
 const EMPLOYEE_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /me/password', 'GET /bootstrap',
   'GET /schedule', 'GET /events', 'GET /calendar/machines',
   'GET /work-orders/my', 'POST /work-orders/:id/ack',
-  'GET /requests', 'POST /requests', 'POST /requests/:id/withdraw', 'GET /balances']);
+  'GET /requests', 'POST /requests', 'POST /requests/:id/withdraw', 'GET /balances',
+  'GET /employees', 'GET /leave/summary']); // tylko własny profil i własne urlopy (filtr w trasach)
 // Adres bez portu: IIS (ARR) dopisuje do X-Forwarded-For „adres:port” — port zmienia się przy każdym połączeniu.
 const normIp = (x) => {
   let a = String(x || '').trim();

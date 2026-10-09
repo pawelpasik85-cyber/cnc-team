@@ -141,8 +141,11 @@ test('programista: tylko zgłoszenia, kalendarze i plan pracy — projekty i poz
   const { srv, base } = await startServer(w.db);
   try {
     const jan = client(base); await jan.login('jan');
-    for (const p of ['/projects', `/projects/${p1}`, '/board', '/handovers', '/employees', '/today', '/exits', '/absences']) assert.equal((await jan.call('GET', p)).status, 403, p);
+    for (const p of ['/projects', `/projects/${p1}`, '/board', '/handovers', '/today', '/exits', '/absences', '/leave/overview']) assert.equal((await jan.call('GET', p)).status, 403, p);
     for (const p of ['/bootstrap', '/schedule', '/events', '/calendar/machines', '/work-orders/my', '/requests', '/balances', '/me']) assert.equal((await jan.call('GET', p)).status, 200, p);
+    // zakładka Pracownicy: tylko własny profil i własne urlopy
+    assert.deepEqual((await jan.call('GET', '/employees')).data.map(e => e.id), [w.e]);
+    assert.deepEqual((await jan.call('GET', '/leave/summary?year=2026')).data.map(e => e.employee_id), [w.e]);
   } finally { srv.close(); }
 });
 
