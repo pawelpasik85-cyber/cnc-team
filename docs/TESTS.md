@@ -42,7 +42,10 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 8 — tryby pracy, zamiany, dni dodatkowe i nadgodziny (7.10.2026)
 **49 / 49 zaliczonych.** Nowe: `test/shifts.test.js` — dzień dodatkowy (sobota noc, niedziela z potwierdzeniem, wymagany powód), zmiana trybu na okres 8 → 12 h, odpoczynek 11 h, zamiana osób, nadgodziny liczone z godzin na dobę (także dla trybu „standardowa” i dnia dzielonego), szablon nie nadpisuje godzin przy edycji samego powodu, zmiana trybu na okres pomija dni dodatkowe, ostrzeżenie o nocnej zmianie przechodzącej w niedzielę, praca w nadgodzinach w projekcie i miesiącu (proporcjonalnie, udział w pracy projektu), brak podwójnego liczenia wpisów ewidencji. Niezależny przegląd znalazł 12 uwag (m.in. nadgodziny zależne od etykiety trybu, zmiana trybu na okres przerabiająca dni dodatkowe, szablon przywracający godziny, podwójne liczenie z ewidencją, niewłaściwy procent w tabeli projektów) — poprawione i pokryte testami. Zrzuty `75…83` (plan pracy, kalendarz z oznaczeniami, edycja zmiany, zamiana, zmiana trybu, analiza nadgodzin, projekt, telefon) — bez błędów konsoli.
 
-## Pokrycie wymaganych scenariuszy
+### Runda 9 — analiza tylko dla kierownika (9.10.2026)
+**50 / 50 zaliczonych.** Nowe: `test/analytics-privacy.test.js` — programista, gość i przełożony dostają 403 na każdej trasie analizy (przebieg projektu, miesiąc, rok, CSV, odrzucanie propozycji, zapis i usuwanie raportów); programista i gość nie widzą zapisanych raportów; przełożony widzi wyłącznie raport udostępniony (prywatny → 404); dane o nadgodzinach w projekcie widzi tylko kierownik, nawet gdy programiści mają włączony podgląd godzin projektu.
+
+
 
 | Wymagany scenariusz | Test (plik → nazwa) |
 |---|---|

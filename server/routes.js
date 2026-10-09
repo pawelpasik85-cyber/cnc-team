@@ -79,10 +79,13 @@ function visibleProjects(db, user) {
   return ids;
 }
 // Pracownik nie widzi wkładu (zmian) innych osób w projekt.
+// Dane analityczne (nadgodziny w projekcie) — tylko kierownik; pracownik nie widzi też wkładu innych osób.
 function projectForUser(user, p) {
-  if (user.role !== 'employee') return p;
-  const { contributions, ...rest } = p;
-  return rest;
+  if (user.role === 'admin') return p;
+  const out = { ...p };
+  if (out.hours) { const { overtime_work_min, overtime_share_pct, ...h } = out.hours; out.hours = h; }
+  if (user.role === 'employee') delete out.contributions;
+  return out;
 }
 const TAK_NIE = ['employee_sees_team_balances', 'employee_sees_all_projects', 'employee_sees_project_hours'];
 // Godziny projektu (przepracowane / plan / wynik): kierownik i przełożony; pracownik — gdy firma włączy ustawienie.
