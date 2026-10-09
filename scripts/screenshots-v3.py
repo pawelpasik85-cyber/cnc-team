@@ -137,6 +137,7 @@ with sync_playwright() as p:
     shot(page, "89-kalendarz-urlopow-wrzesien", "#/absencje?t=kalendarz&m=2026-09&rok=2026", settle=900)
     shot(page, "91-pracownicy-urlopy", "#/pracownicy?rok=2026", settle=900)
     shot(page, "93-wyjscia-kalendarz", "#/wyjscia?m=2026-10", settle=900)
+    shot(page, "100-zdarzenia-w-pracownikach", "#/zdarzenia", settle=700)
     shot(page, "95-zestawienia-lista", "#/analiza?t=zestawienia", settle=700)
     bid = page.evaluate("fetch('/api/report-bundles').then(r => r.json()).then(l => l[0].id)")
     shot(page, "96-zestawienie-dokument", f"#/zestaw/{bid}", settle=800)
@@ -165,16 +166,21 @@ with sync_playwright() as p:
     ctx, page = ctx_page(b)
     login(page, "celina")
     shot(page, "57-pracownik-zglos", "#/zglos")
-    shot(page, "58-pracownik-projekty-tylko-swoje", "#/projekty")
-    shot(page, "66-pracownik-projekt-szczegoly", "#/projekty/PRJ-2026-0001")
-    page.goto(base + "/#/projekty/PRJ-2026-0003")
-    page.wait_for_timeout(600)
-    if "Brak uprawnień" not in page.inner_text("main"):
-        errors.append("pracownica widzi nieprzypisany projekt PRJ-2026-0003")
+    shot(page, "99-pracownik-kalendarz", "#/kalendarz?tryb=tydzien&data=2026-10-05", settle=900)
+    # programista: projekty, pracownicy, centrum programowania — przekierowanie do planu pracy
+    for h in ["#/projekty", "#/projekty/PRJ-2026-0001", "#/pracownicy", "#/dzisiaj", "#/wyjscia", "#/zdarzenia"]:
+        page.goto(base + "/" + h)
+        page.wait_for_timeout(500)
+        if page.locator("main h1").first.inner_text().strip() != "Moje polecenia":
+            errors.append(f"pracownica widzi {h}: {page.locator('main h1').first.inner_text()}")
+    rail = page.inner_text("#rail")
+    for name in ["Projekty", "Pracownicy", "Centrum programowania", "Lista zdarzeń"]:
+        if name in rail:
+            errors.append(f"pracownica ma w menu: {name}")
     ctx.close()
     ctx, page = ctx_page(b, mobile=True)
     login(page, "bartosz", wait=".shell")
-    shot(page, "59-telefon-pracownik-dzisiaj", "#/dzisiaj")
+    shot(page, "59-telefon-pracownik-plan", "#/plan")
     page.goto(base + "/#/zglos")
     page.wait_for_selector("[data-kind=spoznienie]")
     page.click("[data-kind=spoznienie]")

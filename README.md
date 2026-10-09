@@ -32,6 +32,12 @@ Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je
 
 Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewnętrznych. Kierownik, programiści (także z domu, z telefonu) i goście wchodzą pod jeden adres HTTPS w domenie firmy. Instalacja, wymagania i zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`, paczka: `npm run package` → `dist/cnc-team-serwer.zip`.
 
+## Organizacja (od 0.11)
+- **Centrum programowania**: obie maszyny, pod każdą aktualny projekt (postęp, godziny, opóźnienie) z datą i zmianą rozpoczęcia; niżej pozostałe informacje.
+- **Kalendarz**: maszyny i projekty na każdej zmianie danego dnia + grafik ludzi i zdarzenia.
+- **Pracownicy**: zakładki Pracownicy · Urlopy i absencje · Wyjścia i odrabianie · Lista zdarzeń.
+- **Programiści** widzą tylko: Zgłoś kierownikowi, Kalendarz, Plan pracy, Moje konto.
+
 ## Pracownicy, urlopy, wyjścia
 - Menu boczne: **Pracownicy** ma zakładki *Pracownicy · Urlopy i absencje · Wyjścia i odrabianie*. Tablica maszyn usunięta z menu (te same dane są w Centrum programowania).
 - **Kalendarz**: za godzinami zmiany danej osoby widać, co zmieniło jej dzień — nieobecność (godziny przekreślone), wyjście prywatne z godzinami, odrabianie, przekazanie zmiany.

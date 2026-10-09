@@ -54,9 +54,8 @@ test('analiza: programista, gość i przełożony bez dostępu do danych analizy
     const list = (await szef('GET', '/saved-reports')).data;
     assert.deepEqual(list.map(r => r.title), ['Dla przełożonego'], 'przełożony widzi tylko udostępnione');
     assert.equal((await szef('GET', `/saved-reports/${sid(priv)}`)).status, 404);
-    const pj = (await jan('GET', `/projects/${pid}`)).data;
-    assert.ok(pj.hours, 'programista widzi godziny projektu (ustawienie firmy)');
-    assert.equal(pj.hours.overtime_work_min, undefined, 'ale nie dane o nadgodzinach');
+    assert.equal((await jan('GET', `/projects/${pid}`)).status, 403, 'programista nie widzi projektów');
+    const pj = {};
     assert.equal((await szef('GET', `/projects/${pid}`)).data.hours.overtime_work_min, undefined);
     assert.equal((await adm('GET', `/projects/${pid}`)).data.hours.overtime_work_min, 300);
     assert.equal((await adm('GET', '/analytics/month?ym=2026-10')).status, 200);

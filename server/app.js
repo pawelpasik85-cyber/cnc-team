@@ -31,6 +31,11 @@ function compile(pattern) {
 // opts.trustProxy → aplikacja stoi za firmowym serwerem pośredniczącym (reverse proxy) z HTTPS:
 // adres klienta z X-Forwarded-For (do blokady logowania), cookie Secure gdy X-Forwarded-Proto = https.
 const GUEST_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /me/password', 'GET /guest/projects']);
+// Programista: tylko zgłoszenia do kierownika, kalendarze (grafik, zdarzenia, maszyny) i własny plan pracy — reszta dla kierownika.
+const EMPLOYEE_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /me/password', 'GET /bootstrap',
+  'GET /schedule', 'GET /events', 'GET /calendar/machines',
+  'GET /work-orders/my', 'POST /work-orders/:id/ack',
+  'GET /requests', 'POST /requests', 'POST /requests/:id/withdraw', 'GET /balances']);
 // Adres bez portu: IIS (ARR) dopisuje do X-Forwarded-For „adres:port” — port zmienia się przy każdym połączeniu.
 const normIp = (x) => {
   let a = String(x || '').trim();
@@ -96,6 +101,7 @@ function createApp(db, opts = {}) {
       if (!route.public && !user) throw new HttpError(401, 'Wymagane zalogowanie.');
       // Gość ma dostęp wyłącznie do statusu swoich projektów — każda inna trasa jest zablokowana.
       if (user && user.role === 'guest' && !GUEST_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Konto gościa ma dostęp tylko do statusu projektów.');
+      if (user && user.role === 'employee' && !EMPLOYEE_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Programista ma dostęp do zgłoszeń, kalendarza i planu pracy — pozostałe dane są dla kierownika.');
       // Nagłówki proxy honorowane tylko od zaufanego proxy (lokalnie lub z listy CNC_PROXY_IPS); adres klienta = ostatni wpis
       // X-Forwarded-For (dopisany przez nasze proxy) — wcześniejsze wpisy może podać sam klient.
       const peer = req.socket.remoteAddress || '';

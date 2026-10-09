@@ -77,14 +77,13 @@ test('dostęp: programista widzi tylko swoje i tylko potwierdza przeczytanie; zm
     assert.equal((await jan('PATCH', `/work-orders/${a.id}`, { status: 'wykonane' })).status, 403);
     assert.equal((await ewa('POST', `/work-orders/${a.id}/ack`)).status, 403, 'cudzego nie potwierdzi');
     assert.ok((await jan('POST', `/work-orders/${a.id}/ack`)).data.ack_at);
-    assert.equal((await jan('GET', `/projects/${w.pid}`)).status, 200, 'projekt z polecenia jest widoczny dla programisty');
+    assert.equal((await jan('GET', `/projects/${w.pid}`)).status, 403, 'projekty — tylko kierownik; treść polecenia wystarcza programiście');
     assert.equal((await szef('GET', '/work-orders/day?date=2026-10-06')).status, 200);
     assert.equal((await szef('POST', '/work-orders', { employee_id: w.e, work_date: '2026-10-06', title: 'x' })).status, 403);
     assert.equal((await gosc('GET', '/work-orders/day?date=2026-10-06')).status, 403);
     assert.equal((await gosc('GET', '/work-orders/my')).status, 403);
     await adm('PATCH', `/work-orders/${a.id}`, { details: 'Nowa uwaga: oprawka HSK40' });
     assert.equal(w.db.get('SELECT ack_at FROM work_orders WHERE id=?', a.id).ack_at, null, 'zmieniona treść — ponowne potwierdzenie');
-    const today = (await jan('GET', '/today')).data;
-    assert.equal(today.my_orders.length, 1);
+    assert.equal((await jan('GET', '/work-orders/my?from=2026-10-06&to=2026-10-06')).data.length, 1);
   } finally { srv.close(); }
 });

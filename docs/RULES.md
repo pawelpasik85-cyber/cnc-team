@@ -81,6 +81,10 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Centrum programowania i kalendarz maszyn
+- Centrum programowania: obie maszyny (karta jak dotąd), pod każdą — aktualnie obrabiany projekt z kartą jak w „Projekty i zadania” (postęp, godziny, wynik, opóźnienie) i informacją, **kiedy i na której zmianie projekt się zaczął**: pierwszy wpis czasu pracy — dzień, osoba i jej zmiana z grafiku (gdy brak wpisów — data rozpoczęcia z projektu, oznaczona). Pod spodem pozostałe informacje.
+- Kalendarz: na górze każdego dnia maszyny i projekty wykonywane tego dnia z oznaczeniem zmian (I / II / III — zmiana osoby, która wpisała czas na projekt; „poza grafikiem”, gdy nie miała zmiany). Źródło: wpisy czasu pracy. Widok: maszyny i ludzie / tylko maszyny / tylko ludzie.
+
 ### Zestawienia do druku (Analiza i raporty → Zestawienia do druku)
 - Kierownik łączy kilka tematów: projekty (status, opóźnienie w %, termin, godziny wobec planu, poprawki, powroty), zapisane raporty (kluczowe liczby i komentarz) i własne tematy — do każdego przyczyna (lista przyczyn jak przy czasie pracy) i notatka, np. dlaczego było opóźnienie. Kolejność tematów dowolna.
 - Dane tematu to migawka z chwili zapisu zestawienia; zmieniają się tylko po zaznaczeniu „odśwież”. Każdy zapis i usunięcie — w historii.

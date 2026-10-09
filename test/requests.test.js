@@ -134,24 +134,15 @@ test('gość widzi wyłącznie status przypisanych projektów w realizacji — b
   } finally { srv.close(); }
 });
 
-test('pracownik widzi tylko projekty, w których pracuje (lub z tablicy maszyn); bez wkładu innych osób', async () => {
+test('programista: tylko zgłoszenia, kalendarze i plan pracy — projekty i pozostałe dane tylko dla kierownika', async () => {
   const w = world();
   const p1 = P.saveProject(w.db, w.admin, { order_no: 'ZL-1', part_no: 'DET-1', part_rev: 'A' });
   P.createTask(w.db, w.admin, { project_id: p1, type_id: w.tt.NX, title: 'NX', assignee_id: w.e });
-  const p2 = P.saveProject(w.db, w.admin, { order_no: 'ZL-2', part_no: 'DET-2', part_rev: 'A', responsible_ids: [w.e2] });
-  const p3 = P.saveProject(w.db, w.admin, { order_no: 'ZL-3', part_no: 'DET-3', part_rev: 'A' });
-  P.updateBoard(w.db, w.admin, 'M-GRIMME', { project_id: p3, stage: 'obróbka' });
   const { srv, base } = await startServer(w.db);
   try {
     const jan = client(base); await jan.login('jan');
-    const list = (await jan.call('GET', '/projects')).data;
-    assert.deepEqual(list.map(p => p.id).sort(), [p1, p3].sort());
-    assert.ok(list.every(p => p.contributions === undefined));
-    assert.equal((await jan.call('GET', `/projects/${p2}`)).status, 403);
-    const adm = client(base); await adm.login('admin');
-    await adm.call('PUT', '/settings/employee_sees_all_projects', { value: 'tak' });
-    assert.equal((await jan.call('GET', '/projects')).data.length, 3);
-    assert.equal((await adm.call('PUT', '/settings/employee_sees_all_projects', { value: 'moze' })).status, 400);
+    for (const p of ['/projects', `/projects/${p1}`, '/board', '/handovers', '/employees', '/today', '/exits', '/absences']) assert.equal((await jan.call('GET', p)).status, 403, p);
+    for (const p of ['/bootstrap', '/schedule', '/events', '/calendar/machines', '/work-orders/my', '/requests', '/balances', '/me']) assert.equal((await jan.call('GET', p)).status, 200, p);
   } finally { srv.close(); }
 });
 

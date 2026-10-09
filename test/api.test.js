@@ -69,11 +69,15 @@ test('odmowa dostępu pracownika do raportów, API i eksportów; przełożony be
     // pracownik: tylko własne saldo, kalendarz bez szczegółów kategorii i notatek
     const bal = await emp.call('GET', '/balances?month=2026-10');
     assert.deepEqual(bal.data.map(b => b.employee_id), [e]);
-    const exits = await emp.call('GET', `/exits?month=2026-10&employee_id=${e2}`);
-    assert.ok(exits.data.every(x => x.employee_id === e), 'brak cudzych wyjść');
-    const abs = await emp.call('GET', '/absences?from=2026-10-01&to=2026-10-31');
-    const txt = JSON.stringify(abs.data);
-    assert.ok(!txt.includes('NOTATKA') && !txt.includes('Chorobowe') && txt.includes('Nieobecność'));
+    // programista: tylko zgłoszenia, kalendarze i plan pracy — listy wyjść, nieobecności, projektów, pracowników → 403
+    for (const p of [`/exits?month=2026-10`, '/absences?from=2026-10-01&to=2026-10-31', '/projects', '/employees', '/board', '/handovers', '/today', '/makeups']) {
+      assert.equal((await emp.call('GET', p)).status, 403, `pracownik: GET ${p}`);
+    }
+    const ev = await emp.call('GET', '/events?from=2026-10-01&to=2026-10-31');
+    const txt = JSON.stringify(ev.data);
+    assert.equal(ev.status, 200);
+    assert.ok(!txt.includes('NOTATKA') && !txt.includes('Chorobowe') && txt.includes('Nieobecność'), 'w kalendarzu ogólna etykieta, bez notatek');
+    assert.equal((await emp.call('GET', '/calendar/machines?from=2026-10-01&to=2026-10-31')).status, 200);
     const boot = JSON.stringify((await emp.call('GET', '/bootstrap')).data);
     assert.ok(!boot.includes('hr_reference') && !boot.includes('employment_start'));
 

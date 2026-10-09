@@ -18,8 +18,10 @@ function reqWhen(r) {
 
 // ---------- Pracownik: „Zgłoś” ----------
 VIEWS.zglos = async (main) => {
-  const list = await api('/requests');
-  main.innerHTML = head('Zgłoś kierownikowi', 'Zgłoszenie trafia do weryfikacji. Wpis w grafiku lub rozliczeniu powstaje dopiero po decyzji kierownika.') + `
+  const [list, bal] = await Promise.all([api('/requests'), api(`/balances?month=${S.me.today.slice(0, 7)}`).catch(() => [])]);
+  const mine = bal.find(b => b.employee_id === S.me.employee_id);
+  main.innerHTML = head('Zgłoś kierownikowi', 'Zgłoszenie trafia do weryfikacji. Wpis w grafiku lub rozliczeniu powstaje dopiero po decyzji kierownika.') +
+    (mine ? `<p class="notice info small">Moje saldo do odrobienia w ${plMonth(S.me.today.slice(0, 7))}: <b>${hm(mine.remaining_min)}</b> · zmian do końca miesiąca: ${mine.remaining_shifts}</p>` : '') + `
     <div class="cols-2"><section class="panel"><h3>Nowe zgłoszenie</h3>
       <div class="kind-pick" role="radiogroup" aria-label="Rodzaj zgłoszenia">${Object.entries(REQ_KIND).map(([k, [l, ic, hint]]) =>
         `<button type="button" class="kind" data-kind="${k}" role="radio" aria-checked="false">${icon(ic)}<b>${esc(l)}</b><span class="small muted">${esc(hint)}</span></button>`).join('')}</div>

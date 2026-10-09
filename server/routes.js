@@ -424,13 +424,24 @@ function buildRoutes() {
   });
 
   // ---------- Pulpit „Dzisiaj” ----------
+  add('GET', '/calendar/machines', ({ db, user, query }) => {
+    requireCap(user, 'view.calendar');
+    const from = query.from || `${T.today().slice(0, 7)}-01`, to = query.to || T.lastDayOfMonth(from.slice(0, 7));
+    T.assertDate(from); T.assertDate(to);
+    if (T.dateRange(from, to).length > 62) throw bad('Zakres do 62 dni.');
+    // programista widzi temat i zmianę, bez godzin pracy
+    return P.machineCalendar(db, from, to).map(i => user.role === 'employee' ? { ...i, shifts: i.shifts.map(({ minutes, ...x }) => x) } : i);
+  });
   add('GET', '/today', ({ db, user }) => {
     const d = T.today();
     const shifts = People.listSchedule(db, T.addDays(d, -1), d).filter(s => s.work_date === d || s.end_at > T.localToUtc(d, '00:00'))
       .map(s => ({ employee_id: s.employee_id, work_date: s.work_date, start: s.start_local, end: s.end_local, shift_template_id: s.shift_template_id }));
     const absToday = Abs.listAbsences(db, { from: d, to: d }).filter(a => a.status !== 'anulowana').map(a => redactAbsence(user, a));
     const vis = visibleProjects(db, user);
-    const out = { today: d, shifts, absences: absToday, board: P.board(db), handovers: P.listHandovers(db, {}).filter(h => !vis || vis.has(h.project_id)).slice(0, 5) };
+    // projekt na maszynie: pełny licznik jak w „Projekty i zadania” + kiedy i na której zmianie się zaczął
+    const boardFull = P.board(db).map(b => (b.project && user.role !== 'employee'
+      ? { ...b, project_full: P.projectDetail(db, b.project.id, { withTimes: false, withHours: can(user, 'view.efficiency') }), project_start: P.projectStart(db, b.project.id) } : b));
+    const out = { today: d, shifts, absences: absToday, board: boardFull, handovers: P.listHandovers(db, {}).filter(h => !vis || vis.has(h.project_id)).slice(0, 5) };
     if (user.role === 'employee') {
       out.my_orders = O.myOrders(db, user, { from: d, to: d });
       out.my_requests = Req.listRequests(db, { employeeId: user.employee_id, limit: 5 }).map(r => ({ id: r.id, kind: r.kind, date_from: r.date_from, date_to: r.date_to, status: r.status, decision_note: r.decision_note }));

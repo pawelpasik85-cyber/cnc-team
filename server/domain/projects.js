@@ -391,6 +391,38 @@ function board(db) {
   });
 }
 
+// Początek projektu: pierwszy wpis czasu pracy — dzień, osoba i zmiana z grafiku (gdy brak wpisów — data rozpoczęcia z projektu)
+function projectStart(db, id) {
+  const e = db.get(`SELECT e.work_date, e.employee_id FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ? ORDER BY e.work_date, e.id LIMIT 1`, id);
+  if (!e) { const p = db.get('SELECT start_date FROM projects WHERE id=?', id); return p ? { date: p.start_date, source: 'projekt' } : null; }
+  const s = db.get(`SELECT s.start_at, s.end_at, t.name, t.short FROM schedule_entries s LEFT JOIN shift_templates t ON t.id = s.shift_template_id
+    WHERE s.employee_id = ? AND s.work_date = ? ORDER BY s.start_at LIMIT 1`, e.employee_id, e.work_date);
+  return { date: e.work_date, employee_id: e.employee_id, source: 'czas',
+    shift: s ? { name: s.name, short: s.short, start: T.utcToLocal(s.start_at).time, end: T.utcToLocal(s.end_at).time } : null };
+}
+
+// Kalendarz maszyn: który projekt był wykonywany na której maszynie danego dnia i na której zmianie (z wpisów czasu pracy i grafiku)
+function machineCalendar(db, from, to) {
+  const rows = db.all(`SELECT e.work_date d, p.machine_id, t.project_id, p.order_no, p.part_no, e.employee_id, SUM(e.active_min + e.verify_min + e.rework_min) w,
+      (SELECT s.shift_template_id FROM schedule_entries s WHERE s.employee_id = e.employee_id AND s.work_date = e.work_date ORDER BY s.start_at LIMIT 1) tpl
+    FROM task_time_entries e JOIN tasks t ON t.id = e.task_id JOIN projects p ON p.id = t.project_id
+    WHERE e.work_date BETWEEN ? AND ? AND p.machine_id IS NOT NULL GROUP BY e.work_date, p.machine_id, t.project_id, e.employee_id ORDER BY e.work_date`, from, to);
+  const tpls = new Map(db.all('SELECT id, short, start_time FROM shift_templates').map(t => [t.id, t]));
+  const out = new Map();
+  for (const r of rows) {
+    const key = `${r.d}|${r.machine_id}|${r.project_id}`;
+    const item = out.get(key) || { date: r.d, machine_id: r.machine_id, project_id: r.project_id, order_no: r.order_no, part_no: r.part_no, shifts: [] };
+    const t = tpls.get(r.tpl);
+    const short = t ? t.short : 'poza grafikiem';
+    let sh = item.shifts.find(x => x.short === short);
+    if (!sh) { sh = { short, start: t ? t.start_time : '99', employees: [], minutes: 0 }; item.shifts.push(sh); }
+    if (!sh.employees.includes(r.employee_id)) sh.employees.push(r.employee_id);
+    sh.minutes += r.w || 0;
+    out.set(key, item);
+  }
+  return [...out.values()].map(i => ({ ...i, shifts: i.shifts.sort((a, b) => a.start.localeCompare(b.start)) }));
+}
+
 function updateBoard(db, user, machineId, body) {
   if (!db.get('SELECT 1 FROM machines WHERE id=?', machineId)) throw notFound();
   const d = {
@@ -489,5 +521,5 @@ function guestStatus(db, id) {
 
 module.exports = {
   CAUSES, saveMachine, saveTaskType, saveProject, setNcRevision, projectDetail, listProjects, createTask, updateTask, changeTaskPlan,
-  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus, projectHours, overtimeWork,
+  addTimeEntry, taskTimes, addExplanation, board, updateBoard, createHandover, listHandovers, addManualTechData, ID_RE, progress, scheduleStatus, scheduleSettings, guestStatus, projectHours, overtimeWork, projectStart, machineCalendar,
 };

@@ -17,14 +17,7 @@ VIEWS.projekty = async (main, rest) => {
   const sel = (name, label, opts) => `<label class="field">${label}<select name="${name}"><option value="">wszystkie</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === (q.get(name) || '') ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
   main.innerHTML = head('Projekty i zadania', 'Postęp wynika z zakończonych zadań o jawnych wagach, nie z upływu czasu.', isAdmin() ? btn('addPrj', 'Nowy projekt') : '') +
     `<form class="panel toolbar" id="pf">${sel('machine_id', 'Maszyna', machineOptions())}${sel('status', 'Status', [['aktywny', 'aktywny'], ['wstrzymany', 'wstrzymany'], ['zakonczony', 'zakończony'], ['anulowany', 'anulowany']])}${sel('employee_id', 'Osoba', empOptions(false))}<button class="primary">Filtruj</button></form>
-    <div class="cols">${list.map(p => `<article class="panel">
-      <div class="page-head" style="margin:0 0 var(--sp-2)"><div><h3 style="margin:0"><a href="#/projekty/${encodeURIComponent(p.id)}">${projectRef(p)}</a></h3><span class="small muted">${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')}</span></div>
-      </div>
-      ${bars(p)}${delayLine(p.schedule)}
-      <p class="small" style="margin:var(--sp-2) 0 0">Termin: <b>${plDate(p.due_date)}</b> · priorytet ${p.priority} · ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : 'brak programu NC'}
-      ${p.blocked ? `<br>${tag(p.block_reason, 'danger', 'block')}` : ''}${p.tasks.some(t => t.status === 'zablokowane') ? `<br>${tag('zablokowane zadanie', 'warn', 'alert')}` : ''}</p>
-      <p class="small" style="margin:var(--sp-2) 0 0">${p.responsible_ids.map(id => person(id, { name: false })).join(' ')} ${esc(p.status)}</p>
-    </article>`).join('') || '<div class="empty">Brak projektów.</div>'}</div>`;
+    <div class="cols">${list.map(p => projectCard(p)).join('') || '<div class="empty">Brak projektów.</div>'}</div>`;
   $('#pf').onsubmit = (e) => { e.preventDefault(); location.hash = `#/projekty?${new URLSearchParams([...new FormData(e.target)].filter(([, v]) => v))}`; };
   on('addPrj', () => projectForm());
 };
@@ -51,6 +44,19 @@ function projectForm(p = {}) {
       return r;
     },
   });
+}
+
+// Karta projektu — ta sama w „Projekty i zadania” i pod maszyną w Centrum programowania; start = kiedy i na której zmianie się zaczął
+function projectCard(p, { start = null, heading = '' } = {}) {
+  const st = start ? `<p class="small start-line">${icon('calendar')} Rozpoczęty: <b>${DOW[weekday(start.date) - 1]} ${plDate(start.date)}</b>${start.shift ? ` · zmiana <b>${esc(start.shift.short || '')}</b> ${esc(start.shift.start)}–${esc(start.shift.end)}` : start.source === 'czas' ? ' · poza grafikiem' : ''}${start.employee_id ? ` · ${person(start.employee_id)}` : ''}${start.source === 'projekt' ? ' <span class="muted">(data rozpoczęcia z projektu — brak wpisów czasu)</span>' : ''}</p>` : '';
+  return `<article class="panel">${heading ? `<p class="small muted card-kicker">${esc(heading)}</p>` : ''}
+      <div class="page-head" style="margin:0 0 var(--sp-2)"><div><h3 style="margin:0"><a href="#/projekty/${encodeURIComponent(p.id)}">${projectRef(p)}</a></h3><span class="small muted">${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')}</span></div>
+      </div>
+      ${st}${bars(p)}${delayLine(p.schedule)}
+      <p class="small" style="margin:var(--sp-2) 0 0">Termin: <b>${plDate(p.due_date)}</b> · priorytet ${p.priority} · ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : 'brak programu NC'}
+      ${p.blocked ? `<br>${tag(p.block_reason, 'danger', 'block')}` : ''}${p.tasks.some(t => t.status === 'zablokowane') ? `<br>${tag('zablokowane zadanie', 'warn', 'alert')}` : ''}</p>
+      <p class="small" style="margin:var(--sp-2) 0 0">${p.responsible_ids.map(id => person(id, { name: false })).join(' ')} ${esc(p.status)}</p>
+    </article>`;
 }
 
 async function projectDetailView(main, id) {

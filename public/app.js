@@ -7,30 +7,33 @@ const isAdmin = () => S.me && S.me.role === 'admin';
 const isEmployee = () => S.me && S.me.role === 'employee';
 const isGuest = () => S.me && S.me.role === 'guest';
 
+const notEmp = () => S.me && S.me.role !== 'employee' && S.me.role !== 'guest';
 const NAV = [
-  ['dzisiaj', 'Centrum programowania', 'today', null],
+  ['dzisiaj', 'Centrum programowania', 'today', notEmp],
   ['kalendarz', 'Kalendarz', 'calendar', null],
-  ['zdarzenia', 'Lista zdarzeń', 'list', null],
-  ['pracownicy', 'Pracownicy', 'users', null],
-  ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee()],
   ['plan', 'Plan pracy', 'list', () => S.me && S.me.role !== 'guest'],
-  ['wyjscia', 'Wyjścia i odrabianie', 'exit', null],
-  ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
+  ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee()],
+  ['pracownicy', 'Pracownicy', 'users', notEmp],
+  ['zdarzenia', 'Lista zdarzeń', 'list', notEmp],
+  ['wyjscia', 'Wyjścia i odrabianie', 'exit', notEmp],
   ['absencje', 'Urlopy i absencje', 'leave', 'view.leave.all'],
-  ['projekty', 'Projekty i zadania', 'project', null],
-  ['maszyny', 'Tablica maszyn', 'board', null],
-  ['przekazanie', 'Przekazanie zmiany', 'handover', null],
+  ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
+  ['projekty', 'Projekty i zadania', 'project', notEmp],
+  ['maszyny', 'Tablica maszyn', 'board', notEmp],
+  ['przekazanie', 'Przekazanie zmiany', 'handover', notEmp],
   ['raporty', 'Raporty kierownicze', 'report', 'view.reports'],
   ['analiza', 'Analiza i raporty', 'report', () => S.me && (S.me.role === 'admin' || S.me.role === 'supervisor')],
   ['ustawienia', 'Ustawienia', 'settings', null],
 ];
+// Programista: tylko zgłoszenia, kalendarz i plan pracy (oraz własne konto) — reszta dla kierownika
+const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'ustawienia']);
 
 // Nie w menu bocznym: urlopy i wyjścia są zakładkami w „Pracownicy”; tablica maszyn powielała Centrum programowania.
-const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny']);
-const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy', zestaw: 'analiza', raport: 'analiza' };
+const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny', 'zdarzenia']);
+const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy', zdarzenia: 'pracownicy', zestaw: 'analiza', raport: 'analiza' };
 // Zakładki widoku Pracownicy (przełączane w tym samym menu)
 function peopleTabs(active) {
-  const tabs = [['pracownicy', 'Pracownicy', 'users'], ...(can('view.leave.all') ? [['absencje', 'Urlopy i absencje', 'leave']] : []), ['wyjscia', 'Wyjścia i odrabianie', 'exit']];
+  const tabs = [['pracownicy', 'Pracownicy', 'users'], ...(can('view.leave.all') ? [['absencje', 'Urlopy i absencje', 'leave']] : []), ['wyjscia', 'Wyjścia i odrabianie', 'exit'], ['zdarzenia', 'Lista zdarzeń', 'list']];
   return `<nav class="section-tabs" aria-label="Pracownicy">${tabs.map(([id, l, ic]) => `<a href="#/${id}" class="${id === active ? 'active' : ''}" ${id === active ? 'aria-current="page"' : ''}>${icon(ic)}<span>${esc(l)}</span></a>`).join('')}</nav>`;
 }
 
@@ -90,7 +93,7 @@ function renderLogin() {
 function renderShell() {
   const roleName = { admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik', guest: 'Gość' }[S.me.role];
   const tabs = isGuest() ? [['status', 'Status', 'project']]
-    : isEmployee() ? [['dzisiaj', 'Dzisiaj', 'today'], ['plan', 'Polecenia', 'list'], ['zglos', 'Zgłoś', 'summons'], ['projekty', 'Projekty', 'project']]
+    : isEmployee() ? [['plan', 'Polecenia', 'list'], ['kalendarz', 'Kalendarz', 'calendar'], ['zglos', 'Zgłoś', 'summons']]
       : [['dzisiaj', 'Dzisiaj', 'today'], ['plan', 'Plan pracy', 'list'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']];
   const nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => !RAIL_HIDDEN.has(n[0]) && (typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3]))));
   $('#app').innerHTML = `<div class="shell">
@@ -99,7 +102,7 @@ function renderShell() {
     <div class="scrim" id="scrim" hidden></div>
     <nav class="rail" id="rail" aria-label="Menu główne">
     <div class="brand">${appLogo(40)}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
-    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(label)}</span></a>`).join('')}
+    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(id === 'ustawienia' && !isAdmin() ? 'Moje konto' : label)}</span></a>`).join('')}
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
       <button type="button" id="installBtn" class="link ${document.documentElement.dataset.installable ? '' : 'mobile-only'}">${icon('download')}Skrót na telefonie</button>
@@ -128,8 +131,9 @@ function renderShell() {
 const VIEWS = {};
 async function route() {
   if (!S.me) return;
-  let [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || (isGuest() ? 'status' : 'dzisiaj')).split('/');
+  let [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || (isGuest() ? 'status' : isEmployee() ? 'plan' : 'dzisiaj')).split('/');
   if (isGuest() && name !== 'ustawienia') name = 'status';
+  if (isEmployee() && !EMP_ROUTES.has(name)) name = 'plan';
   $$('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === (NAV_PARENT[name] || name)));
   const navItem = isGuest() ? (name === 'status' ? ['status', 'Status projektów'] : ['ustawienia', 'Moje konto']) : NAV.find(n => n[0] === name);
   if ($('#appbarTitle')) $('#appbarTitle').textContent = navItem ? navItem[1] : 'CNC Team';
@@ -157,8 +161,9 @@ VIEWS.dzisiaj = async (main) => {
   const alerts = (d.alerts || []).map(a => `<li>${icon('alert')} ${esc(a.message)}${a.remaining_min != null ? ` <b>${hm(a.remaining_min)}</b> pozostało, zmian do końca miesiąca: ${a.remaining_shifts ?? '—'}` : ''}</li>`).join('');
   const reminders = (d.leave_reminders || []).map(r => `<li>${r.level === 'ostrzezenie' ? tag('ostrzeżenie', 'warn', 'alert') : tag('przypomnienie', 'accent')} ${esc(r.name)}: pula ${r.year}, saldo ${hm(r.balance_min)}. <span class="muted">${esc(r.text)}</span></li>`).join('');
   main.innerHTML = head('Centrum programowania', `Dzisiaj: ${plDate(d.today)} · strefa Europe/Warsaw`) + `
-    <div class="machines">${d.board.map(plate).join('')}</div>
-    <div class="cols" style="margin-top:var(--sp-4)">
+    <div class="machines">${d.board.map(b => `<div class="machine-col">${plate(b)}${isAdmin() ? `<p class="small no-print" style="margin:4px 0 0"><a href="#/maszyny">${icon('board')}Zmień kartę maszyny (projekt, etap, osoba)</a></p>` : ''}${b.project_full ? projectCard(b.project_full, { start: b.project_start, heading: `Aktualnie na ${b.machine.name}` }) : `<section class="panel"><p class="muted small">Brak projektu na tej maszynie.</p></section>`}</div>`).join('')}</div>
+    <h2 class="section-h">Pozostałe informacje</h2>
+    <div class="cols">
       <section class="panel"><h3>Na zmianie dziś</h3><ul class="plain">${shifts || '<li class="muted">Brak zmian w grafiku.</li>'}</ul></section>
       <section class="panel"><h3>Nieobecności dziś</h3><ul class="plain">${abs || '<li class="muted">Brak nieobecności.</li>'}</ul></section>
       ${d.my_orders ? `<section class="panel"><h3>Moje polecenia na dziś</h3><ol class="orders">${d.my_orders.map(o => orderCard(o, { mine: true })).join('') || '<li class="muted small empty-orders">Brak poleceń na dziś.</li>'}</ol>
@@ -209,10 +214,18 @@ VIEWS.kalendarz = async (main) => {
   if (mode === 'tydzien') { from = addDays(anchor, 1 - weekday(anchor)); to = addDays(from, 6); }
   else { from = addDays(`${anchor.slice(0, 7)}-01`, 1 - weekday(`${anchor.slice(0, 7)}-01`)); to = addDays(lastDay(anchor.slice(0, 7)), 7 - weekday(lastDay(anchor.slice(0, 7)))); }
   const qs = `from=${from}&to=${to}${empF ? `&employee_id=${empF}` : ''}`;
-  const [sched, events] = await Promise.all([api(`/schedule?${qs}`), api(`/events?${qs}`)]);
+  const view = ['maszyny', 'ludzie'].includes(q.get('widok')) ? q.get('widok') : 'wszystko';
+  const [sched, events, mcal] = await Promise.all([api(`/schedule?${qs}`), api(`/events?${qs}`), view !== 'ludzie' ? api(`/calendar/machines?from=${from}&to=${to}`) : Promise.resolve([])]);
+  const machineRows = (d) => S.boot.machines.map(m => {
+    const items = mcal.filter(x => x.date === d && x.machine_id === m.id);
+    if (!items.length) return '';
+    const th = machineTheme(m);
+    const tip = items.map(i => `${i.order_no} ${i.part_no}: ${i.shifts.map(sh => `zmiana ${sh.short} (${sh.employees.map(id => { const e = S.emp.get(id); return e ? `${e.first_name} ${e.last_name}` : ''; }).join(', ')})`).join('; ')}`).join(' | ');
+    return `<div class="mc-row theme-${th}" title="${esc(`${m.name}: ${tip}`)}">${machineEmblem(th, 16)}<b>${esc(m.name)}</b>${items.map(i => `<span class="mc-item"><span class="mono">${esc(i.order_no)}</span>${i.shifts.map(sh => `<i>${esc(sh.short)}</i>`).join('')}</span>`).join('')}</div>`;
+  }).join('');
   const holidays = new Map(S.boot.holidays.map(h => [h.date, h.name]));
   const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t]));
-  const link = (o) => { const p = new URLSearchParams({ tryb: mode, data: anchor, osoba: empF, ...o }); return `#/kalendarz?${p}`; };
+  const link = (o) => { const p = new URLSearchParams({ tryb: mode, data: anchor, osoba: empF, widok: q.get('widok') || 'wszystko', ...o }); return `#/kalendarz?${p}`; };
   const step = mode === 'tydzien' ? 7 : 0;
   const prev = mode === 'tydzien' ? addDays(anchor, -7) : `${addMonths(anchor.slice(0, 7), -1)}-01`;
   const next = mode === 'tydzien' ? addDays(anchor, step) : `${addMonths(anchor.slice(0, 7), 1)}-01`;
@@ -222,21 +235,24 @@ VIEWS.kalendarz = async (main) => {
     const daySched = sched.filter(s => s.work_date === d);
     const dayEv = events.filter(e => e.date <= d && (e.end_date || e.date) >= d);
     const off = holidays.has(d) || weekday(d) >= 6;
-    const empty = !daySched.length && !dayEv.length && !holidays.has(d) && d !== S.me.today;
+    const empty = !daySched.length && !dayEv.length && !mcal.some(x => x.date === d) && !holidays.has(d) && d !== S.me.today;
     cells += `<div class="day ${mode === 'miesiac' && d.slice(0, 7) !== anchor.slice(0, 7) ? 'other' : ''} ${off ? 'off' : ''} ${d === S.me.today ? 'today' : ''} ${empty ? 'empty-day' : ''}">
       <div class="num" data-dow="${DOW[weekday(d) - 1]}, ${plDate(d)}"><span class="desk-only">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}</div>
-      ${daySched.map(s => shiftChip(s, tpl, dayEv.filter(ev => ev.employee_id === s.employee_id))).join('')}
-      ${dayEv.filter(ev => !daySched.some(s => s.employee_id === ev.employee_id)).map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(ev.label)} ${esc(ev.status || '')}">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
+      ${view !== 'ludzie' ? machineRows(d) : ''}
+      ${view !== 'maszyny' ? daySched.map(s => shiftChip(s, tpl, dayEv.filter(ev => ev.employee_id === s.employee_id))).join('') : ''}
+      ${view === 'maszyny' ? '' : ''}${dayEv.filter(ev => view !== 'maszyny' && !daySched.some(s => s.employee_id === ev.employee_id)).map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(ev.label)} ${esc(ev.status || '')}">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
     </div>`;
   }
-  main.innerHTML = head('Kalendarz', 'Grafik zmian i zdarzenia. Linia przerywana — wpis planowany; przekreślenie — anulowany.',
+  main.innerHTML = head('Kalendarz', 'Maszyny i projekty na każdej zmianie, grafik zmian i zdarzenia. Linia przerywana — wpis planowany; przekreślenie — anulowany.',
     `<a class="btn" href="${link({ data: prev })}">‹ Poprzedni</a><a class="btn" href="${link({ data: S.me.today })}">Dziś</a><a class="btn" href="${link({ data: next })}">Następny ›</a>
      <a class="btn ${mode === 'miesiac' ? 'primary' : ''}" href="${link({ tryb: 'miesiac' })}">Miesiąc</a><a class="btn ${mode === 'tydzien' ? 'primary' : ''}" href="${link({ tryb: 'tydzien' })}">Tydzień</a>
+     <label class="field">Widok<select id="calView"><option value="wszystko" ${view === 'wszystko' ? 'selected' : ''}>maszyny i ludzie</option><option value="maszyny" ${view === 'maszyny' ? 'selected' : ''}>tylko maszyny</option><option value="ludzie" ${view === 'ludzie' ? 'selected' : ''}>tylko ludzie</option></select></label>
      <label class="field">Osoba<select id="calEmp"><option value="">wszyscy</option>${empOptions().map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
      ${isAdmin() ? btn('addShift', 'Zmiana w grafiku') + btn('extraShift', 'Dzień dodatkowy / nadgodziny', 'plus', '') + btn('bulkMode', 'Zmiana trybu pracy', 'calendar', '') + btn('genShift', 'Generuj grafik', 'calendar', '') : ''}`) +
     `<h2>${esc(title)}</h2><div class="cal ${mode === 'tydzien' ? 'week' : ''}">${cells}</div>
-     <p class="small muted">Legenda: ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby: <span class="ev-tag tone-l4">L4</span> nieobecność (godziny zmiany przekreślone), <span class="ev-tag tone-force">WP</span> wyjście prywatne, <span class="ev-tag tone-uw">OD</span> odrabianie, <span class="ev-tag tone-event">PZ</span> przekazanie zmiany; <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
+     <p class="small muted">Legenda: na górze dnia — maszyny i projekt wykonywany tego dnia z oznaczeniem zmian (I / II / III, z wpisów czasu pracy); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby: <span class="ev-tag tone-l4">L4</span> nieobecność (godziny zmiany przekreślone), <span class="ev-tag tone-force">WP</span> wyjście prywatne, <span class="ev-tag tone-uw">OD</span> odrabianie, <span class="ev-tag tone-event">PZ</span> przekazanie zmiany; <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
   $('#calEmp').onchange = (e) => { location.hash = link({ osoba: e.target.value }); };
+  $('#calView').onchange = (e) => { location.hash = link({ widok: e.target.value }); };
   on('addShift', () => shiftForm(anchor));
   on('genShift', () => generateForm(anchor));
   on('extraShift', () => extraShiftForm(anchor));

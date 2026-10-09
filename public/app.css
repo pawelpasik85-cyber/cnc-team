@@ -529,3 +529,15 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .b-note p { margin: 0 0 4px; }
 @media (max-width: 700px) { .b-facts { grid-template-columns: 1fr; } .b-facts dt { margin-top: 4px; } }
 @media print { .b-topic { break-inside: avoid; } .b-num { background: none; color: #000; border: 2px solid #000; } .b-note { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+/* Centrum programowania: maszyna + aktualny projekt pod nią */
+.machine-col { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.machine-col > .panel + .panel { margin-top: 0; }
+.card-kicker { margin: 0 0 4px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.start-line { margin: 0 0 var(--sp-2); padding: 6px 10px; border-radius: var(--r-sm); background: var(--c-paper); border: 1px solid var(--c-line); }
+.section-h { margin: var(--sp-5, 28px) 0 var(--sp-3); font-size: 1.1rem; color: var(--c-ink-soft); text-transform: uppercase; letter-spacing: .05em; }
+/* Kalendarz: maszyny i projekty w danym dniu */
+.mc-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 11px; padding: 2px 4px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--m-mid, #8a949e) 16%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--m-mid, #8a949e) 50%, var(--c-line)); }
+.mc-row b { font-weight: 700; margin-right: 2px; }
+.mc-item { display: inline-flex; align-items: center; gap: 2px; }
+.mc-item i { font-style: normal; font-size: 9px; font-weight: 800; padding: 0 3px; border-radius: 3px; background: var(--m-mid, #8a949e); color: #fff; }

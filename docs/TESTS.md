@@ -55,6 +55,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 12 — zestawienia do druku (9.10.2026)
 **54 / 54 zaliczonych.** Nowy test w `test/analytics-privacy.test.js`: zestawienie z projektem (migawka: dni po terminie), notatką i przyczyną; migawka niezmienna po zmianie danych, odświeżana na żądanie; walidacja (pusty, zła przyczyna, duplikat, nieistniejący projekt, zły temat); udostępnione zestawienie nie przyjmie nieudostępnionego raportu; przełożony widzi tylko udostępnione (prywatne → 404, zapis → 403); programista 403. Niezależny przegląd: 8 uwag (m.in. ujawnienie nieudostępnionego raportu przez zestawienie, za długi link e-mail, numery znikające w druku, ponowne dodanie tematu ze starymi danymi) — poprawione. Zrzuty `95…98`.
 
+### Runda 13 — nowa organizacja (9.10.2026)
+**54 / 54 zaliczonych.** Zmienione testy dostępu: programista dostaje 403 na projekty, pracowników, tablicę maszyn, przekazania, Centrum programowania, wyjścia, nieobecności; 200 na grafik, zdarzenia (ogólne etykiety), kalendarz maszyn, własne polecenia, zgłoszenia i własne saldo. Skrypt zrzutów sprawdza, że programistka nie otworzy innych widoków (przekierowanie do planu pracy) i nie ma ich w menu. Zrzuty: Centrum programowania z projektami pod maszynami (`56`), kalendarz z maszynami (`76`, `77`, `99`), lista zdarzeń w Pracownikach (`100`).
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |
