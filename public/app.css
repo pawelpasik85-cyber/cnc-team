@@ -541,3 +541,7 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .mc-row b { font-weight: 700; margin-right: 2px; }
 .mc-item { display: inline-flex; align-items: center; gap: 2px; }
 .mc-item i { font-style: normal; font-size: 9px; font-weight: 800; padding: 0 3px; border-radius: 3px; background: var(--m-mid, #8a949e); color: #fff; }
+
+.mc-row.mc-obecnie, .mc-row.mc-w_toku { background: transparent; border-style: dashed; }
+.mc-row.mc-brak { background: transparent; border-style: dotted; opacity: .6; }
+.cal .day.off .mc-row:not(.mc-praca) { opacity: .45; }

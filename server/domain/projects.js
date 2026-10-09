@@ -401,26 +401,62 @@ function projectStart(db, id) {
     shift: s ? { name: s.name, short: s.short, start: T.utcToLocal(s.start_at).time, end: T.utcToLocal(s.end_at).time } : null };
 }
 
-// Kalendarz maszyn: który projekt był wykonywany na której maszynie danego dnia i na której zmianie (z wpisów czasu pracy i grafiku)
+// Kalendarz maszyn: w każdym dniu oba tematy — co szło na każdej maszynie.
+// praca   — wpisy czasu pracy tego dnia (projekt i zmiany I / II / III osób, które wpisały czas);
+// obecnie — dziś i dni przyszłe bez wpisów: projekt z karty maszyny (Centrum programowania);
+// w_toku  — dzień miniony bez wpisów: ostatni projekt pracowany na maszynie, jeśli nie był już zakończony.
 function machineCalendar(db, from, to) {
+  const today = T.today();
   const rows = db.all(`SELECT e.work_date d, p.machine_id, t.project_id, p.order_no, p.part_no, e.employee_id, SUM(e.active_min + e.verify_min + e.rework_min) w,
       (SELECT s.shift_template_id FROM schedule_entries s WHERE s.employee_id = e.employee_id AND s.work_date = e.work_date ORDER BY s.start_at LIMIT 1) tpl
     FROM task_time_entries e JOIN tasks t ON t.id = e.task_id JOIN projects p ON p.id = t.project_id
     WHERE e.work_date BETWEEN ? AND ? AND p.machine_id IS NOT NULL GROUP BY e.work_date, p.machine_id, t.project_id, e.employee_id ORDER BY e.work_date`, from, to);
   const tpls = new Map(db.all('SELECT id, short, start_time FROM shift_templates').map(t => [t.id, t]));
-  const out = new Map();
+  const actual = new Map();
   for (const r of rows) {
-    const key = `${r.d}|${r.machine_id}|${r.project_id}`;
-    const item = out.get(key) || { date: r.d, machine_id: r.machine_id, project_id: r.project_id, order_no: r.order_no, part_no: r.part_no, shifts: [] };
+    const key = `${r.d}|${r.machine_id}`;
+    const list = actual.get(key) || [];
+    let item = list.find(x => x.project_id === r.project_id);
+    if (!item) { item = { project_id: r.project_id, order_no: r.order_no, part_no: r.part_no, minutes: 0, shifts: [] }; list.push(item); }
     const t = tpls.get(r.tpl);
     const short = t ? t.short : 'poza grafikiem';
     let sh = item.shifts.find(x => x.short === short);
     if (!sh) { sh = { short, start: t ? t.start_time : '99', employees: [], minutes: 0 }; item.shifts.push(sh); }
     if (!sh.employees.includes(r.employee_id)) sh.employees.push(r.employee_id);
-    sh.minutes += r.w || 0;
-    out.set(key, item);
+    sh.minutes += r.w || 0; item.minutes += r.w || 0;
+    actual.set(key, list);
   }
-  return [...out.values()].map(i => ({ ...i, shifts: i.shifts.sort((a, b) => a.start.localeCompare(b.start)) }));
+  const proj = (id) => db.get('SELECT id AS project_id, order_no, part_no, status FROM projects WHERE id=?', id);
+  const finishCache = new Map();
+  const finishOf = (id) => {
+    if (!finishCache.has(id)) {
+      const p = db.get(`SELECT status, (SELECT MAX(completed_at) FROM tasks WHERE project_id = ? AND status = 'zakonczone') last FROM projects WHERE id = ?`, id, id);
+      finishCache.set(id, p && p.status === 'zakonczony' && p.last ? T.utcToLocal(p.last).date : null);
+    }
+    return finishCache.get(id);
+  };
+  const out = [];
+  for (const m of db.all('SELECT id FROM machines WHERE active=1 ORDER BY sort')) {
+    const board = db.get('SELECT project_id FROM machine_board WHERE machine_id=?', m.id);
+    const boardProj = board && board.project_id ? proj(board.project_id) : null;
+    const before = db.get(`SELECT t.project_id FROM task_time_entries e JOIN tasks t ON t.id = e.task_id JOIN projects p ON p.id = t.project_id
+      WHERE p.machine_id = ? AND e.work_date < ? ORDER BY e.work_date DESC, e.id DESC LIMIT 1`, m.id, from);
+    let last = before ? before.project_id : null;
+    for (const d of T.dateRange(from, to)) {
+      const list = actual.get(`${d}|${m.id}`);
+      if (list) {
+        for (const it of list) it.shifts.sort((a, b) => a.start.localeCompare(b.start));
+        out.push({ date: d, machine_id: m.id, mode: 'praca', items: list });
+        last = [...list].sort((a, b) => b.minutes - a.minutes)[0].project_id;
+      } else if (d >= today && boardProj) {
+        out.push({ date: d, machine_id: m.id, mode: 'obecnie', items: [{ project_id: boardProj.project_id, order_no: boardProj.order_no, part_no: boardProj.part_no, shifts: [] }] });
+      } else if (last && !(finishOf(last) && finishOf(last) < d)) {
+        const p = proj(last);
+        out.push({ date: d, machine_id: m.id, mode: 'w_toku', items: [{ project_id: p.project_id, order_no: p.order_no, part_no: p.part_no, shifts: [] }] });
+      } else out.push({ date: d, machine_id: m.id, mode: 'brak', items: [] });
+    }
+  }
+  return out;
 }
 
 function updateBoard(db, user, machineId, body) {

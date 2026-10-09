@@ -430,7 +430,8 @@ function buildRoutes() {
     T.assertDate(from); T.assertDate(to);
     if (T.dateRange(from, to).length > 62) throw bad('Zakres do 62 dni.');
     // programista widzi temat i zmianę, bez godzin pracy
-    return P.machineCalendar(db, from, to).map(i => user.role === 'employee' ? { ...i, shifts: i.shifts.map(({ minutes, ...x }) => x) } : i);
+    return P.machineCalendar(db, from, to).map(r => (user.role === 'employee'
+      ? { ...r, items: r.items.map(({ minutes, ...it }) => ({ ...it, shifts: it.shifts.map(({ minutes: _m, ...x }) => x) })) } : r));
   });
   add('GET', '/today', ({ db, user }) => {
     const d = T.today();

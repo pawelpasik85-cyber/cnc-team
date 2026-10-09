@@ -58,6 +58,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 13 — nowa organizacja (9.10.2026)
 **54 / 54 zaliczonych.** Zmienione testy dostępu: programista dostaje 403 na projekty, pracowników, tablicę maszyn, przekazania, Centrum programowania, wyjścia, nieobecności; 200 na grafik, zdarzenia (ogólne etykiety), kalendarz maszyn, własne polecenia, zgłoszenia i własne saldo. Skrypt zrzutów sprawdza, że programistka nie otworzy innych widoków (przekierowanie do planu pracy) i nie ma ich w menu. Zrzuty: Centrum programowania z projektami pod maszynami (`56`), kalendarz z maszynami (`76`, `77`, `99`), lista zdarzeń w Pracownikach (`100`).
 
+### Runda 14 — oba tematy w każdym dniu kalendarza (9.10.2026)
+**55 / 55 zaliczonych.** Nowy `test/machine-calendar.test.js`: każdego dnia obie maszyny; praca ze zmianą z wpisów, dzień bez wpisów = w toku, dziś i dalej = projekt z karty maszyny, brak przed pierwszą pracą i po zakończeniu projektu.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

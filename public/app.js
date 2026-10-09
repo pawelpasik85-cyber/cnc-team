@@ -216,12 +216,12 @@ VIEWS.kalendarz = async (main) => {
   const qs = `from=${from}&to=${to}${empF ? `&employee_id=${empF}` : ''}`;
   const view = ['maszyny', 'ludzie'].includes(q.get('widok')) ? q.get('widok') : 'wszystko';
   const [sched, events, mcal] = await Promise.all([api(`/schedule?${qs}`), api(`/events?${qs}`), view !== 'ludzie' ? api(`/calendar/machines?from=${from}&to=${to}`) : Promise.resolve([])]);
-  const machineRows = (d) => S.boot.machines.map(m => {
-    const items = mcal.filter(x => x.date === d && x.machine_id === m.id);
-    if (!items.length) return '';
+  const MC_MODE = { praca: 'praca w tym dniu (wpisy czasu)', obecnie: 'obecnie na maszynie (karta maszyny)', w_toku: 'w toku — tego dnia bez wpisów czasu', brak: 'brak projektu' };
+  const machineRows = (d) => S.boot.machines.filter(m => m.active !== 0).map(m => {
+    const r = mcal.find(x => x.date === d && x.machine_id === m.id) || { mode: 'brak', items: [] };
     const th = machineTheme(m);
-    const tip = items.map(i => `${i.order_no} ${i.part_no}: ${i.shifts.map(sh => `zmiana ${sh.short} (${sh.employees.map(id => { const e = S.emp.get(id); return e ? `${e.first_name} ${e.last_name}` : ''; }).join(', ')})`).join('; ')}`).join(' | ');
-    return `<div class="mc-row theme-${th}" title="${esc(`${m.name}: ${tip}`)}">${machineEmblem(th, 16)}<b>${esc(m.name)}</b>${items.map(i => `<span class="mc-item"><span class="mono">${esc(i.order_no)}</span>${i.shifts.map(sh => `<i>${esc(sh.short)}</i>`).join('')}</span>`).join('')}</div>`;
+    const tip = r.items.length ? r.items.map(i => `${i.order_no} ${i.part_no}${i.shifts.length ? `: ${i.shifts.map(sh => `zmiana ${sh.short} (${sh.employees.map(id => { const e = S.emp.get(id); return e ? `${e.first_name} ${e.last_name}` : ''; }).join(', ')})`).join('; ')}` : ''}`).join(' | ') : '';
+    return `<div class="mc-row theme-${th} mc-${r.mode}" title="${esc(`${m.name} — ${MC_MODE[r.mode]}${tip ? `: ${tip}` : ''}`)}">${machineEmblem(th, 16)}<b>${esc(m.name)}</b>${r.items.length ? r.items.map(i => `<span class="mc-item"><span class="mono">${esc(i.order_no)}</span>${i.shifts.map(sh => `<i>${esc(sh.short)}</i>`).join('')}</span>`).join('') : '<span class="muted">—</span>'}</div>`;
   }).join('');
   const holidays = new Map(S.boot.holidays.map(h => [h.date, h.name]));
   const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t]));
@@ -235,7 +235,7 @@ VIEWS.kalendarz = async (main) => {
     const daySched = sched.filter(s => s.work_date === d);
     const dayEv = events.filter(e => e.date <= d && (e.end_date || e.date) >= d);
     const off = holidays.has(d) || weekday(d) >= 6;
-    const empty = !daySched.length && !dayEv.length && !mcal.some(x => x.date === d) && !holidays.has(d) && d !== S.me.today;
+    const empty = !daySched.length && !dayEv.length && view === 'ludzie' && !holidays.has(d) && d !== S.me.today;
     cells += `<div class="day ${mode === 'miesiac' && d.slice(0, 7) !== anchor.slice(0, 7) ? 'other' : ''} ${off ? 'off' : ''} ${d === S.me.today ? 'today' : ''} ${empty ? 'empty-day' : ''}">
       <div class="num" data-dow="${DOW[weekday(d) - 1]}, ${plDate(d)}"><span class="desk-only">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}</div>
       ${view !== 'ludzie' ? machineRows(d) : ''}
@@ -250,7 +250,7 @@ VIEWS.kalendarz = async (main) => {
      <label class="field">Osoba<select id="calEmp"><option value="">wszyscy</option>${empOptions().map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
      ${isAdmin() ? btn('addShift', 'Zmiana w grafiku') + btn('extraShift', 'Dzień dodatkowy / nadgodziny', 'plus', '') + btn('bulkMode', 'Zmiana trybu pracy', 'calendar', '') + btn('genShift', 'Generuj grafik', 'calendar', '') : ''}`) +
     `<h2>${esc(title)}</h2><div class="cal ${mode === 'tydzien' ? 'week' : ''}">${cells}</div>
-     <p class="small muted">Legenda: na górze dnia — maszyny i projekt wykonywany tego dnia z oznaczeniem zmian (I / II / III, z wpisów czasu pracy); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby: <span class="ev-tag tone-l4">L4</span> nieobecność (godziny zmiany przekreślone), <span class="ev-tag tone-force">WP</span> wyjście prywatne, <span class="ev-tag tone-uw">OD</span> odrabianie, <span class="ev-tag tone-event">PZ</span> przekazanie zmiany; <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
+     <p class="small muted">Legenda: na górze każdego dnia — oba tematy: co idzie na Hartford i na Grimme. Pełne tło ze zmianami I / II / III — praca tego dnia (z wpisów czasu pracy); przerywana ramka — projekt w toku bez wpisów tego dnia albo obecnie na maszynie (dziś i dalej, z karty maszyny); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby: <span class="ev-tag tone-l4">L4</span> nieobecność (godziny zmiany przekreślone), <span class="ev-tag tone-force">WP</span> wyjście prywatne, <span class="ev-tag tone-uw">OD</span> odrabianie, <span class="ev-tag tone-event">PZ</span> przekazanie zmiany; <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
   $('#calEmp').onchange = (e) => { location.hash = link({ osoba: e.target.value }); };
   $('#calView').onchange = (e) => { location.hash = link({ widok: e.target.value }); };
   on('addShift', () => shiftForm(anchor));
