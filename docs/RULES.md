@@ -81,6 +81,12 @@ Wymaga rozstrzygnięcia oczekujących odrabiań. Tworzy wersję zestawienia (JSO
 ### Projekty i postęp
 Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zadań etapu / Σ wag zadań etapu (bez anulowanych). Brak zadań w etapie = brak danych. Zakończenie zadania wymaga potwierdzenia rezultatu. Pierwotny plan niezmienny, zmiany planu z powodem w historii.
 
+### Zestawienia do druku (Analiza i raporty → Zestawienia do druku)
+- Kierownik łączy kilka tematów: projekty (status, opóźnienie w %, termin, godziny wobec planu, poprawki, powroty), zapisane raporty (kluczowe liczby i komentarz) i własne tematy — do każdego przyczyna (lista przyczyn jak przy czasie pracy) i notatka, np. dlaczego było opóźnienie. Kolejność tematów dowolna.
+- Dane tematu to migawka z chwili zapisu zestawienia; zmieniają się tylko po zaznaczeniu „odśwież”. Każdy zapis i usunięcie — w historii.
+- Druk / PDF z przeglądarki; „Wyślij e-mailem” otwiera wiadomość z tekstem (długie skracane — pełna wersja jako PDF dołączany ręcznie); „Kopiuj tekst”.
+- Przełożony widzi tylko zestawienia udostępnione; udostępnione zestawienie nie może zawierać raportu, którego przełożonemu nie udostępniono.
+
 ### Kalendarz wyjść i odrabiania (Wyjścia i odrabianie)
 - Nad saldami: miesiąc w kafelkach — WP (wyjście prywatne) i OD (odrabianie) z inicjałami, zmianą (I / II / III lub godziny zmiany; „poza grafikiem”) i godzinami. Wyjście z nocnej zmiany — w dniu jej rozpoczęcia. Odrabianie oczekujące — przerywane obramowanie; wyjście odrobione — wyblakłe; anulowane i odrzucone niewidoczne.
 

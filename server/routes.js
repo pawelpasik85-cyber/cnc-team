@@ -13,6 +13,7 @@ const I = require('./domain/integration');
 const Req = require('./domain/requests');
 const A = require('./domain/analytics');
 const Ret = require('./domain/returns');
+const B = require('./domain/bundles');
 const O = require('./domain/orders');
 
 const ADMIN = 'write';
@@ -544,6 +545,12 @@ function buildRoutes() {
     audit(db, user, 'export', 'analiza', 'eksport_csv', null, { query });
     return { __raw: true, body: R.toCsv(rep), headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="analiza-${String(query.ref || '').replace(/[^0-9-]/g, '')}.csv"` } };
   });
+  // Zestawienia do druku / wysyłki (kilka tematów z notatkami) — tworzy kierownik; przełożony widzi udostępnione
+  add('GET', '/report-bundles', ({ db, user }) => { if (user.role !== 'admin' && user.role !== 'supervisor') throw forbidden(); return B.listBundles(db, user); });
+  add('GET', '/report-bundles/:id', ({ db, user, params }) => { if (user.role !== 'admin' && user.role !== 'supervisor') throw forbidden(); return B.getBundle(db, user, Number(params.id)); });
+  add('POST', '/report-bundles', ({ db, user, body }) => { requireAdmin(user); return B.saveBundle(db, user, body); });
+  add('PUT', '/report-bundles/:id', ({ db, user, body, params }) => { requireAdmin(user); return B.saveBundle(db, user, body, Number(params.id)); });
+  add('DELETE', '/report-bundles/:id', ({ db, user, params }) => { requireAdmin(user); B.deleteBundle(db, user, Number(params.id)); });
   add('GET', '/saved-reports', ({ db, user }) => {
     if (user.role !== 'admin' && user.role !== 'supervisor') throw forbidden();
     return A.listReports(db, user);

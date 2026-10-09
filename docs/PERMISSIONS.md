@@ -22,6 +22,7 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Eksport/import JSON CNC Process | ✔ | ✘ | ✘ | ✘ |
 | Historia zmian (audyt), konta, ustawienia firmy | ✔ | ✘ | ✘ | ✘ |
 | Analiza: przebieg projektu, podobne projekty (i ich odrzucanie), miesiąc i rok wobec lat poprzednich, nadgodziny w projektach, CSV | ✔ wyłącznie kierownik | ✘ (403) | ✘ (403, brak w menu) | ✘ (403) |
+| Zestawienia do druku (tematy z notatkami) | ✔ (tworzenie, edycja, usuwanie, udostępnianie) | ✔ tylko udostępnione (podgląd, druk) | ✘ (403) | ✘ |
 | Zapisane raporty kierownika | ✔ wszystkie (zapis, udostępnienie, usunięcie) | ✔ tylko udostępnione (podgląd, druk) | ✘ | ✘ |
 | Plan pracy: wypisywanie poleceń, kolejność, ocena, przeniesienie | ✔ | ✔ (podgląd dnia) | ✘ (403); widzi tylko własne polecenia i potwierdza przeczytanie | ✘ |
 | Kalendarz urlopów; zestawienie urlopów pod pracownikami (zakładka Pracownicy) | ✔ | ✔ (podgląd; kategorie poufne jako ogólna etykieta bez uprawnienia) | ✘ (403) | ✘ |

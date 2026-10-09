@@ -27,7 +27,7 @@ const NAV = [
 
 // Nie w menu bocznym: urlopy i wyjścia są zakładkami w „Pracownicy”; tablica maszyn powielała Centrum programowania.
 const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny']);
-const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy' };
+const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy', zestaw: 'analiza', raport: 'analiza' };
 // Zakładki widoku Pracownicy (przełączane w tym samym menu)
 function peopleTabs(active) {
   const tabs = [['pracownicy', 'Pracownicy', 'users'], ...(can('view.leave.all') ? [['absencje', 'Urlopy i absencje', 'leave']] : []), ['wyjscia', 'Wyjścia i odrabianie', 'exit']];

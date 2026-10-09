@@ -52,6 +52,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 11 — kalendarz urlopów (9.10.2026)
 **53 / 53 zaliczonych.** Nowy test w `test/absences.test.js`: zestawienie — zaległy na początek roku + wymiar − wykorzystano, stan poprzedniego roku niezależny od późniejszych wpisów, urlop na żądanie, inne nieobecności (dni i godziny osobno), urlop na przełomie roku odrzucany (dwa wpisy), przełożony widzi kategorię poufną pod ogólną etykietą, programista 403. Niezależny przegląd: 8 uwag (m.in. niespójne „wykorzystano/zostało”, godziny liczone jako dni, ukryte wpisy w pracującą sobotę, walidacja miesiąca) — poprawione. Zrzuty `88…90`.
 
+### Runda 12 — zestawienia do druku (9.10.2026)
+**54 / 54 zaliczonych.** Nowy test w `test/analytics-privacy.test.js`: zestawienie z projektem (migawka: dni po terminie), notatką i przyczyną; migawka niezmienna po zmianie danych, odświeżana na żądanie; walidacja (pusty, zła przyczyna, duplikat, nieistniejący projekt, zły temat); udostępnione zestawienie nie przyjmie nieudostępnionego raportu; przełożony widzi tylko udostępnione (prywatne → 404, zapis → 403); programista 403. Niezależny przegląd: 8 uwag (m.in. ujawnienie nieudostępnionego raportu przez zestawienie, za długi link e-mail, numery znikające w druku, ponowne dodanie tematu ze starymi danymi) — poprawione. Zrzuty `95…98`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

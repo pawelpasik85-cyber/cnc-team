@@ -230,8 +230,8 @@ function saveReportForm(kind, ref, title, extra = {}) {
 VIEWS.analiza = async (main) => {
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const admin = isAdmin();
-  const tab = admin ? (q.get('t') || 'miesiac') : 'raporty';
-  const tabs = admin ? [['miesiac', 'Miesiąc'], ['rok', 'Rok'], ['raporty', 'Zapisane raporty']] : [['raporty', 'Raporty od kierownika']];
+  const tab = admin ? (q.get('t') || 'miesiac') : (q.get('t') === 'zestawienia' ? 'zestawienia' : 'raporty');
+  const tabs = admin ? [['miesiac', 'Miesiąc'], ['rok', 'Rok'], ['raporty', 'Zapisane raporty'], ['zestawienia', 'Zestawienia do druku']] : [['raporty', 'Raporty od kierownika'], ['zestawienia', 'Zestawienia']];
   const tabsHtml = `<div class="tabs no-print">${tabs.map(([id, l]) => `<button class="${tab === id ? 'active' : ''}" data-at="${id}">${esc(l)}</button>`).join('')}</div>`;
   let body = '', tools = '';
   if (tab === 'miesiac') {
@@ -253,6 +253,9 @@ VIEWS.analiza = async (main) => {
       <a class="btn no-print" href="/api/analytics/export.csv?kind=rok&ref=${year}&compare=${compare.join(',')}">${icon('download')}CSV</a><button id="aprint" class="no-print">${icon('print')}Drukuj / PDF</button><button id="asave" class="primary no-print">Zapisz jako raport</button>`;
     body = `<h2 class="print-title">Rok ${esc(year)}${compare.length ? ` wobec ${compare.join(', ')}` : ''}</h2>${renderYear(d, metric)}`;
     main.dataset.yearCompare = JSON.stringify(compare);
+  } else if (tab === 'zestawienia') {
+    const z = await bundlesTab();
+    tools = z.tools; body = z.body;
   } else {
     const list = await api('/saved-reports');
     body = `<section class="panel">${table([

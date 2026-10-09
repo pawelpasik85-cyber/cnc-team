@@ -227,6 +227,14 @@ function seedDemo(db) {
   Req.createRequest(db, u('adam'), { kind: 'odrobienie', date_from: aEnd.date, time_from: aEnd.time, time_to: aEnd2.time, note: 'Odrobię resztę wyjścia z 1.10 po zmianie' });
   Req.createRequest(db, u('bartosz'), { kind: 'nieobecnosc', date_from: '2026-10-09', note: 'Sprawa urzędowa — proszę o dzień wolny' });
 
+  // Zestawienie do druku: opóźnione projekty z notatkami kierownika
+  require('../server/domain/bundles').saveBundle(db, admin, { title: 'Opóźnienia projektów — październik 2026', shared: true,
+    intro: 'Zestawienie dla przełożonego: projekty z opóźnieniem i przyczyny.',
+    items: [
+      { kind: 'projekt', ref: p1, cause: 'narzedzia', note: 'Brak oprawki BT50-ER32 dla freza Ø6 — weryfikacja programu OP10 wstrzymana od 5.10. Oprawka zamówiona, dostawa 9.10.' },
+      { kind: 'projekt', ref: p2, cause: 'zmiana_zakresu', note: 'Klient dosłał nową rewizję rysunku w trakcie programowania 5X; część ścieżek do ponownego przygotowania. Termin uzgodniony na nowo.' },
+      { kind: 'notatka', title: 'Obsada zmian', cause: 'inne', note: 'L4 jednej osoby 5–7.10 — zmiany wydłużone do 12 h i dzień dodatkowy w sobotę.' },
+    ] });
   X.recomputeAlerts(db);
   return { admin, adam, bartosz, celina, p1, p2, p3 };
 }
