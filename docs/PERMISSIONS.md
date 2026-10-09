@@ -24,6 +24,7 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Analiza: przebieg projektu, podobne projekty (i ich odrzucanie), miesiąc i rok wobec lat poprzednich, nadgodziny w projektach, CSV | ✔ wyłącznie kierownik | ✘ (403) | ✘ (403, brak w menu) | ✘ (403) |
 | Zapisane raporty kierownika | ✔ wszystkie (zapis, udostępnienie, usunięcie) | ✔ tylko udostępnione (podgląd, druk) | ✘ | ✘ |
 | Plan pracy: wypisywanie poleceń, kolejność, ocena, przeniesienie | ✔ | ✔ (podgląd dnia) | ✘ (403); widzi tylko własne polecenia i potwierdza przeczytanie | ✘ |
+| Powrót do projektu (runda poprawek): otwarcie, zakończenie, powody, czas przed / po poprawkach | ✔ | ✘ (403, powody rund niewidoczne) | ✘ (403); widzi tylko oznaczenie „poprawki” przy swoim zadaniu | ✘ |
 | Grafik: tryb pracy (12 h, nieregularny, dzień dodatkowy), zamiana osób, zmiana trybu na okres, usunięcie zmiany | ✔ (zawsze z powodem, w historii) | ✘ (403) | ✘ (403); w kalendarzu widzi oznaczenie trybu (DOD / 12h / NR), bez powodu i minut nadgodzin | ✘ |
 | Zmiana własnego hasła | ✔ | ✔ | ✔ | ✔ |
 

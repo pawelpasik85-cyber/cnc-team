@@ -2,7 +2,7 @@
 // zapisane raporty (migawki) z udostępnianiem przełożonemu. Dane analizy — tylko kierownik.
 'use strict';
 
-const KPI_DIR = { tasks_done: 1, projects_done: 1, rework_min: -1, blocked_min: -1, tasks_diff_pct: -1, absence_min: -1, exits_min: -1, overtime_min: -1, worked_min: 0, extra_days: -1, overtime_work_min: -1, overtime_share_pct: -1 };
+const KPI_DIR = { tasks_done: 1, projects_done: 1, rework_min: -1, blocked_min: -1, tasks_diff_pct: -1, absence_min: -1, exits_min: -1, overtime_min: -1, worked_min: 0, returns_min: -1, extra_days: -1, overtime_work_min: -1, overtime_share_pct: -1 };
 function kpiVal(v, unit) {
   if (v === null || v === undefined) return '—';
   if (unit === 'min') return hShort(v);
@@ -63,10 +63,15 @@ function renderMonth(d) {
       praca na projektach w nadgodzinach <b>${hShort(ot.work_min || 0)}</b> = <b>${ot.work_share_pct || 0}%</b> całej pracy na projektach (rok wcześniej ${otPrev.work_share_pct ?? '—'}%).</p>
       ${otChart}${otTable}
       <p class="small muted">Czas na projekcie w danym dniu przypisany do nadgodzin proporcjonalnie: wpis czasu × (nadgodziny ÷ planowany czas zmian tej osoby w tym dniu). Dzień dodatkowy liczy się w całości, a przy innych zmianach — godziny ponad dobową normę. Wpis czasu z nocnej zmiany należy do dnia jej rozpoczęcia. Ręczne wpisy nadgodzin pokrywające się z grafikiem nie są liczone podwójnie. Rozliczenie i limity — do potwierdzenia przez kadry.</p></section>`;
+  const rt = cur.returns || { by_project: [] };
+  const retSection = rt.work_min || rt.opened ? `<section class="panel"><h3>Powroty do projektów (poprawki po zakończeniu)</h3>
+      <p class="small">Praca w rundach poprawek: <b>${hShort(rt.work_min)}</b> = <b>${rt.share_pct ?? 0}%</b> pracy na projektach (rok wcześniej ${hShort((prev.returns || {}).work_min || 0)}) · nowych powrotów w miesiącu: <b>${rt.opened}</b>.</p><p class="small muted">Poprawki zrobione w rundach liczą się też we wskaźniku „Poprawki” — to dwa różne spojrzenia, nie należy ich sumować.</p>
+      ${table([{ key: r => r, label: 'Projekt', fmt: r => `<a href="#/projekty/${encodeURIComponent(r.project_id)}"><span class="mono">${esc(r.order_no || '')}</span> ${esc(r.part_no || '')}</a>` }, { key: 'worked_min', label: 'Praca po powrocie w miesiącu', fmt: hShort }], rt.by_project)}</section>` : '';
   const partialNote = d.partial ? `<p class="notice info">Miesiąc w toku: porównanie dni 1–${d.partial.until_day} z tym samym okresem rok wcześniej.</p>` : '';
   return `${partialNote}<div class="kpis">${tiles}</div>
     <section class="panel">${chart}</section>
     ${otSection}
+    ${retSection}
     <div class="cols-2"><section class="panel"><h3>Maszyny</h3>${machineTable}</section><section class="panel"><h3>Ludzie</h3>${empTable}</section></div>
     <section class="panel"><h3>Zakończone projekty</h3><p class="small">${plMonth(cur.year_month)}: ${cur.projects_done.map(p => `<span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}`).join(', ') || 'brak'}<br>
       ${plMonth(prev.year_month)}: ${prev.projects_done.map(p => `<span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}`).join(', ') || 'brak'}</p>
@@ -112,13 +117,14 @@ function processCharts(pr) {
     <div class="pa-bars"><div class="pa-plan" style="width:${((t.planned_min || 0) / maxT) * 100}%" title="Plan"></div><div class="pa-act ${t.diff_min > 0 ? 'over' : ''}" style="width:${(t.worked_min / maxT) * 100}%" title="Wykonanie"></div></div>
     <span class="pa-val">${hShort(t.worked_min)} / ${t.planned_min != null ? hShort(t.planned_min) : 'bez planu'}${t.diff_min ? `<br><b class="${t.diff_min > 0 ? 'bad' : 'good'}">${t.diff_min > 0 ? '+' : '−'}${hShort(Math.abs(t.diff_min))}</b>` : ''}</span></div>`).join('');
   const sum = `<div class="kpis">
-      <div class="kpi"><span>Czas trwania</span><b>${s.duration_days ?? '—'} dni</b><small>${plDate(s.start_date)} – ${s.finish_date ? plDate(s.finish_date) : 'w toku'}</small></div>
+      <div class="kpi"><span>Czas trwania${s.returns_count ? ' (pierwotna realizacja)' : ''}</span><b>${s.duration_days ?? '—'} dni</b><small>${plDate(s.start_date)} – ${s.finish_date ? plDate(s.finish_date) : 'w toku'}</small></div>
       <div class="kpi"><span>Wobec terminu</span><b>${s.due_delta_days === null ? '—' : s.due_delta_days > 0 ? `+${s.due_delta_days} dni` : s.due_delta_days < 0 ? `${s.due_delta_days} dni` : 'w terminie'}</b><small>termin ${plDate(s.due_date)}</small>${s.due_delta_days !== null ? `<span class="dchip ${s.due_delta_days > 0 ? 'bad' : 'good'}">${s.due_delta_days > 0 ? 'po terminie' : 'w terminie'}</span>` : ''}</div>
-      <div class="kpi"><span>Godziny: wykonanie / plan</span><b>${hShort(s.worked_min)}</b><small>plan ${hShort(s.planned_min)}</small>${s.diff_pct !== null ? `<span class="dchip ${s.diff_pct > 0 ? 'bad' : 'good'}">${s.diff_pct > 0 ? '+' : ''}${s.diff_pct}% wobec planu</span>` : ''}</div>
+      <div class="kpi"><span>Godziny: wykonanie / plan${s.returns_count ? ' (bez poprawek po powrotach)' : ''}</span><b>${hShort(s.worked_min)}</b><small>plan ${hShort(s.planned_min)}</small>${s.diff_pct !== null ? `<span class="dchip ${s.diff_pct > 0 ? 'bad' : 'good'}">${s.diff_pct > 0 ? '+' : ''}${s.diff_pct}% wobec planu</span>` : ''}</div>
       <div class="kpi"><span>Poprawki</span><b>${hShort(s.rework_min)}</b><small>${s.rework_share_pct ?? '—'}% przepracowanego czasu</small></div>
       <div class="kpi"><span>W nadgodzinach</span><b>${hShort(s.overtime_work_min || 0)}</b><small>${s.overtime_share_pct || 0}% pracy nad projektem (dni dodatkowe i godziny ponad normę)</small></div>
     </div>`;
-  return `<div class="theme-${th}">${sum}${hours}${prog}
+  const rnote = pr.rounds && pr.rounds.length ? `<p class="small muted">Wzrost godzin po zakończeniu to rundy poprawek: ${pr.rounds.map(r => `runda ${r.round} ${plDate(r.opened_date)}–${r.closed_date ? plDate(r.closed_date) : 'w toku'}`).join(', ')}. Postęp pokazuje zadania pierwotne.</p>` : '';
+  return `<div class="theme-${th}">${sum}${hours}${rnote}${prog}
     <h3>Zadania: wykonanie wobec planu</h3><div class="pa">${taskBars}</div>
     <p class="small muted legend-line"><i class="pa-key plan"></i> plan <i class="pa-key act"></i> wykonanie <i class="pa-key over"></i> wykonanie ponad plan</p></div>`;
 }
@@ -139,6 +145,7 @@ function similarSection(sim, { editable, projectId } = {}) {
     { key: 'diff_pct', label: 'Wobec planu', fmt: v => (v === null ? '—' : `<b class="${v > 0 ? 'bad' : 'good'}">${v > 0 ? '+' : ''}${v}%</b>`) },
     { key: 'duration_days', label: 'Dni', fmt: v => v ?? '—' }, { key: 'due_delta_days', label: 'Termin', fmt: v => (v === null ? '—' : v > 0 ? `<b class="bad">+${v} dni</b>` : `${v} dni`) },
     { key: 'rework_share_pct', label: 'Poprawki', fmt: v => (v === null ? '—' : `${v}%`) },
+    { key: r => r, label: 'Po powrotach', fmt: r => (r.returns_count ? `<b class="bad">+${hShort(r.returns_added_min)}</b><br><span class="small muted">rund: ${r.returns_count}</span>` : '—') },
     ...(editable ? [{ key: r => r, label: '', fmt: r => (r.self ? '' : `<button class="link" data-reject-sim="${esc(r.id)}">Odrzuć propozycję</button>`) }] : []),
   ], rows);
   const avg = sim.average ? `<p class="small">Średnia ${sim.average.count} podobnych: ${hShort(sim.average.worked_min)} (wobec planu ${sim.average.diff_pct > 0 ? '+' : ''}${sim.average.diff_pct ?? '—'}%), ${sim.average.duration_days ?? '—'} dni. Ten projekt: ${hShort(b.worked_min)} (${b.diff_pct > 0 ? '+' : ''}${b.diff_pct ?? '—'}%), ${b.duration_days ?? '—'} dni.</p>` : '<p class="muted small">Brak podobnych zakończonych projektów (lub wszystkie propozycje odrzucone).</p>';
@@ -160,6 +167,38 @@ function bindSimilar(projectId) {
 }
 
 // Sekcja w szczegółach projektu (tylko kierownik)
+// Czas projektu przy powrotach do poprawek: przed poprawkami, doszło w rundach, same poprawki łącznie
+function returnsSection(r) {
+  if (!r) return '';
+  const o = r.original;
+  if (!r.rounds.length) {
+    return `<h3>Czas projektu i poprawki</h3><p class="small">Bez powrotów do projektu. Przepracowano ${hShort(o.worked_min)}, w tym poprawki w trakcie realizacji ${hShort(o.rework_min)}.
+      <span class="muted">Gdy wrócicie do zakończonego projektu, użyj „Powrót do projektu (poprawki)” — czas, który dojdzie, policzy się tutaj osobno.</span></p>`;
+  }
+  const total = Math.max(1, r.total_min);
+  const seg = (min, cls, label) => (min > 0 ? `<div class="rs-seg ${cls}" style="flex:${min}" title="${esc(`${label}: ${hShort(min)}`)}"><span>${esc(label)}</span></div>` : '');
+  const bar = `<div class="rs-bar" role="img" aria-label="${esc(`Przed poprawkami ${hShort(o.worked_min)}, doszło ${hShort(r.added_min)}`)}">
+      ${seg(o.clean_min, 'rs-orig', 'pierwotna praca')}${seg(o.rework_min, 'rs-origfix', 'poprawki w trakcie')}${r.rounds.map((x, i) => seg(x.worked_min, `rs-round rs-r${(i % 3) + 1}`, `runda ${x.round}`)).join('')}
+    </div>
+    <div class="rs-axis"><span>0</span><span style="left:${(o.worked_min / total) * 100}%">przed poprawkami · ${hShort(o.worked_min)}</span><span>${hShort(r.total_min)}</span></div>`;
+  const rounds = table([
+    { key: 'round', label: 'Runda', fmt: v => `<b>${v}</b>` },
+    { key: r2 => r2, label: 'Okres', fmt: x => `${plDate(x.opened_date)} – ${x.closed_date ? plDate(x.closed_date) : '<b>otwarta</b>'}` },
+    { key: r2 => r2, label: 'Powód', fmt: x => `${esc(x.reason)}${x.cause ? `<br><span class="small muted">przyczyna: ${esc(CAUSE_LABEL[x.cause] || x.cause)}</span>` : ''}${x.close_note ? `<br><span class="small">${icon('check')} ${esc(x.close_note)}</span>` : ''}` },
+    { key: 'worked_min', label: 'Doszło', fmt: hShort },
+    { key: 'increase_pct', label: 'Wobec czasu przed poprawkami', fmt: v => (v === null ? '—' : `<b class="bad">+${v}%</b>`) },
+  ], r.rounds);
+  return `<h3>Czas projektu i poprawki</h3>
+    <div class="kpis">
+      <div class="kpi"><span>Czas przed poprawkami</span><b>${hShort(o.worked_min)}</b><small>pierwotna realizacja${o.last ? `, ostatnia praca ${plDate(o.last)}` : ''}</small></div>
+      <div class="kpi"><span>Doszło po powrotach</span><b>${hShort(r.added_min)}</b><small>${r.rounds.length} ${r.rounds.length === 1 ? 'runda' : r.rounds.length < 5 ? 'rundy' : 'rund'} poprawek</small>${r.added_pct !== null ? `<span class="dchip bad">+${r.added_pct}% czasu</span>` : ''}</div>
+      <div class="kpi"><span>Same poprawki łącznie</span><b>${hShort(r.corrections_min)}</b><small>w trakcie ${hShort(o.rework_min)} + po powrotach ${hShort(r.added_min)}</small></div>
+      <div class="kpi"><span>Razem z poprawkami</span><b>${hShort(r.total_min)}</b><small>${r.open ? `runda ${r.open.round} w toku` : 'wszystkie rundy zakończone'}</small></div>
+    </div>
+    ${bar}${rounds}
+    <p class="small muted">Czas przed poprawkami = praca przed pierwszym powrotem (także poprawki zrobione w trakcie realizacji). Doszło = praca w rundach poprawek: zadania założone w rundzie i praca na zadaniach pierwotnych w okresie rundy. Same poprawki = poprawki w trakcie + cała praca w rundach. Czas trwania, termin i porównanie z podobnymi projektami liczone są dla pierwotnej realizacji.</p>`;
+}
+
 async function projectAnalysisSection(p) {
   const a = await api(`/analytics/projects/${encodeURIComponent(p.id)}`);
   const done = a.process.complete;
@@ -167,6 +206,7 @@ async function projectAnalysisSection(p) {
       <p class="small muted">${done ? 'Projekt zakończony — pełny przebieg.' : 'Projekt w toku — przebieg do dziś; pełna analiza po zakończeniu wszystkich zadań.'} Widoczne tylko dla kierownika.</p></div>
       <div class="toolbar no-print"><button id="saveProjRep">${icon('download')}Zapisz jako raport</button></div></div>
     ${processCharts(a.process)}
+    ${returnsSection(a.returns)}
     <h3>Podobne projekty</h3>${similarSection(a.similar, { editable: true, projectId: p.id })}</section>`;
 }
 function bindProjectAnalysis(p) {

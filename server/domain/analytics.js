@@ -5,6 +5,7 @@
 const T = require('../time');
 const { bad, notFound, audit, reqStr, oneOf } = require('../core');
 const P = require('./projects');
+const Ret = require('./returns');
 
 const WORK = 'e.active_min + e.verify_min + e.rework_min';
 const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400e3);
@@ -17,23 +18,36 @@ function projectMetrics(db, id) {
   if (!p) throw notFound('Nie znaleziono projektu.');
   const tasks = db.all(`SELECT t.*, tt.code AS type_code, tt.name AS type_name FROM tasks t JOIN task_types tt ON tt.id = t.type_id WHERE t.project_id = ? ORDER BY t.id`, id);
   const hours = P.projectHours(db, id, tasks);
+  const ret = Ret.returnsSummary(db, id);
+  // Wskaźniki projektu (czas trwania, termin, godziny wobec planu, poprawki) liczone dla pierwotnej realizacji —
+  // powroty do projektu (rundy poprawek) są pokazywane osobno, żeby nie zniekształcały porównań z podobnymi projektami.
   const agg = db.get(`SELECT MIN(e.work_date) first, MAX(e.work_date) last, SUM(e.rework_min) rw, SUM(e.blocked_min) bl
-    FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ?`, id);
-  const live = tasks.filter(t => t.status !== 'anulowane');
+    FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ? AND ${Ret.PERIOD_SQL} IS NULL`, id);
+  const aggAll = db.get(`SELECT MAX(e.work_date) last FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ?`, id);
+  const liveAll = tasks.filter(t => t.status !== 'anulowane');
+  const live = liveAll.filter(t => !t.return_id);
   const doneDates = live.filter(t => t.status === 'zakonczone' && t.completed_at).map(t => localDate(t.completed_at)).sort();
   const start = [p.start_date || agg.first || localDate(p.created_at), doneDates[0]].filter(Boolean).sort()[0];
-  const allDone = live.length > 0 && live.every(t => t.status === 'zakonczone');
-  const finish = allDone ? [doneDates[doneDates.length - 1], agg.last].filter(Boolean).sort().pop() : null;
+  const firstRound = ret.rounds[0];
+  // pierwsze zakończenie: wszystkie zadania pierwotne zakończone (albo projekt wrócił już do poprawek)
+  const allDone = live.length > 0 && (live.every(t => t.status === 'zakonczone') || !!firstRound);
+  const origDone = doneDates.filter(d => !firstRound || d < firstRound.opened_date);
+  const finish = allDone ? [origDone[origDone.length - 1], agg.last].filter(Boolean).sort().pop() || null : null;
+  const allFinished = liveAll.length > 0 && liveAll.every(t => t.status === 'zakonczone');
+  const finishAll = allFinished ? [...liveAll.map(t => localDate(t.completed_at)), aggAll.last].filter(Boolean).sort().pop() : null;
+  const planned = live.filter(t => t.planned_min != null).reduce((s, t) => s + t.planned_min, 0) || null;
+  const worked = ret.original.worked_min;
   return {
     id: p.id, order_no: p.order_no, part_no: p.part_no, part_rev: p.part_rev, part_family: p.part_family, status: p.status,
-    machine_id: p.machine_id, machine_name: p.machine_name, axes: p.axes, start_date: start, due_date: p.due_date, finish_date: finish,
+    machine_id: p.machine_id, machine_name: p.machine_name, axes: p.axes, start_date: start, due_date: p.due_date, finish_date: finish, finish_all_date: finishAll,
     duration_days: finish ? dayDiff(start, finish) + 1 : null,
     due_delta_days: finish && p.due_date ? dayDiff(p.due_date, finish) : null,
-    worked_min: hours.worked_min, planned_min: hours.planned_min,
-    diff_min: hours.planned_min ? hours.worked_min - hours.planned_min : null,
-    diff_pct: hours.planned_min ? Math.round(((hours.worked_min - hours.planned_min) / hours.planned_min) * 100) : null,
-    rework_min: agg.rw || 0, blocked_min: agg.bl || 0, rework_share_pct: hours.worked_min ? pct(agg.rw || 0, hours.worked_min) : null,
+    worked_min: worked, planned_min: planned,
+    diff_min: planned ? worked - planned : null,
+    diff_pct: planned ? Math.round(((worked - planned) / planned) * 100) : null,
+    rework_min: agg.rw || 0, blocked_min: agg.bl || 0, rework_share_pct: worked ? pct(agg.rw || 0, worked) : null,
     overtime_work_min: hours.overtime_work_min, overtime_share_pct: hours.overtime_share_pct,
+    returns_count: ret.rounds.length, before_returns_min: worked, returns_added_min: ret.added_min, returns_added_pct: ret.added_pct, corrections_min: ret.corrections_min, total_with_returns_min: ret.total_min,
     tasks: live.length, type_codes: [...new Set(live.map(t => t.type_code))].sort(), hours, tasks_rows: tasks,
   };
 }
@@ -43,14 +57,16 @@ function projectProcess(db, id) {
   const daily = db.all(`SELECT e.work_date d, SUM(${WORK}) w, SUM(e.rework_min) rw, SUM(e.blocked_min) bl
     FROM task_time_entries e JOIN tasks t ON t.id = e.task_id WHERE t.project_id = ? GROUP BY e.work_date ORDER BY e.work_date`, id);
   const live = m.tasks_rows.filter(t => t.status !== 'anulowane');
-  const totalWeight = live.reduce((s, t) => s + t.weight, 0);
-  const completions = live.filter(t => t.status === 'zakonczone' && t.completed_at)
+  const orig = live.filter(t => !t.return_id); // postęp = zadania pierwotne; rundy poprawek widać na linii godzin
+  const totalWeight = orig.reduce((s, t) => s + t.weight, 0);
+  const end = m.finish_all_date || m.finish_date;
+  const completions = orig.filter(t => t.status === 'zakonczone' && t.completed_at)
     .map(t => ({ date: localDate(t.completed_at), title: t.title, weight: t.weight })).sort((a, b) => a.date.localeCompare(b.date));
-  const last = [m.finish_date, daily.length ? daily[daily.length - 1].d : null, completions.length ? completions[completions.length - 1].date : null, T.today()]
-    .filter(Boolean).filter(d => m.finish_date ? d <= m.finish_date : true).sort().pop();
+  const last = [end, daily.length ? daily[daily.length - 1].d : null, completions.length ? completions[completions.length - 1].date : null, T.today()]
+    .filter(Boolean).filter(d => end ? d <= end : true).sort().pop();
   // zakres: od najwcześniejszego z (start, pierwszy wpis czasu, pierwsze zakończenie) do zakończenia projektu
   const from = [m.start_date, daily.length ? daily[0].d : null, completions.length ? completions[0].date : null].filter(Boolean).sort()[0];
-  const to = [m.finish_date || last, from].filter(Boolean).sort().pop();
+  const to = [end || last, from].filter(Boolean).sort().pop();
   const total = dayDiff(from, to) + 1;
   // długie projekty: punkt co tydzień (ostatni dzień zawsze), żeby wykres kończył się na pełnej sumie
   const stepDays = total > 400 ? 7 : 1;
@@ -74,7 +90,8 @@ function projectProcess(db, id) {
   const tasks = live.map(t => ({ id: t.id, title: t.title, type: t.type_name, phase: t.phase, status: t.status, planned_min: t.planned_min, worked_min: worked.get(t.id) || 0,
     completed_date: localDate(t.completed_at), diff_min: t.planned_min != null ? (worked.get(t.id) || 0) - t.planned_min : null }));
   const { tasks_rows, ...summary } = m;
-  return { summary, series, completions, tasks, complete: !!m.finish_date, step_days: stepDays };
+  const rounds = Ret.listReturns(db, id).map(r => ({ round: r.round, opened_date: r.opened_date, closed_date: r.closed_date }));
+  return { summary, series, completions, tasks, rounds, complete: !!(m.finish_all_date || (m.finish_date && !rounds.length)), step_days: stepDays };
 }
 
 // ---------- Projekt: podobne zakończone projekty ----------
@@ -157,8 +174,11 @@ function monthStats(db, ym, { toDay } = {}) {
   const dp = withPlan.reduce((s, t) => s + t.planned_min, 0), dw = withPlan.reduce((s, t) => s + (t.w || 0), 0);
   const tasks = { done: done.length, with_plan: withPlan.length, planned_min: dp, worked_min: dw, diff_min: dw - dp, diff_pct: dp ? Math.round(((dw - dp) / dp) * 100) : null };
   // projekty zakończone w miesiącu = ostatnie zakończenie zadania w miesiącu
+  // (powrót do projektu nie przesuwa daty zakończenia: liczą się zadania pierwotne, a projekt z rundami poprawek nadal jest zakończony)
   const projects = db.all(`SELECT p.id, p.order_no, p.part_no, MAX(t.completed_at) last FROM projects p JOIN tasks t ON t.project_id = p.id
-    WHERE p.status = 'zakonczony' AND t.status = 'zakonczone' GROUP BY p.id HAVING last >= ? AND last < ?`, fromUtc, toUtc)
+    WHERE (p.status = 'zakonczony' OR EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id)) AND t.status = 'zakonczone' AND t.return_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id AND r.round = 1 AND substr(t.completed_at, 1, 10) >= r.opened_date)
+    GROUP BY p.id HAVING last >= ? AND last < ?`, fromUtc, toUtc)
     .map(r => ({ id: r.id, order_no: r.order_no, part_no: r.part_no }));
   // nieobecności (minuty wg grafiku, proporcjonalnie do dni w miesiącu przy wpisach na przełomie miesięcy)
   const abs = db.all(`SELECT a.start_date, a.end_date, a.minutes, c.code, c.pool_kind FROM absences a JOIN absence_categories c ON c.id = a.category_id
@@ -190,10 +210,14 @@ function monthStats(db, ym, { toDay } = {}) {
     by_project: otw.filter(r => r.overtime_work_min > 0).sort((a, b) => b.overtime_work_min - a.overtime_work_min)
       .map(r => ({ ...r, order_no: (projNames.get(r.project_id) || {}).order_no, part_no: (projNames.get(r.project_id) || {}).part_no })),
   };
+  // powroty do zakończonych projektów (rundy poprawek): praca w tym okresie
+  const rw = Ret.returnsWork(db, from, to);
+  const returns = { work_min: rw.total_min, opened: rw.opened, share_pct: pct(rw.total_min, work.worked_min),
+    by_project: rw.by_project.sort((a, b) => b.worked_min - a.worked_min).map(r => ({ ...r, order_no: (projNames.get(r.project_id) || {}).order_no, part_no: (projNames.get(r.project_id) || {}).part_no })) };
   const rq = db.all(`SELECT kind, COUNT(*) n FROM requests WHERE created_at >= ? AND created_at < ? GROUP BY kind`, fromUtc, toUtc);
   return {
     year_month: ym, from, to, work, by_machine: byMachine, by_employee: byEmployee, tasks, projects_done: projects,
-    absence, exits: { count: ex.n, minutes: ex.m || 0, made_up_min: mk.m || 0 }, overtime_min: so.m + (ot.m || 0), overtime,
+    absence, exits: { count: ex.n, minutes: ex.m || 0, made_up_min: mk.m || 0 }, overtime_min: so.m + (ot.m || 0), overtime, returns,
     requests: Object.fromEntries(rq.map(r => [r.kind, r.n])), has_data: !!(w.n || abs.length || ex.n),
   };
 }
@@ -212,6 +236,7 @@ const KPI = [
   ['extra_days', 'Dni dodatkowe (zmiany)', 'szt', s => s.overtime.extra_days],
   ['overtime_work_min', 'Praca na projektach w nadgodzinach', 'min', s => s.overtime.work_min],
   ['overtime_share_pct', 'Udział nadgodzin w pracy na projektach', 'udzial', s => s.overtime.work_share_pct],
+  ['returns_min', 'Powroty do projektów (poprawki po zakończeniu)', 'min', s => s.returns.work_min],
 ];
 function kpis(s) { return Object.fromEntries(KPI.map(([k, , , f]) => [k, f(s)])); }
 function deltas(cur, prev) {

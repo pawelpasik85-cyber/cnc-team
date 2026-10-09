@@ -12,6 +12,7 @@ const R = require('./domain/reports');
 const I = require('./domain/integration');
 const Req = require('./domain/requests');
 const A = require('./domain/analytics');
+const Ret = require('./domain/returns');
 const O = require('./domain/orders');
 
 const ADMIN = 'write';
@@ -83,6 +84,7 @@ function visibleProjects(db, user) {
 function projectForUser(user, p) {
   if (user.role === 'admin') return p;
   const out = { ...p };
+  delete out.returns; // powody i przebieg rund poprawek — tylko kierownik
   if (out.hours) { const { overtime_work_min, overtime_share_pct, ...h } = out.hours; out.hours = h; }
   if (user.role === 'employee') delete out.contributions;
   return out;
@@ -336,6 +338,8 @@ function buildRoutes() {
       WHERE (a.entity IN ('project','tech_data') AND a.entity_id=?) OR (a.entity='task' AND a.entity_id IN (${ph}))
       ORDER BY a.id DESC LIMIT 500`, params.id, ...taskIds));
   });
+  add('POST', '/projects/:id/returns', ({ db, user, body, params }) => { requireAdmin(user); return Ret.startReturn(db, user, params.id, body); });
+  add('POST', '/projects/:id/returns/close', ({ db, user, body, params }) => { requireAdmin(user); return Ret.closeReturn(db, user, params.id, body); });
   add('POST', '/projects/:id/nc-revision', ({ db, user, body, params }) => { requireAdmin(user); return P.setNcRevision(db, user, params.id, body); });
   add('POST', '/projects/:id/tech-data', ({ db, user, body, params }) => { requireAdmin(user); return P.addManualTechData(db, user, params.id, body); });
   add('POST', '/tasks', ({ db, user, body }) => { requireAdmin(user); return { id: P.createTask(db, user, body) }; });
@@ -495,7 +499,7 @@ function buildRoutes() {
   // ---------- Analiza kierownika (tylko administrator); zapisane raporty — przełożony widzi tylko udostępnione ----------
   add('GET', '/analytics/projects/:id', ({ db, user, params }) => {
     requireAdmin(user);
-    return { process: A.projectProcess(db, params.id), similar: A.similarProjects(db, params.id) };
+    return { process: A.projectProcess(db, params.id), similar: A.similarProjects(db, params.id), returns: Ret.returnsSummary(db, params.id) };
   });
   add('POST', '/analytics/projects/:id/similar/:other/reject', ({ db, user, params, body }) => { requireAdmin(user); A.rejectSimilar(db, user, params.id, params.other, body); });
   add('POST', '/analytics/projects/:id/similar/:other/restore', ({ db, user, params }) => { requireAdmin(user); A.restoreSimilar(db, user, params.id, params.other); });

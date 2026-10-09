@@ -57,6 +57,11 @@ async function projectDetailView(main, id) {
   const p = await api(`/projects/${encodeURIComponent(id)}`);
   const mgmt = can('view.efficiency');
   const typeMap = new Map(S.boot.task_types.map(t => [t.id, t]));
+  const rets = p.returns || [];
+  const openRet = rets.find(r => !r.closed_date) || null;
+  const liveT = p.tasks.filter(t => t.status !== 'anulowane');
+  const canReturn = !openRet && (p.status === 'zakonczony' || (liveT.length && liveT.every(t => t.status === 'zakonczone')));
+  const retRound = new Map(rets.map(r => [r.id, r.round]));
   const td = p.tech_data;
   const techRows = td.length ? table([
     { key: 'operation_id', label: 'Operacja', fmt: v => `<span class="mono">${esc(v)}</span>` }, { key: r => `${r.nc_program} rev ${r.nc_rev}`, label: 'Program NC', fmt: v => `<span class="mono">${esc(v)}</span>` },
@@ -66,13 +71,14 @@ async function projectDetailView(main, id) {
     { key: 'stale', label: 'Aktualność', fmt: v => v ? tag('nieaktualne — inna rewizja NC', 'danger', 'alert') : tag('aktualne', 'ok') },
   ], td) : '<p class="muted">Brak danych. Dane technologiczne dostarcza CNC Process (import JSON) lub wpis ręczny oznaczony jako ręczny.</p>';
   main.innerHTML = head(`${p.order_no} · ${p.part_no} rev ${p.part_rev}`, `${esc(p.id)} · ${esc(p.part_family || 'bez rodziny')} · ${p.machine_name ? `${esc(p.machine_name)} ${p.axes}X / ${esc(p.control)}` : 'bez maszyny'} · termin ${plDate(p.due_date)} · priorytet ${p.priority}`,
-    `<a class="btn" href="#/projekty">‹ Projekty</a>${isAdmin() ? `<button id="editPrj">Edytuj</button><button id="ncRev">${icon('nc')}Rewizja NC</button>${btn('addTask', 'Zadanie')}` : ''}`) + `
+    `<a class="btn" href="#/projekty">‹ Projekty</a>${isAdmin() ? `<button id="editPrj">Edytuj</button><button id="ncRev">${icon('nc')}Rewizja NC</button>${btn('addTask', 'Zadanie')}${openRet ? `<button id="closeRet">${icon('check')}Zakończ poprawki</button>` : canReturn ? `<button id="startRet">${icon('makeup')}Powrót do projektu (poprawki)</button>` : ''}` : ''}`) + `
+    ${openRet && p.returns ? `<div class="notice warn">${icon('makeup')} <b>Runda poprawek ${openRet.round}</b> od ${plDate(openRet.opened_date)}: ${esc(openRet.reason)}. Nowe zadania i praca od tego dnia liczą się jako czas, który doszedł po zakończeniu projektu.</div>` : ''}
     <div class="cols-2"><div>
       <section class="panel">${projectMeter(p)}${delayLine(p.schedule)}${p.blocked ? `<p>${tag(p.block_reason, 'danger', 'block')}</p>` : ''}
         <p class="small">Obowiązujący program: ${p.nc_program ? `<span class="mono">${esc(p.nc_program)} rev ${esc(p.nc_rev)}</span>` : '<span class="muted">nie ustalono</span>'}${p.folder_link ? ` · Folder: <span class="mono">${esc(p.folder_link)}</span>` : ''}</p>
         ${p.description ? `<p class="small">${esc(p.description)}</p>` : ''}</section>
       <section class="panel"><h3>Zadania</h3>${table([
-        { key: r => r, label: 'Zadanie', fmt: r => `<b>${esc(r.title)}</b><br><span class="small muted">${esc(r.type_name)}${r.operation_id ? ` · <span class="mono">${esc(r.operation_id)}</span>` : ''}</span>` },
+        { key: r => r, label: 'Zadanie', fmt: r => `<b>${esc(r.title)}</b>${r.return_id ? ` <span class="tag warn">poprawki${retRound.has(r.return_id) ? ` · runda ${retRound.get(r.return_id)}` : ''}</span>` : ''}<br><span class="small muted">${esc(r.type_name)}${r.operation_id ? ` · <span class="mono">${esc(r.operation_id)}</span>` : ''}</span>` },
         { key: 'phase', label: 'Etap' }, { key: 'weight', label: 'Waga', num: true }, { key: r => r, label: 'Osoba', fmt: r => person(r.assignee_id) },
         { key: 'due_date', label: 'Termin', fmt: 'date' },
         ...(mgmt ? [{ key: 'original_planned_min', label: 'Plan pierwotny', fmt: 'hm' }, { key: 'planned_min', label: 'Plan', fmt: 'hm' }, { key: 'actual_active_min', label: 'Aktywny rzeczywisty', fmt: 'hm' }] : []),
@@ -97,6 +103,26 @@ async function projectDetailView(main, id) {
     { name: 'nc_program', label: 'Program NC', value: p.nc_program, required: true }, { name: 'nc_rev', label: 'Rewizja NC', value: p.nc_rev, required: true }, { name: 'reason', label: 'Powód', wide: true }],
   submit: async (v, idem) => { const r = await post(`/projects/${encodeURIComponent(p.id)}/nc-revision`, v, idem); if (r.marked_stale) toast(`Oznaczono jako nieaktualne: ${r.marked_stale}`, 'warn'); return r; } }));
   on('addTask', () => taskForm(p));
+  on('startRet', () => openForm({
+    title: 'Powrót do projektu — runda poprawek',
+    intro: `<p class="small muted">Projekt wraca do realizacji. Praca przed dniem powrotu to „czas przed poprawkami”; praca w czasie rundy (od dnia powrotu do jej zakończenia — nowe zadania i ponownie otwarte zadania pierwotne) liczy się osobno jako czas, który doszedł. Po zakończeniu rundy czasu nie dopisuje się do projektu bez kolejnego powrotu. Powód trafia do historii.</p>`,
+    fields: [
+      { name: 'reason', label: 'Co trzeba poprawić (powód)', type: 'textarea', required: true, wide: true },
+      { name: 'cause', label: 'Przyczyna', type: 'select', options: Object.entries(CAUSE_LABEL) },
+      { name: 'opened_date', label: 'Dzień powrotu', type: 'date', value: S.me.today, required: true },
+      { name: 'task_title', label: 'Zadanie poprawek (opcjonalnie)', value: `Poprawki — runda ${rets.length + 1}`, wide: true },
+      { name: 'type_id', label: 'Typ zadania', type: 'select', options: S.boot.task_types.filter(t => t.active).map(t => [t.id, t.name]), value: (S.boot.task_types.find(t => t.code === 'NX') || {}).id, show: v => !!v.task_title },
+      { name: 'planned_min', label: 'Plan na poprawki', type: 'hm', show: v => !!v.task_title },
+      { name: 'assignee_id', label: 'Osoba', type: 'select', options: empOptions(), show: v => !!v.task_title },
+    ],
+    submit: (v, idem) => { if (v.task_title && !v.type_id) throw new Error('Wybierz typ zadania poprawek albo wyczyść jego nazwę.'); return post(`/projects/${encodeURIComponent(p.id)}/returns`, v, idem); },
+  }));
+  on('closeRet', () => openForm({
+    title: `Zakończ rundę poprawek ${openRet ? openRet.round : ''}`,
+    intro: '<p class="small muted">Wymaga zakończenia wszystkich zadań projektu. Projekt wraca do statusu „zakończony”.</p>',
+    fields: [{ name: 'closed_date', label: 'Dzień zakończenia', type: 'date', value: S.me.today, required: true }, { name: 'note', label: 'Co poprawiono', type: 'textarea', wide: true, required: true }],
+    submit: (v, idem) => post(`/projects/${encodeURIComponent(p.id)}/returns/close`, v, idem),
+  }));
   on('manualTech', () => openForm({ title: 'Ręczne dane technologiczne', intro: '<p class="notice">Dane zostaną jawnie oznaczone jako „dane ręczne”.</p>', fields: [
     { name: 'operation_id', label: 'Operacja', required: true, value: 'OP10' }, { name: 'nc_program', label: 'Program NC', value: p.nc_program }, { name: 'nc_rev', label: 'Rewizja NC', value: p.nc_rev },
     { name: 'nx_time_min', label: 'Czas NX', type: 'hm' }, { name: 'machine_est_min', label: 'Przewidywany czas maszyny', type: 'hm' }, { name: 'machine_actual_min', label: 'Rzeczywisty czas maszyny', type: 'hm' }],

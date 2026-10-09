@@ -12,6 +12,7 @@ Schemat: `server/migrations/001_init.sql`. Konwencje: czasy trwania w **minutach
 | `shift_templates` | Szablony zmian | godziny lokalne, przerwa niewliczana |
 | `schedule_entries` | Grafik | `work_date` (dzień rozpoczęcia = przypisanie do miesiąca), `start_at/end_at` UTC, `planned_min` (z DST) |
 | `schedule_entries` (migracja 008) | Tryb pracy i nadgodziny | `mode` (standardowa / wydluzona / nieregularna / dodatkowa), `overtime_min` (przeliczane na dobę pracownika), `reason` (powód trybu), `updated_at` |
+| `project_returns` (migracja 009) | Powrót do zakończonego projektu (runda poprawek) | `project_id`, `round`, `opened_date`, `reason`, `cause`, `closed_date`, `close_note`, kto i kiedy otworzył/zamknął; `tasks.return_id` — zadanie założone w rundzie |
 | `work_orders` (migracja 007) | Plan pracy: polecenie kierownika na dzień | `work_date`, `employee_id`, `seq`, `title`, `details`, `project_id`/`task_id`/`machine_id`, `planned_min`, `status` (zaplanowane / wykonane / czesciowo / niewykonane / anulowane), `result_note`, `ack_at` (potwierdzenie przeczytania), `carried_from` |
 | `holidays` | Święta i dni wolne | `kind`: ustawowe / firmowe |
 | `attendance_records` | Ręczna ewidencja obecności i nadgodzin | `kind`: obecnosc / nadgodziny — **oddzielone** od odrabiania |

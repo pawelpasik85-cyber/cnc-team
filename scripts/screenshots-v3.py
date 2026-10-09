@@ -117,6 +117,22 @@ with sync_playwright() as p:
     page.wait_for_selector("#analysis", timeout=15000)
     page.wait_for_timeout(700)
     page.locator("#analysis .kpis").first.screenshot(path=f"{out}/82-projekt-w-nadgodzinach.png")
+    # Powroty do projektu (poprawki po zakończeniu) — runda 9
+    rp = page.evaluate("fetch('/api/projects?status=zakonczony').then(r => r.json()).then(l => (l.find(x => (x.returns || []).length) || {}).id)")
+    if not rp:
+        errors.append("brak projektu z powrotem w danych przykładowych")
+    else:
+        page.goto(base + "/#/projekty/" + rp)
+        page.wait_for_selector("#analysis .rs-bar", timeout=15000)
+        page.wait_for_timeout(600)
+        shot(page, "84-projekt-z-poprawkami")
+        page.locator(".rs-bar").first.scroll_into_view_if_needed()
+        page.locator("#analysis").screenshot(path=f"{out}/85-czas-przed-i-po-poprawkach.png")
+        page.click("#startRet")
+        page.wait_for_selector("dialog[open]")
+        shot(page, "86-powrot-do-projektu", full=False)
+        page.click("dialog[open] [data-close]")
+    shot(page, "87-analiza-miesiac-powroty", "#/analiza?t=miesiac&ym=2026-08", settle=900)
     ctx.close()
     ctx, page = ctx_page(b)
     login(page, "przelozony")

@@ -79,6 +79,9 @@ function saveProject(db, user, body, id) {
   if (d.machine_id && !db.get('SELECT 1 FROM machines WHERE id=?', d.machine_id)) throw bad('Nieznana maszyna.');
   if (d.due_date) T.assertDate(d.due_date);
   if (d.blocked && !d.block_reason) throw bad('Blokada wymaga opisu powodu.');
+  if (id && d.status !== 'aktywny' && db.get('SELECT 1 FROM project_returns WHERE project_id=? AND closed_date IS NULL', id)) {
+    throw conflict('Projekt ma otwartą rundę poprawek — najpierw ją zakończ („Zakończ poprawki”).');
+  }
   const dup = db.get('SELECT id FROM projects WHERE order_no=? AND part_no=? AND part_rev=? AND id != ?', d.order_no, d.part_no, d.part_rev, id || '');
   if (dup) throw conflict(`Projekt dla tego zlecenia, detalu i rewizji już istnieje (${dup.id}).`);
   return db.tx(() => {
@@ -215,6 +218,7 @@ function projectDetail(db, id, { withTimes, withHours = withTimes }) {
     contributions: contributions.map(c => ({ employee_id: c.employee_id, shifts: c.shifts, ...(withTimes ? { work_min: c.work_min } : {}) })),
     tech_data: db.all('SELECT * FROM tech_data WHERE project_id=? ORDER BY stale, operation_id', id),
     cnc_process_url: cncProcessUrl(db, p),
+    returns: db.all('SELECT id, round, opened_date, closed_date, reason, cause, close_note FROM project_returns WHERE project_id=? ORDER BY round', id),
   };
   return out;
 }
@@ -260,6 +264,9 @@ function createTask(db, user, body) {
     assignee_id: body.assignee_id ? reqInt(body.assignee_id, 'Osoba') : null, status: 'nowe',
   };
   if (d.operation_id && !ID_RE.test(d.operation_id)) throw bad('Identyfikator operacji zawiera niedozwolone znaki.');
+  // zadanie założone w czasie otwartej rundy poprawek należy do tej rundy (czas liczony jako „doszło po powrocie”)
+  const ret = db.get('SELECT id FROM project_returns WHERE project_id=? AND closed_date IS NULL', project.id);
+  d.return_id = ret ? ret.id : null;
   if (d.due_date) T.assertDate(d.due_date);
   return db.tx(() => {
     const cols = Object.keys(d); const now = T.nowIso();
@@ -328,6 +335,15 @@ function addTimeEntry(db, user, body) {
     cause: oneOf(body.cause || null, 'Przyczyna', CAUSES, { optional: true }), note: reqStr(body.note, 'Uwagi', { optional: true }),
   };
   C.employeeOrThrow(db, d.employee_id);
+  // rundy poprawek: czas zadania poprawek tylko w okresie rundy; po powrocie do projektu czas zadań pierwotnych tylko w otwartej lub trwającej wtedy rundzie
+  const rounds = db.all('SELECT * FROM project_returns WHERE project_id=? ORDER BY round', t.project_id);
+  const inRound = (r) => d.work_date >= r.opened_date && (!r.closed_date || d.work_date <= r.closed_date);
+  if (t.return_id) {
+    const r = rounds.find(x => x.id === t.return_id);
+    if (r && !inRound(r)) throw bad(`To zadanie należy do rundy poprawek ${r.round} (${r.opened_date} – ${r.closed_date || 'w toku'}); dzień pracy musi być w tym okresie.`);
+  } else if (rounds.length && d.work_date >= rounds[0].opened_date && !rounds.some(inRound)) {
+    throw bad('Ten dzień jest po zakończeniu projektu i poza rundą poprawek — najpierw użyj „Powrót do projektu (poprawki)”.');
+  }
   T.assertDate(d.work_date);
   const total = d.active_min + d.verify_min + d.rework_min + d.blocked_min + d.unassigned_min;
   if (total === 0) throw bad('Wpis czasu nie może być pusty.');

@@ -186,6 +186,27 @@ function seedDemo(db) {
   People.bulkShiftMode(db, admin, { employee_ids: [celina], from: '2026-10-06', to: '2026-10-06', start_time: '14:00', end_time: '02:00', mode: 'wydluzona', reason: 'Braki kadrowe — dwie osoby na zmianach zamiast trzech' });
   P.addTimeEntry(db, admin, { task_id: t7, employee_id: celina, work_date: '2026-10-06', active_min: 420 });
   seedHistory(db, admin, emps, tt);
+  // Powrót do zakończonego projektu (poprawki po zmianie rysunku przez klienta) — dwie rundy
+  {
+    const Ret = require('../server/domain/returns');
+    const cand = db.get(`SELECT p.id, MAX(e.work_date) last FROM projects p JOIN tasks t ON t.project_id = p.id JOIN task_time_entries e ON e.task_id = t.id
+      WHERE p.status = 'zakonczony' GROUP BY p.id HAVING last < '2026-08-20' ORDER BY last DESC LIMIT 1`);
+    if (cand) {
+      const d1 = T.addDays(cand.last, 12);
+      const r1 = Ret.startReturn(db, admin, cand.id, { opened_date: d1, reason: 'Klient zmienił rysunek: rev C — nowe fazowania i otwór Ø8', cause: 'zmiana_zakresu', task_title: 'Poprawki — runda 1', type_id: tt.NX, planned_min: 180, assignee_id: emps[1] });
+      P.addTimeEntry(db, admin, { task_id: r1.task_id, employee_id: emps[1], work_date: d1, active_min: 150 });
+      P.addTimeEntry(db, admin, { task_id: r1.task_id, employee_id: emps[1], work_date: T.addDays(d1, 1), active_min: 60, verify_min: 45 });
+      P.updateTask(db, admin, r1.task_id, { status: 'zakonczone', result_confirmation: 'Program rev C zweryfikowany' });
+      db.run('UPDATE tasks SET completed_at=? WHERE id=?', T.localToUtc(T.addDays(d1, 1), '13:00'), r1.task_id); // dane przykładowe: zakończenie w dniu pracy, nie w dniu tworzenia bazy
+      Ret.closeReturn(db, admin, cand.id, { closed_date: T.addDays(d1, 1), note: 'Fazowania i otwór wg rev C' });
+      const d2 = T.addDays(d1, 9);
+      const r2 = Ret.startReturn(db, admin, cand.id, { opened_date: d2, reason: 'Kolizja oprawki przy ściance 3 na maszynie', cause: 'blad_programowania', task_title: 'Poprawki — runda 2', type_id: tt.NX, planned_min: 60, assignee_id: emps[0] });
+      P.addTimeEntry(db, admin, { task_id: r2.task_id, employee_id: emps[0], work_date: d2, rework_min: 95, cause: 'blad_programowania', note: 'Zmiana kąta pochylenia narzędzia' });
+      P.updateTask(db, admin, r2.task_id, { status: 'zakonczone', result_confirmation: 'Kolizja usunięta' });
+      db.run('UPDATE tasks SET completed_at=? WHERE id=?', T.localToUtc(d2, '12:00'), r2.task_id);
+      Ret.closeReturn(db, admin, cand.id, { closed_date: d2, note: 'Ścieżka przy ściance 3 poprawiona' });
+    }
+  }
 
   // Gość (np. klient lub inny dział): widzi tylko status projektu ZL-26-0412
   People.saveUser(db, admin, { login: 'gosc', display_name: 'Gość — dział jakości', role: 'guest', password: DEMO_PASSWORD, guest_project_ids: [p1] });

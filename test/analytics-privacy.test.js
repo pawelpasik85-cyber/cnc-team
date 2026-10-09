@@ -60,5 +60,10 @@ test('analiza: programista, gość i przełożony bez dostępu do danych analizy
     assert.equal((await szef('GET', `/projects/${pid}`)).data.hours.overtime_work_min, undefined);
     assert.equal((await adm('GET', `/projects/${pid}`)).data.hours.overtime_work_min, 300);
     assert.equal((await adm('GET', '/analytics/month?ym=2026-10')).status, 200);
+    // rundy poprawek (powody, przebieg) — tylko kierownik
+    for (const call of [jan, szef, gosc]) assert.equal((await call('POST', `/projects/${pid}/returns`, { reason: 'x' })).status, 403);
+    assert.equal(pj.returns, undefined);
+    assert.equal((await szef('GET', `/projects/${pid}`)).data.returns, undefined);
+    assert.ok(Array.isArray((await adm('GET', `/projects/${pid}`)).data.returns));
   } finally { srv.close(); }
 });

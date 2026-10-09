@@ -427,3 +427,17 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
 .ot-line { display: inline-flex; align-items: center; gap: 4px; }
 .field.inline input[type=checkbox] { flex: none; }
+
+/* Czas projektu i poprawki (powroty do projektu) */
+.rs-bar { display: flex; gap: 2px; height: 34px; margin: var(--sp-3) 0 4px; border-radius: var(--r-sm); overflow: hidden; box-shadow: inset 0 -3px 0 rgba(0,0,0,.12); }
+.rs-seg { min-width: 4px; display: flex; align-items: center; padding: 0 6px; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; overflow: hidden; color: var(--c-surface); }
+.rs-seg span { overflow: hidden; text-overflow: ellipsis; }
+.rs-orig { background: var(--c-steel); color: var(--c-ink); }
+.rs-origfix { background: var(--c-warn); }
+.rs-r1 { background: var(--c-danger); }
+.rs-r2 { background: color-mix(in srgb, var(--c-danger) 75%, var(--c-ink)); }
+.rs-r3 { background: color-mix(in srgb, var(--c-danger) 55%, var(--c-ink)); }
+.rs-axis { position: relative; height: 18px; font-size: var(--fs-xs); color: var(--c-ink-soft); margin-bottom: var(--sp-3); }
+.rs-axis span { position: absolute; top: 0; white-space: nowrap; }
+.rs-axis span:first-child { left: 0; } .rs-axis span:last-child { right: 0; }
+.rs-axis span:nth-child(2) { transform: translateX(-50%); border-left: 2px solid var(--c-ink); padding-left: 4px; top: -4px; }
