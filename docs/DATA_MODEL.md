@@ -64,6 +64,14 @@ Saldo wyjścia = minuty − Σ przypisań z **zatwierdzonych** odrabiań. Przypi
 | `login_attempts` | Próby logowania (blokada po serii błędnych haseł), czyszczone po 30 dniach |
 | `tech_data`, `tech_imports` | Dane technologiczne z CNC Process lub ręczne (jawnie oznaczone), znacznik `stale` dla nieaktualnej rewizji NC; historia importów z hashem pliku |
 
+## Narzędzia i oprawki (migracja 012)
+
+| Tabela | Opis |
+|---|---|
+| `tools` | Pozycja wykazu: rodzaj (`oprawka`, `glowica`, `plytka`, `frez`), oznaczenie, numer własny, producent, nr katalogowy, maszyna (lub uniwersalne), parametry rodzaju (JSON), stan, stan minimalny, lokalizacja, uwagi, aktywna |
+
+Parametry: oprawka — interfejs (zgodny z `machines.tool_holder`), rodzaj (tulejkowa, Weldon, termo, hydrauliczna, trzpieniowa), zakres zacisku albo trzpień, tulejka, wysięg, maks. obroty; głowica — D, z, gniazdo płytki, kąt przystawienia, maks. ap, trzpień lub chwyt; płytka — kształt ISO, wielkość, promień, krawędzie, gatunek, pokrycie, materiały; frez — rodzaj, D, z, chwyt, długości, promień (torusowy), kąt (fazownik / wiertło), materiał, pokrycie. Dopasowania nie są zapisywane — liczone przy odczycie. Zmiany stanu, edycje, wycofanie i przywrócenie — w historii (`audit_log`, encja `tool`) z powodem.
+
 ## Historia i integralność
 
 - `audit_log`: kto, kiedy, obiekt, akcja, **opis/powód**, stara i nowa wartość (JSON) — dla każdego zapisu. Interfejs pokazuje czytelnie zmienione pola („termin: 01.11 → 15.11”), także w historii projektu wraz z jego zadaniami.

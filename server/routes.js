@@ -14,6 +14,7 @@ const Req = require('./domain/requests');
 const A = require('./domain/analytics');
 const Ret = require('./domain/returns');
 const B = require('./domain/bundles');
+const Tools = require('./domain/tools');
 const O = require('./domain/orders');
 
 const ADMIN = 'write';
@@ -338,6 +339,12 @@ function buildRoutes() {
       columns: [['name', 'Pracownik'], ['status', 'Status'], ['work_date', 'Dzień zmiany'], ['start', 'Od'], ['end', 'Do'], ['minutes', 'Minuty', 'min'], ['settled', 'Odrobiono', 'min'], ['remaining', 'Nierozliczone', 'min'], ['written_request', 'Pisemny wniosek'], ['document_ref', 'Dokument']], rows });
     return { __raw: true, body: csv, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="rozliczenie-${params.ym}.csv"` } };
   });
+
+  // ---------- Narzędziownia (oprawki, głowice, płytki, frezy) — podgląd: wszyscy poza gościem; zmiany: kierownik ----------
+  add('GET', '/tools', ({ db, user, query }) => Tools.listTools(db, { all: user.role === 'admin' && query.all === '1' }));
+  add('POST', '/tools', ({ db, user, body }) => { requireAdmin(user); return Tools.saveTool(db, user, body); });
+  add('PUT', '/tools/:id', ({ db, user, body, params }) => { requireAdmin(user); return Tools.saveTool(db, user, body, Number(params.id)); });
+  add('POST', '/tools/:id/stock', ({ db, user, body, params }) => { requireAdmin(user); return Tools.adjustStock(db, user, Number(params.id), body); });
 
   // ---------- Projekty ----------
   add('GET', '/projects', ({ db, user, query }) => {

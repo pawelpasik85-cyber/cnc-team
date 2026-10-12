@@ -27,6 +27,7 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Plan pracy: wypisywanie poleceń, kolejność, ocena, przeniesienie | ✔ | ✔ (podgląd dnia) | ✘ (403); widzi tylko własne polecenia i potwierdza przeczytanie | ✘ |
 | Kalendarz urlopów; zestawienie urlopów pod pracownikami (zakładka Pracownicy) | ✔ | ✔ (podgląd; kategorie poufne jako ogólna etykieta bez uprawnienia) | ✘ (403) | ✘ |
 | Powrót do projektu (runda poprawek): otwarcie, zakończenie, powody, czas przed / po poprawkach | ✔ | ✘ (403, powody rund niewidoczne) | ✘ (403); widzi tylko oznaczenie „poprawki” przy swoim zadaniu | ✘ |
+| Narzędzia i oprawki: wykaz, rysunki, stan, „pasuje do” | ✔ (dodawanie, edycja, przyjęcie / wydanie, wycofanie i przywrócenie — z powodem) | ✔ podgląd | ✔ podgląd (bez wycofanych) | ✘ (403) |
 | Grafik: tryb pracy (12 h, nieregularny, dzień dodatkowy), zamiana osób, zmiana trybu na okres, usunięcie zmiany | ✔ (zawsze z powodem, w historii) | ✘ (403) | ✘ (403); w kalendarzu widzi oznaczenie trybu (DOD / 12h / NR), bez powodu i minut nadgodzin | ✘ |
 | Zmiana własnego hasła | ✔ | ✔ | ✔ | ✔ |
 

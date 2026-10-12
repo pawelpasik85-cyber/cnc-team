@@ -88,7 +88,7 @@ function returnsSummary(db, projectId) {
   const original = { worked_min: base.w || 0, rework_min: base.rw || 0, clean_min: (base.w || 0) - (base.rw || 0), first: base.first || null, last: base.last || null };
   const list = rounds.map(r => {
     const x = by.get(r.id) || { w: 0, rw: 0 };
-    return { id: r.id, round: r.round, opened_date: r.opened_date, closed_date: r.closed_date, reason: r.reason, cause: r.cause, close_note: r.close_note,
+    return { id: r.id, round: r.round, opened_date: r.opened_date, created_at: r.created_at, closed_date: r.closed_date, reason: r.reason, cause: r.cause, close_note: r.close_note,
       worked_min: x.w || 0, increase_pct: pct(x.w || 0, original.worked_min) };
   });
   const added = list.reduce((s, r) => s + r.worked_min, 0);

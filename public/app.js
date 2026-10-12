@@ -20,13 +20,14 @@ const NAV = [
   ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
   ['projekty', 'Projekty i zadania', 'project', notEmp],
   ['maszyny', 'Tablica maszyn', 'board', notEmp],
+  ['narzedzia', 'Narzędzia i oprawki', 'cutter', () => S.me && S.me.role !== 'guest'],
   ['przekazanie', 'Przekazanie zmiany', 'handover', notEmp],
   ['raporty', 'Raporty kierownicze', 'report', 'view.reports'],
   ['analiza', 'Analiza i raporty', 'report', () => S.me && (S.me.role === 'admin' || S.me.role === 'supervisor')],
   ['ustawienia', 'Ustawienia', 'settings', null],
 ];
-// Programista: tylko zgłoszenia, kalendarz i plan pracy (oraz własne konto) — reszta dla kierownika
-const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'pracownicy', 'ustawienia']);
+// Programista: zgłoszenia, kalendarz, plan pracy, wykaz narzędzi (tylko podgląd) i własne konto — reszta dla kierownika
+const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'pracownicy', 'narzedzia', 'ustawienia']);
 
 // Nie w menu bocznym: urlopy i wyjścia są zakładkami w „Pracownicy”; tablica maszyn powielała Centrum programowania.
 const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny', 'zdarzenia']);

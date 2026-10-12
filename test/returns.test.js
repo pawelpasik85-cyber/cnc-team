@@ -19,11 +19,14 @@ test('powrót do projektu: rundy poprawek, podział czasu, zakończenie, zestawi
   throwsStatus(assert, () => Ret.startReturn(w.db, w.admin, pid, { reason: 'klient zmienił fazy' }), 409, /po jego zakończeniu/);
   P.updateTask(w.db, w.admin, t1, { status: 'zakonczone', result_confirmation: 'ok' });
   P.updateTask(w.db, w.admin, t2, { status: 'zakonczone', result_confirmation: 'ok' });
+  // znaczniki czasu zakończenia ustalone (inaczej zależałyby od zegara maszyny, na której działa test)
+  w.db.run(`UPDATE tasks SET completed_at='2026-10-07T10:00:00.000Z' WHERE id IN (?,?)`, t1, t2);
   throwsStatus(assert, () => Ret.startReturn(w.db, w.admin, pid, { opened_date: '2026-10-05', reason: 'x' }), 400, /ostatni dzień pracy/);
   throwsStatus(assert, () => Ret.startReturn(w.db, w.admin, pid, { opened_date: '2026-10-30', reason: 'x' }), 400, /przyszłości/);
   throwsStatus(assert, () => Ret.startReturn(w.db, w.admin, pid, { opened_date: '2026-10-12' }), 400, /Powód/);
   const r1 = Ret.startReturn(w.db, w.admin, pid, { opened_date: '2026-10-12', reason: 'Klient zmienił fazowania', cause: 'zmiana_zakresu', task_title: 'Poprawki — runda 1', type_id: tt.NX, planned_min: 120 });
   assert.equal(r1.round, 1);
+  w.db.run(`UPDATE project_returns SET created_at='2026-10-12T00:00:01.000Z' WHERE id=?`, r1.id);
   assert.equal(w.db.get('SELECT return_id FROM tasks WHERE id=?', r1.task_id).return_id, r1.id);
   assert.equal(w.db.get('SELECT status FROM projects WHERE id=?', pid).status, 'aktywny');
   throwsStatus(assert, () => Ret.startReturn(w.db, w.admin, pid, { reason: 'drugi' }), 409, /otwartą rundę/);
@@ -59,7 +62,9 @@ test('powrót do projektu: rundy poprawek, podział czasu, zakończenie, zestawi
   const pm = A.projectMetrics(w.db, pid);
   assert.equal(pm.returns_added_min, 230);
   assert.equal(pm.worked_min, 560, 'wskaźniki projektu = pierwotna realizacja');
-  assert.equal(pm.planned_min, 600); assert.equal(pm.finish_date >= '2026-10-06' && pm.finish_date < '2026-10-12', true);
+  assert.equal(pm.planned_min, 600);
+  // koniec pierwotnej realizacji = zakończenie zadań pierwotnych przed otwarciem rundy 1 (ponowne zakończenie w rundzie się nie liczy)
+  assert.equal(pm.finish_date, '2026-10-07');
   assert.equal(m.current_kpi.projects_done, 1, 'projekt z rundami nadal liczony jako zakończony');
   assert.ok(w.db.get(`SELECT 1 FROM audit_log WHERE entity='project' AND action='powrot_poprawki' AND reason='Kolizja oprawki'`));
 });

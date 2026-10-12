@@ -236,8 +236,46 @@ function seedDemo(db) {
       { kind: 'projekt', ref: p2, cause: 'zmiana_zakresu', note: 'Klient dosłał nową rewizję rysunku w trakcie programowania 5X; część ścieżek do ponownego przygotowania. Termin uzgodniony na nowo.' },
       { kind: 'notatka', title: 'Obsada zmian', cause: 'inne', note: 'L4 jednej osoby 5–7.10 — zmiany wydłużone do 12 h i dzień dodatkowy w sobotę.' },
     ] });
+  seedTools(db, admin);
   X.recomputeAlerts(db);
   return { admin, adam, bartosz, celina, p1, p2, p3 };
+}
+
+// Przykładowy wykaz narzędzi: BT50 dla Hartforda, HSK40 dla Grimme, głowice, płytki, frezy
+function seedTools(db, admin) {
+  const Tools = require('../server/domain/tools');
+  const H = 'M-HARTFORD', G = 'M-GRIMME';
+  const add = (kind, name, machine_id, params, extra = {}) => Tools.saveTool(db, admin, { kind, name, machine_id, params, ...extra });
+  // oprawki
+  add('oprawka', 'BT50-ER32-100', H, { interface: 'BT50', type: 'tulejkowa', clamp_min: 3, clamp_max: 20, collet: 'ER32', gauge: 100, max_rpm: 12000 }, { qty: 4, min_qty: 2, manufacturer: 'Kelch', location: 'Szafa H / półka 1' });
+  add('oprawka', 'BT50-SLN20-90', H, { interface: 'BT50', type: 'weldon', clamp_min: 20, clamp_max: 20, gauge: 90, max_rpm: 10000 }, { qty: 2, min_qty: 1, manufacturer: 'Kelch', location: 'Szafa H / półka 1' });
+  add('oprawka', 'BT50-FMB27-60', H, { interface: 'BT50', type: 'trzpieniowa', arbor: 27, gauge: 60, max_rpm: 8000 }, { qty: 2, min_qty: 1, manufacturer: 'Kelch', location: 'Szafa H / półka 2' });
+  add('oprawka', 'BT50-FMB22-60', H, { interface: 'BT50', type: 'trzpieniowa', arbor: 22, gauge: 60, max_rpm: 8000 }, { qty: 1, min_qty: 1, manufacturer: 'Kelch', location: 'Szafa H / półka 2' });
+  add('oprawka', 'BT50-SF12-120', H, { interface: 'BT50', type: 'termo', clamp_min: 12, clamp_max: 12, gauge: 120, max_rpm: 20000 }, { qty: 3, min_qty: 2, manufacturer: 'Haimer', location: 'Szafa H / półka 3' });
+  add('oprawka', 'HSK40-ER25-80', G, { interface: 'HSK40', type: 'tulejkowa', clamp_min: 1, clamp_max: 16, collet: 'ER25', gauge: 80, max_rpm: 24000 }, { qty: 3, min_qty: 2, manufacturer: 'Schunk', location: 'Szafa G / półka 1' });
+  add('oprawka', 'HSK40-SF06-80', G, { interface: 'HSK40', type: 'termo', clamp_min: 6, clamp_max: 6, gauge: 80, max_rpm: 30000 }, { qty: 4, min_qty: 3, manufacturer: 'Haimer', location: 'Szafa G / półka 2' });
+  add('oprawka', 'HSK40-SF10-80', G, { interface: 'HSK40', type: 'termo', clamp_min: 10, clamp_max: 10, gauge: 80, max_rpm: 30000 }, { qty: 2, min_qty: 3, manufacturer: 'Haimer', location: 'Szafa G / półka 2', note: 'Dwie sztuki w regeneracji — zamówić trzecią.' });
+  add('oprawka', 'HSK40-HD12-75', G, { interface: 'HSK40', type: 'hydrauliczna', clamp_min: 12, clamp_max: 12, gauge: 75, max_rpm: 25000 }, { qty: 1, min_qty: 1, manufacturer: 'Schunk', location: 'Szafa G / półka 3' });
+  add('oprawka', 'HSK40-FMB16-50', G, { interface: 'HSK40', type: 'trzpieniowa', arbor: 16, gauge: 50, max_rpm: 20000 }, { qty: 1, min_qty: 1, manufacturer: 'Schunk', location: 'Szafa G / półka 3' });
+  // głowice
+  add('glowica', 'Głowica Ø63 APMT1604', H, { D: 63, z: 5, arbor: 22, insert_code: 'APMT1604', lead: 90, ap_max: 15 }, { qty: 1, min_qty: 1, manufacturer: 'Pramet', location: 'Szafa H / półka 4' });
+  add('glowica', 'Głowica Ø80 SEKT12 45°', H, { D: 80, z: 6, arbor: 27, insert_code: 'SEKT1204', lead: 45, ap_max: 6 }, { qty: 1, min_qty: 1, manufacturer: 'Sandvik', location: 'Szafa H / półka 4' });
+  add('glowica', 'Głowica Ø32 RDMT10', G, { D: 32, z: 3, arbor: 16, insert_code: 'RDMT10', lead: 45, ap_max: 5 }, { qty: 1, min_qty: 1, manufacturer: 'Pramet', location: 'Szafa G / półka 4' });
+  add('glowica', 'Frez nasadzany Ø25 APMT1135 chwyt Ø20', H, { D: 25, z: 3, shank: 20, insert_code: 'APMT1135', lead: 90, ap_max: 10 }, { qty: 1, min_qty: 0, manufacturer: 'Pramet', location: 'Szafa H / półka 4' });
+  // płytki
+  add('plytka', 'APMT1604PDER-M2', null, { shape: 'A', size: 16, radius: 0.8, edges: 2, grade: 'M8330', coating: 'TiAlN', materials: 'P M K' }, { qty: 34, min_qty: 20, manufacturer: 'Pramet', location: 'Szuflada płytek A1' });
+  add('plytka', 'APMT1135PDER-M2', null, { shape: 'A', size: 11, radius: 0.8, edges: 2, grade: 'M8330', coating: 'TiAlN', materials: 'P M K' }, { qty: 8, min_qty: 20, manufacturer: 'Pramet', location: 'Szuflada płytek A2' });
+  add('plytka', 'SEKT1204AFTN', null, { shape: 'S', size: 12, edges: 4, grade: 'GC4240', coating: 'TiCN', materials: 'P K' }, { qty: 40, min_qty: 24, manufacturer: 'Sandvik', location: 'Szuflada płytek B1' });
+  add('plytka', 'RDMT10T3MO', null, { shape: 'R', size: 10, edges: 4, grade: 'M8340', coating: 'AlTiN', materials: 'P M S' }, { qty: 15, min_qty: 10, manufacturer: 'Pramet', location: 'Szuflada płytek B2' });
+  // frezy i wiertła
+  add('frez', 'VHM Ø6 z4', null, { type: 'walcowo-czolowy', D: 6, z: 4, shank: 6, Lc: 13, L: 57, material: 'VHM', coating: 'AlTiN' }, { qty: 6, min_qty: 4, manufacturer: 'Fenes', location: 'Szafa frezów 1' });
+  add('frez', 'VHM Ø10 z4', null, { type: 'walcowo-czolowy', D: 10, z: 4, shank: 10, Lc: 22, L: 72, material: 'VHM', coating: 'AlTiN' }, { qty: 5, min_qty: 4, manufacturer: 'Fenes', location: 'Szafa frezów 1' });
+  add('frez', 'VHM Ø12 z3 długi', null, { type: 'walcowo-czolowy', D: 12, z: 3, shank: 12, Lc: 36, L: 100, material: 'VHM', coating: 'TiAlN' }, { qty: 2, min_qty: 3, manufacturer: 'Fenes', location: 'Szafa frezów 1' });
+  add('frez', 'Kulisty R3 Ø6', G, { type: 'kulisty', D: 6, z: 2, shank: 6, Lc: 10, L: 60, material: 'VHM', coating: 'AlTiN' }, { qty: 4, min_qty: 3, manufacturer: 'Fenes', location: 'Szafa G / szuflada 1' });
+  add('frez', 'Torusowy Ø10 R1', G, { type: 'torusowy', D: 10, z: 4, shank: 10, Lc: 20, L: 75, r: 1, material: 'VHM', coating: 'AlTiN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa G / szuflada 1' });
+  add('frez', 'Fazownik 90° Ø12', null, { type: 'fazownik', D: 12, z: 4, shank: 12, L: 60, angle: 90, material: 'VHM', coating: 'TiN' }, { qty: 2, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
+  add('frez', 'Wiertło VHM Ø8,5', null, { type: 'wiertlo', D: 8.5, z: 2, shank: 10, Lc: 40, L: 89, angle: 140, material: 'VHM', coating: 'TiAlN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
+  add('frez', 'Frez do gwintów M10', null, { type: 'gwintownik', D: 7.8, z: 3, shank: 10, Lc: 22, L: 70, material: 'VHM', coating: 'TiCN' }, { qty: 1, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
 }
 
 module.exports = { seedDemo, DEMO_PASSWORD };

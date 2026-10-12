@@ -36,7 +36,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - **Centrum programowania**: obie maszyny, pod każdą aktualny projekt (postęp, godziny, opóźnienie) z datą i zmianą rozpoczęcia; niżej pozostałe informacje.
 - **Kalendarz**: maszyny i projekty na każdej zmianie danego dnia + grafik ludzi i zdarzenia.
 - **Pracownicy**: zakładki Pracownicy · Urlopy i absencje · Wyjścia i odrabianie · Lista zdarzeń.
-- **Programiści** widzą tylko: Zgłoś kierownikowi, Kalendarz, Plan pracy, Mój profil i urlopy (własne), Moje konto.
+- **Programiści** widzą tylko: Zgłoś kierownikowi, Kalendarz, Plan pracy, Mój profil i urlopy (własne), Narzędzia i oprawki (podgląd), Moje konto.
 
 ## Pracownicy, urlopy, wyjścia
 - Menu boczne: **Pracownicy** ma zakładki *Pracownicy · Urlopy i absencje · Wyjścia i odrabianie*. Tablica maszyn usunięta z menu (te same dane są w Centrum programowania).
@@ -56,6 +56,9 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - **Powrót do projektu (poprawki)** — przy zakończonym projekcie; analiza projektu pokazuje czas przed poprawkami, ile doszło w każdej rundzie (i o ile %), same poprawki łącznie i razem.
 
 Po zakończeniu projektu: wykres przebiegu (godziny narastająco i postęp wobec planu, zadania plan vs wykonanie) oraz porównanie z podobnymi zakończonymi projektami — propozycje można odrzucać. Miesiąc wobec tego samego miesiąca rok wcześniej i cały rok wobec innych lat. Każdy widok można zapisać jako raport (z komentarzem), wydrukować / zapisać jako PDF, pobrać CSV i — według decyzji kierownika — udostępnić przełożonemu.
+
+## Narzędzia i oprawki
+Wykaz oprawek (BT50 — Hartford, HSK40 — Grimme), głowic frezujących, płytek i frezów z rysunkiem generowanym z parametrów, stanem (czerwone poniżej minimum) i listą „pasuje do”. Wpisuje i zmienia kierownik (przyjęcie / wydanie, wycofanie — z powodem w historii); programiści i przełożony przeglądają.
 
 ## Telefony
 

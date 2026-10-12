@@ -31,7 +31,7 @@ function projectMetrics(db, id) {
   const firstRound = ret.rounds[0];
   // pierwsze zakończenie: wszystkie zadania pierwotne zakończone (albo projekt wrócił już do poprawek)
   const allDone = live.length > 0 && (live.every(t => t.status === 'zakonczone') || !!firstRound);
-  const origDone = doneDates.filter(d => !firstRound || d < firstRound.opened_date);
+  const origDone = live.filter(t => t.status === 'zakonczone' && t.completed_at && (!firstRound || t.completed_at < firstRound.created_at)).map(t => localDate(t.completed_at)).sort();
   const finish = allDone ? [origDone[origDone.length - 1], agg.last].filter(Boolean).sort().pop() || null : null;
   const allFinished = liveAll.length > 0 && liveAll.every(t => t.status === 'zakonczone');
   const finishAll = allFinished ? [...liveAll.map(t => localDate(t.completed_at)), aggAll.last].filter(Boolean).sort().pop() : null;
@@ -177,7 +177,7 @@ function monthStats(db, ym, { toDay } = {}) {
   // (powrót do projektu nie przesuwa daty zakończenia: liczą się zadania pierwotne, a projekt z rundami poprawek nadal jest zakończony)
   const projects = db.all(`SELECT p.id, p.order_no, p.part_no, MAX(t.completed_at) last FROM projects p JOIN tasks t ON t.project_id = p.id
     WHERE (p.status = 'zakonczony' OR EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id)) AND t.status = 'zakonczone' AND t.return_id IS NULL
-      AND NOT EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id AND r.round = 1 AND substr(t.completed_at, 1, 10) >= r.opened_date)
+      AND NOT EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id AND r.round = 1 AND t.completed_at >= r.created_at)
     GROUP BY p.id HAVING last >= ? AND last < ?`, fromUtc, toUtc)
     .map(r => ({ id: r.id, order_no: r.order_no, part_no: r.part_no }));
   // nieobecności (minuty wg grafiku, proporcjonalnie do dni w miesiącu przy wpisach na przełomie miesięcy)
@@ -316,7 +316,7 @@ function machineOverview(db, year) {
     WHERE p.machine_id IS NOT NULL GROUP BY ym, p.machine_id`);
   const doneRows = db.all(`SELECT p.id, p.machine_id, MAX(t.completed_at) last FROM projects p JOIN tasks t ON t.project_id = p.id
     WHERE (p.status = 'zakonczony' OR EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id)) AND t.status = 'zakonczone' AND t.return_id IS NULL
-      AND NOT EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id AND r.round = 1 AND substr(t.completed_at, 1, 10) >= r.opened_date)
+      AND NOT EXISTS (SELECT 1 FROM project_returns r WHERE r.project_id = p.id AND r.round = 1 AND t.completed_at >= r.created_at)
       AND p.machine_id IS NOT NULL GROUP BY p.id`).map(r => ({ ...r, ym: localDate(r.last).slice(0, 7) }));
   const today = T.today();
   const months = Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`);
