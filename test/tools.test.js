@@ -20,9 +20,9 @@ function world() {
     head25: add('glowica', 'Frez Ø25 chwyt 20', null, { D: 25, z: 3, shank: 20, insert_code: 'APMT 1135' }),
     apmt16: add('plytka', 'APMT1604PDER-M2', null, { shape: 'A', size: 16 }, { qty: 30, min_qty: 20 }),
     apmt11: add('plytka', 'apmt1135pder', null, { shape: 'A', size: 11 }, { qty: 5, min_qty: 20 }),
-    vhm6: add('frez', 'VHM Ø6', null, { type: 'walcowo-czolowy', D: 6 }),
-    ball6h: add('frez', 'Kulisty Ø6 (Hartford)', H, { type: 'kulisty', D: 6, shank: 6 }),
-    big25: add('frez', 'VHM Ø25', null, { type: 'walcowo-czolowy', D: 25 }),
+    vhm6: add('frez', 'VHM Ø6', null, { type: 'walcowo-czolowy', D: 6, z: 4, Lc: 13, L: 57 }),
+    ball6h: add('frez', 'Kulisty Ø6 (Hartford)', H, { type: 'kulisty', D: 6, z: 2, shank: 6, Lc: 10, L: 60 }),
+    big25: add('frez', 'VHM Ø25', null, { type: 'walcowo-czolowy', D: 25, z: 4, Lc: 40, L: 120 }),
   };
   return { ...w, ids };
 }
@@ -50,12 +50,12 @@ test('narzędzia: walidacja parametrów według rodzaju', () => {
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'glowica', name: 'x', params: { D: 50 } }), 400, /ostrzy/);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'plytka', name: 'x', params: { shape: 'Q', size: 10 } }), 400);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'x', params: { type: 'kulisty', D: -2 } }), 400, /Średnica/);
-  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'x', machine_id: 'M-NIEMA', params: { type: 'kulisty', D: 6 } }), 400, /maszyna/i);
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'x', machine_id: 'M-NIEMA', params: { type: 'kulisty', D: 6, z: 2, Lc: 10, L: 60 } }), 400, /maszyna/i);
   // rodzaju nie da się zmienić edycją
   Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'APMT1604PDER-M2', params: { shape: 'A', size: 16 } }, w.ids.apmt16);
   assert.equal(w.db.get('SELECT kind FROM tools WHERE id=?', w.ids.apmt16).kind, 'plytka');
   // przecinek dziesiętny
-  const id = Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'Wiertło 8,5', params: { type: 'wiertlo', D: '8,5', angle: 140 } }).id;
+  const id = Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'Wiertło 8,5', params: { type: 'wiertlo', D: '8,5', angle: 140, z: 2, Lc: '40', L: 89 } }).id;
   assert.equal(JSON.parse(w.db.get('SELECT params FROM tools WHERE id=?', id).params).D, 8.5);
 });
 
@@ -73,11 +73,34 @@ test('narzędzia: edycja częściowa nie kasuje pól; oprawka zgodna z wrzecione
   assert.equal(fitNames(t['Kulisty Ø6 (Hartford)']).includes('HSK-A40 ER16'), false);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'glowica', name: 'x', params: { D: 50, z: 2.5 } }), 400, /całkowita/);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { active: 'false' }, w.ids.vhm6), 400, /aktywne/);
-  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'x', params: { type: 'torusowy', D: 6, r: 4 } }), 400, /połowa/);
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'x', params: { type: 'torusowy', D: 6, r: 4, z: 4, Lc: 12, L: 57 } }), 400, /połowa/);
   // parametry nieużywane przez wybrany rodzaj nie są zapisywane (np. promień przy frezie walcowo-czołowym)
-  const id = Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'y', params: { type: 'walcowo-czolowy', D: 6, r: 1, angle: 90 } }).id;
+  const id = Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'y', params: { type: 'walcowo-czolowy', D: 6, r: 1, angle: 90, z: 4, Lc: 12, L: 57 } }).id;
   const pr = JSON.parse(w.db.get('SELECT params FROM tools WHERE id=?', id).params);
   assert.equal(pr.r, null); assert.equal(pr.angle, null);
+});
+
+test('narzędzia: frez definiują liczba ostrzy, długość ostrza i długość całkowita (obowiązkowe), długość użyteczna z szyjką', () => {
+  const w = world();
+  const f = (params) => () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'F', params: { type: 'walcowo-czolowy', D: 8, ...params } });
+  throwsStatus(assert, f({ Lc: 16, L: 63 }), 400, /ostrzy/);
+  throwsStatus(assert, f({ z: 4, L: 63 }), 400, /Długość ostrza/);
+  throwsStatus(assert, f({ z: 4, Lc: 16 }), 400, /Długość całkowita/);
+  throwsStatus(assert, f({ z: 4, Lc: 70, L: 63 }), 400, /większa niż długość całkowita/);
+  throwsStatus(assert, f({ z: 4, Lc: 16, reach: 12, L: 63 }), 400, /krótsza/);
+  throwsStatus(assert, f({ z: 4, Lc: 16, reach: 70, L: 63 }), 400, /użyteczna nie może być większa/);
+  const id = f({ z: 4, Lc: 16, reach: 40, L: 100 })().id;
+  const pr = JSON.parse(w.db.get('SELECT params FROM tools WHERE id=?', id).params);
+  assert.deepEqual([pr.z, pr.Lc, pr.reach, pr.L], [4, 16, 40, 100]);
+  // pozycja zapisana przed wprowadzeniem obowiązkowych długości: wycofanie / przywrócenie / stan działają bez uzupełniania parametrów
+  const now = new Date().toISOString();
+  const old = Number(w.db.run(`INSERT INTO tools(kind,name,params,qty,min_qty,active,created_at,updated_at) VALUES ('frez','stary','{"type":"walcowo-czolowy","D":6}',1,0,1,?,?)`, now, now).lastInsertRowid);
+  Tools.saveTool(w.db, w.admin, { active: false, reason: 'zużyty' }, old);
+  Tools.saveTool(w.db, w.admin, { active: true, reason: 'pomyłka' }, old);
+  Tools.adjustStock(w.db, w.admin, old, { delta: 1, reason: 'zwrot' });
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { params: { type: 'walcowo-czolowy', D: 6 } }, old), 400, /ostrzy/);
+  // fazownik — długość ostrza nieobowiązkowa
+  Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'Faz', params: { type: 'fazownik', D: 10, z: 4, L: 60, angle: 90 } });
 });
 
 test('narzędzia: przyjęcie / wydanie z powodem w historii, stan nie ujemny, wycofanie wymaga powodu', () => {
@@ -128,7 +151,7 @@ test('narzędzia: programista i przełożony tylko odczyt (403 na zapis), gość
     return call;
   };
   try {
-    const newTool = { kind: 'frez', name: 'X', params: { type: 'kulisty', D: 4 } };
+    const newTool = { kind: 'frez', name: 'X', params: { type: 'kulisty', D: 4, z: 2, Lc: 8, L: 50 } };
     for (const login of ['jan', 'szef']) {
       const c = await client(login);
       const r = await c('GET', '/tools?all=1');
@@ -136,7 +159,7 @@ test('narzędzia: programista i przełożony tylko odczyt (403 na zapis), gość
       assert.ok(r.data.length > 5);
       assert.equal(r.data.some(x => x.id === w.ids.big25), false, `${login}: wycofane niewidoczne`);
       assert.equal((await c('POST', '/tools', newTool)).status, 403, login);
-      assert.equal((await c('PUT', `/tools/${w.ids.vhm6}`, { name: 'Y', params: { type: 'kulisty', D: 4 } })).status, 403, login);
+      assert.equal((await c('PUT', `/tools/${w.ids.vhm6}`, { name: 'Y', params: { type: 'kulisty', D: 4, z: 2, Lc: 8, L: 50 } })).status, 403, login);
       assert.equal((await c('POST', `/tools/${w.ids.vhm6}/stock`, { delta: 5, reason: 'x' })).status, 403, login);
     }
     const g = await client('klient');

@@ -191,12 +191,18 @@ function drawMill(t, { w = 80 } = {}) {
   const D = Number(p.D) || 10, sh = Number(p.shank) || D;
   const k = 40 / Math.max(D, sh);
   const wd = D * k, ws = sh * k, cx = 40;
-  const Ltot = Number(p.L) || D * 6, Lc = Math.min(Number(p.Lc) || D * 2, Ltot * 0.8);
-  const total = 186, lc = Math.max(28, Math.min(total * 0.62, (Lc / Ltot) * total));
-  const yTip = 194, yCut = yTip - lc, yShank = 6;
+  const Ltot = Number(p.L) || D * 6, Lc = Math.min(Number(p.Lc) || Math.min(D * 2, Ltot * 0.3), Ltot * 0.8);
+  const total = 186, sc = total / Ltot;
+  const lc = Math.max(20, Math.min(total * 0.62, Lc * sc));
+  const neck = p.Lc && p.reach && Number(p.reach) > Number(p.Lc) ? // szyjka tylko gdy l1 > rzeczywiste Lc
+    Math.max(6, Math.min(total * 0.8 - lc, (p.reach - Lc) * sc)) : 0;
+  const yTip = 194, yCut = yTip - lc, yNeck = yCut - neck, yShank = yTip - total;
+  const wn = wd * 0.82; // szyjka — podcięta poniżej średnicy ostrza
   const parts = [];
-  parts.push(`<rect x="${cx - ws / 2}" y="${yShank}" width="${ws}" height="${yCut - yShank - (wd !== ws ? 8 : 0)}" rx="1.5" fill="url(#${id}s)" stroke="#2a3036" stroke-width=".8"/>`);
-  if (wd !== ws) parts.push(`<path d="M${cx - ws / 2} ${yCut - 8} L${cx + ws / 2} ${yCut - 8} L${cx + wd / 2} ${yCut} L${cx - wd / 2} ${yCut} Z" fill="url(#${id}s)" stroke="#2a3036" stroke-width=".8"/>`);
+  const topW = neck ? wn : wd;
+  parts.push(`<rect x="${cx - ws / 2}" y="${yShank}" width="${ws}" height="${yNeck - yShank - (topW !== ws ? 8 : 0)}" rx="1.5" fill="url(#${id}s)" stroke="#2a3036" stroke-width=".8"/>`);
+  if (topW !== ws) parts.push(`<path d="M${cx - ws / 2} ${yNeck - 8} L${cx + ws / 2} ${yNeck - 8} L${cx + topW / 2} ${yNeck} L${cx - topW / 2} ${yNeck} Z" fill="url(#${id}s)" stroke="#2a3036" stroke-width=".8"/>`);
+  if (neck) parts.push(`<rect x="${cx - wn / 2}" y="${yNeck}" width="${wn}" height="${neck}" fill="url(#${id}s)" stroke="#2a3036" stroke-width=".8"/>`);
   const r = p.type === 'kulisty' ? wd / 2 : p.type === 'torusowy' ? Math.max(0.5, Math.min(wd / 2 - 0.5, Math.max(1, (Number(p.r) || D * 0.1) * k))) : 0;
   let end;
   const L = cx - wd / 2, R = cx + wd / 2;
@@ -219,10 +225,18 @@ function drawMill(t, { w = 80 } = {}) {
   }
   parts.push(`<g clip-path="url(#${id}c)">${flutes.join('')}</g>`);
   const shankTone = coatTone('');
-  return `<svg class="tool-svg" viewBox="0 0 80 214" width="${w}" role="img" aria-label="${esc(`${MILL_LABEL[p.type] || 'Frez'} Ø${mm(D)}`)}">
+  // linie wymiarowe: Lc (ostrze), l1 (z szyjką), L (całkowita)
+  const dim = (x, y1, y2, label) => `<g class="tool-svg-dimline"><path d="M${x - 3} ${y1} h6 M${x - 3} ${y2} h6 M${x} ${y1} V${y2}" stroke="#2a3036" stroke-width=".7" fill="none"/>
+    <text transform="translate(${x + 7} ${(y1 + y2) / 2}) rotate(-90)" text-anchor="middle" class="tool-svg-dim">${esc(label)}</text></g>`;
+  const dims = [];
+  if (p.Lc) dims.push(dim(68, yCut, yTip, `Lc ${mm(p.Lc)}`));
+  if (neck) dims.push(dim(68 + (p.Lc ? 14 : 0), yNeck, yTip, `l1 ${mm(p.reach)}`));
+  if (p.L) dims.push(dim(68 + (p.Lc ? 14 : 0) + (neck ? 14 : 0), yShank, yTip, `L ${mm(p.L)}`));
+  const vw = 80 + (p.Lc ? 14 : 0) + (neck ? 14 : 0) + (p.L ? 14 : 0);
+  return `<svg class="tool-svg" viewBox="0 0 ${vw} 214" width="${Math.round(w * vw / 80)}" role="img" aria-label="${esc(`${MILL_LABEL[p.type] || 'Frez'} Ø${mm(D)}${p.z ? ` z${mm(p.z)}` : ''}${p.Lc ? `, ostrze ${mm(p.Lc)} mm` : ''}${p.L ? `, długość ${mm(p.L)} mm` : ''}`)}">
     <defs>${metalDefs(`${id}s`, shankTone)}${metalDefs(`${id}k`, coatTone(p.coating))}</defs>
-    ${parts.join('')}
-    <text x="40" y="211" text-anchor="middle" class="tool-svg-dim">Ø${esc(mm(D))}${p.type === 'torusowy' && p.r ? ` R${esc(mm(p.r))}` : p.type === 'kulisty' ? ` R${esc(mm(D / 2))}` : ''}</text>
+    ${parts.join('')}${dims.join('')}
+    <text x="40" y="211" text-anchor="middle" class="tool-svg-dim">Ø${esc(mm(D))}${p.z ? ` z${esc(mm(p.z))}` : ''}${p.type === 'torusowy' && p.r ? ` R${esc(mm(p.r))}` : p.type === 'kulisty' ? ` R${esc(mm(D / 2))}` : ''}</text>
   </svg>`;
 }
 
@@ -241,13 +255,13 @@ function toolFacts(t) {
     add('Tulejka / nakrętka', p.collet); add('Wysięg od czoła wrzeciona', p.gauge, ' mm'); add('Maks. obroty', p.max_rpm != null ? Number(p.max_rpm).toLocaleString('pl-PL') : null, ' obr/min');
   } else if (t.kind === 'glowica') {
     add('Średnica D', p.D, ' mm'); add('Liczba ostrzy z', p.z); add('Gniazdo płytki', p.insert_code);
-    add('Kąt przystawienia', p.lead, '°'); add('Maks. ap', p.ap_max, ' mm'); add('Trzpień', p.arbor != null ? `Ø${mm(p.arbor)}` : null, ' mm'); add('Chwyt walcowy', p.shank != null ? `Ø${mm(p.shank)}` : null, ' mm');
+    add('Kąt przystawienia', p.lead, '°'); add('Maks. ap', p.ap_max, ' mm'); add('Wysokość H', p.H, ' mm'); add('Trzpień', p.arbor != null ? `Ø${mm(p.arbor)}` : null, ' mm'); add('Chwyt walcowy', p.shank != null ? `Ø${mm(p.shank)}` : null, ' mm');
   } else if (t.kind === 'plytka') {
     add('Kształt', SHAPE_LABEL[p.shape] || p.shape); add('Wielkość', p.size, ' mm'); add('Promień naroża', p.radius, ' mm'); add('Liczba krawędzi', p.edges);
     add('Gatunek', p.grade); add('Pokrycie', p.coating); add('Materiały', p.materials);
   } else {
     add('Rodzaj', MILL_LABEL[p.type] || p.type); add('Średnica D', p.D, ' mm'); add('Liczba ostrzy z', p.z); add('Chwyt', p.shank != null ? `Ø${mm(p.shank)}` : null, ' mm');
-    add('Długość robocza', p.Lc, ' mm'); add('Długość całkowita', p.L, ' mm'); add('Promień naroża', p.r, ' mm'); add('Kąt', p.angle, '°');
+    add('Długość ostrza Lc', p.Lc, ' mm'); add('Długość użyteczna l1', p.reach, ' mm'); add('Długość całkowita L', p.L, ' mm'); add('Promień naroża', p.r, ' mm'); add('Kąt', p.angle, '°');
     add('Materiał', p.material); add('Pokrycie', p.coating);
   }
   return f;
@@ -257,7 +271,7 @@ function toolKeyLine(t) {
   if (t.kind === 'oprawka') return [p.interface, HOLDER_LABEL[p.type], p.type === 'trzpieniowa' ? `trzpień Ø${mm(p.arbor)}` : p.clamp_min != null ? `Ø${mm(p.clamp_min)}${p.clamp_max && p.clamp_max !== p.clamp_min ? `–${mm(p.clamp_max)}` : ''}` : null].filter(Boolean).join(' · ');
   if (t.kind === 'glowica') return [`Ø${mm(p.D)}`, `z${mm(p.z)}`, p.insert_code, p.lead && p.lead !== 90 ? `${mm(p.lead)}°` : null].filter(Boolean).join(' · ');
   if (t.kind === 'plytka') return [p.grade, p.coating, p.materials ? `materiały ${p.materials}` : null].filter(Boolean).join(' · ');
-  return [MILL_LABEL[p.type], `Ø${mm(p.D)}`, p.z ? `z${mm(p.z)}` : null, p.material, p.coating].filter(Boolean).join(' · ');
+  return [MILL_LABEL[p.type], `Ø${mm(p.D)}`, p.z ? `z${mm(p.z)}` : null, p.Lc ? `Lc ${mm(p.Lc)}` : null, p.reach ? `l1 ${mm(p.reach)}` : null, p.L ? `L ${mm(p.L)}` : null, p.material, p.coating].filter(Boolean).join(' · ');
 }
 function machineShort(id) {
   const m = S.boot.machines.find(x => x.id === id);
@@ -361,12 +375,11 @@ function toolDetail(t, byId) {
   act('edit', () => toolForm(t.kind, t));
   act('in', () => stockForm(t, 1));
   act('out', () => stockForm(t, -1));
-  act('off', () => confirmReason(`Wycofać z użytku: ${t.name}?`, 'Pozycja zniknie z wykazu dla zespołu (zostaje w historii i w widoku „pokaż wycofane”).', (reason) => post(`/tools/${t.id}`, { ...toolBody(t), active: false, reason }, undefined, 'PUT'), 'Wycofaj'));
-  act('on', () => confirmReason(`Przywrócić do użytku: ${t.name}?`, 'Pozycja wróci do wykazu widocznego dla zespołu.', (reason) => post(`/tools/${t.id}`, { ...toolBody(t), active: true, reason }, undefined, 'PUT'), 'Przywróć'));
+  act('off', () => confirmReason(`Wycofać z użytku: ${t.name}?`, 'Pozycja zniknie z wykazu dla zespołu (zostaje w historii i w widoku „pokaż wycofane”).', (reason) => post(`/tools/${t.id}`, { active: false, reason }, undefined, 'PUT'), 'Wycofaj'));
+  act('on', () => confirmReason(`Przywrócić do użytku: ${t.name}?`, 'Pozycja wróci do wykazu widocznego dla zespołu.', (reason) => post(`/tools/${t.id}`, { active: true, reason }, undefined, 'PUT'), 'Przywróć'));
   dlg.showModal();
 }
 
-const toolBody = (t) => ({ name: t.name, code: t.code, manufacturer: t.manufacturer, catalog_no: t.catalog_no, machine_id: t.machine_id, params: t.params, min_qty: t.min_qty, location: t.location, note: t.note });
 
 function stockForm(t, sign) {
   openForm({
@@ -400,7 +413,7 @@ function toolForm(kind, t = null) {
   } else if (kind === 'glowica') {
     params = [num('D', 'Średnica D (mm)', { required: true }), num('z', 'Liczba ostrzy z', { required: true }),
       txt('insert_code', 'Gniazdo płytki', { help: 'początek oznaczenia płytki, np. APMT1604 — po nim wykaz dobiera płytki' }),
-      num('lead', 'Kąt przystawienia (°)', { help: '90 — prostokątna, 45 — do planowania' }), num('ap_max', 'Maks. ap (mm)'),
+      num('lead', 'Kąt przystawienia (°)', { help: '90 — prostokątna, 45 — do planowania' }), num('ap_max', 'Maks. ap (mm)'), num('H', 'Wysokość głowicy H (mm)'),
       num('arbor', 'Trzpień Ø (mm)', { help: 'głowica nasadzana — dobiera oprawkę trzpieniową' }), num('shank', 'Chwyt walcowy Ø (mm)', { help: 'głowica z chwytem — dobiera oprawkę zaciskową' })];
   } else if (kind === 'plytka') {
     params = [{ name: 'p_shape', label: 'Kształt (ISO)', type: 'select', required: true, value: p.shape || '', options: Object.entries(SHAPE_LABEL) },
@@ -408,8 +421,10 @@ function toolForm(kind, t = null) {
       txt('grade', 'Gatunek'), txt('coating', 'Pokrycie', { help: 'np. TiAlN, TiN, PVD' }), txt('materials', 'Materiały', { help: 'P / M / K / N / S / H' })];
   } else {
     params = [{ name: 'p_type', label: 'Rodzaj', type: 'select', required: true, value: p.type || '', options: Object.entries(MILL_LABEL) },
-      num('D', 'Średnica D (mm)', { required: true }), num('z', 'Liczba ostrzy z'), num('shank', 'Chwyt Ø (mm)', { help: 'puste = jak D' }),
-      num('Lc', 'Długość robocza (mm)'), num('L', 'Długość całkowita (mm)'),
+      num('D', 'Średnica D (mm)', { required: true }), num('z', 'Liczba ostrzy z', { required: true }), num('shank', 'Chwyt Ø (mm)', { help: 'puste = jak D' }),
+      num('Lc', 'Długość ostrza Lc (mm)', { required: true, show: v => v.p_type !== 'fazownik', help: 'część skrawająca' }),
+      num('reach', 'Długość użyteczna l1 (mm)', { show: v => v.p_type !== 'fazownik', help: 'ostrze + szyjka (frez z podciętą szyjką); puste = jak Lc' }),
+      num('L', 'Długość całkowita L (mm)', { required: true }),
       num('r', 'Promień naroża r (mm)', { show: v => v.p_type === 'torusowy' }), num('angle', 'Kąt (°)', { show: v => v.p_type === 'fazownik' || v.p_type === 'wiertlo' }),
       txt('material', 'Materiał', { help: 'VHM, HSS-E…' }), txt('coating', 'Pokrycie')];
   }

@@ -271,7 +271,7 @@ function seedTools(db, admin) {
   add('frez', 'VHM Ø6 z4', null, { type: 'walcowo-czolowy', D: 6, z: 4, shank: 6, Lc: 13, L: 57, material: 'VHM', coating: 'AlTiN' }, { qty: 6, min_qty: 4, manufacturer: 'Fenes', location: 'Szafa frezów 1' });
   add('frez', 'VHM Ø10 z4', null, { type: 'walcowo-czolowy', D: 10, z: 4, shank: 10, Lc: 22, L: 72, material: 'VHM', coating: 'AlTiN' }, { qty: 5, min_qty: 4, manufacturer: 'Fenes', location: 'Szafa frezów 1' });
   add('frez', 'VHM Ø12 z3 długi', null, { type: 'walcowo-czolowy', D: 12, z: 3, shank: 12, Lc: 36, L: 100, material: 'VHM', coating: 'TiAlN' }, { qty: 2, min_qty: 3, manufacturer: 'Fenes', location: 'Szafa frezów 1' });
-  add('frez', 'Kulisty R3 Ø6', G, { type: 'kulisty', D: 6, z: 2, shank: 6, Lc: 10, L: 60, material: 'VHM', coating: 'AlTiN' }, { qty: 4, min_qty: 3, manufacturer: 'Fenes', location: 'Szafa G / szuflada 1' });
+  add('frez', 'Kulisty R3 Ø6 szyjka 30', G, { type: 'kulisty', D: 6, z: 2, shank: 6, Lc: 10, reach: 30, L: 80, material: 'VHM', coating: 'AlTiN' }, { qty: 4, min_qty: 3, manufacturer: 'Fenes', location: 'Szafa G / szuflada 1' });
   add('frez', 'Torusowy Ø10 R1', G, { type: 'torusowy', D: 10, z: 4, shank: 10, Lc: 20, L: 75, r: 1, material: 'VHM', coating: 'AlTiN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa G / szuflada 1' });
   add('frez', 'Fazownik 90° Ø12', null, { type: 'fazownik', D: 12, z: 4, shank: 12, L: 60, angle: 90, material: 'VHM', coating: 'TiN' }, { qty: 2, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
   add('frez', 'Wiertło VHM Ø8,5', null, { type: 'wiertlo', D: 8.5, z: 2, shank: 10, Lc: 40, L: 89, angle: 140, material: 'VHM', coating: 'TiAlN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa frezów 2' });

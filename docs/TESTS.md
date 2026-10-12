@@ -73,6 +73,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 18 — narzędzia i oprawki (12.10.2026)
 **63 / 63 zaliczonych.** Nowy plik `test/tools.test.js` (5 testów): dopasowania z parametrów (trzpień oprawki ↔ głowica, zakres zacisku ↔ chwyt freza lub głowicy, gniazdo głowicy ↔ płytka bez rozróżniania wielkości liter i spacji, brak łączenia narzędzi różnych maszyn), stan poniżej minimum; walidacja według rodzaju (liczby całkowite, promień ≤ D/2, nieznana maszyna, interfejs oprawki zgodny z wrzecionem — BT50 nie do Grimme; bez maszyny przypisanie wg interfejsu); edycja częściowa nie kasuje pól; przyjęcie / wydanie zawsze z powodem, stan nie ujemny; wycofanie i przywrócenie z powodem i osobną akcją w historii; API — programista i przełożony tylko odczyt (403 na zapis), gość 403, wycofane widzi tylko kierownik. Poprawka przy okazji: zakończenie projektu w dniu otwarcia rundy poprawek liczone jest do pierwotnej realizacji (porównanie ze znacznikiem czasu otwarcia rundy); test zwrotów ma teraz ustalone znaczniki czasu. Przegląd niezależny: 9 uwag, wszystkie poprawione. Zrzuty `110`–`117` (w tym zapis edycji i nowej pozycji przez formularz).
 
+### Runda 19 — dane frezu: ostrza i długości (12.10.2026)
+**64 / 64 zaliczonych.** Nowy test: liczba ostrzy z, długość ostrza Lc i długość całkowita L obowiązkowe (Lc nieobowiązkowe dla fazownika), Lc ≤ L, długość użyteczna z szyjką l1 między Lc a L; pozycje zapisane wcześniej bez tych danych można wycofać, przywrócić i zmienić ich stan bez uzupełniania (edycja parametrów wymaga uzupełnienia). Rysunek frezu z linią wymiarową Lc / l1 / L i szyjką. Przegląd niezależny: 6 uwag, poprawione. Zrzuty `118`, `119`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

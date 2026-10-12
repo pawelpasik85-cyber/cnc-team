@@ -37,6 +37,7 @@ function normParams(kind, p = {}) {
     D: num(p.D, 'Średnica D (mm)', { min: 8, max: 400, optional: false }), z: num(p.z, 'Liczba ostrzy z', { min: 1, max: 30, optional: false, int: true }),
     arbor: num(p.arbor, 'Trzpień Ø (mm)', { min: 6, max: 60 }), shank: num(p.shank, 'Chwyt walcowy Ø (mm)', { min: 6, max: 40 }),
     insert_code: txt(p.insert_code, 'Kod gniazda płytki (np. APMT1604)', 20), lead: num(p.lead, 'Kąt przystawienia (°)', { min: 10, max: 95 }), ap_max: num(p.ap_max, 'Maks. ap (mm)', { max: 30 }),
+    H: num(p.H, 'Wysokość głowicy H (mm)', { min: 1, max: 300 }),
   };
   if (kind === 'plytka') return {
     shape: oneOf(p.shape, 'Kształt (ISO)', SHAPES), size: num(p.size, 'Wielkość / długość krawędzi (mm)', { min: 2, max: 40, optional: false }),
@@ -47,9 +48,16 @@ function normParams(kind, p = {}) {
   const D = num(p.D, 'Średnica D (mm)', { min: 0.2, max: 100, optional: false });
   const r = type === 'torusowy' ? num(p.r, 'Promień naroża r (mm)', { max: 50 }) : null; // kulisty: r = D/2 z definicji
   if (r !== null && r > D / 2) throw bad('Promień naroża nie może być większy niż połowa średnicy.');
+  // dane definiujące narzędzie: liczba ostrzy, długość ostrza (części skrawającej) i długość całkowita — obowiązkowe
+  const z = num(p.z, 'Liczba ostrzy z', { min: 1, max: 20, int: true, optional: false });
+  const L = num(p.L, 'Długość całkowita L (mm)', { min: 1, max: 500, optional: false });
+  const Lc = num(p.Lc, 'Długość ostrza Lc (mm)', { min: 0.1, max: 300, optional: type === 'fazownik' });
+  const reach = type === 'fazownik' ? null : num(p.reach, 'Długość użyteczna l1 (mm)', { min: 0.1, max: 500 });
+  if (Lc !== null && Lc > L) throw bad('Długość ostrza nie może być większa niż długość całkowita.');
+  if (reach !== null && reach > L) throw bad('Długość użyteczna nie może być większa niż długość całkowita.');
+  if (reach !== null && Lc !== null && reach < Lc) throw bad('Długość użyteczna (z szyjką) nie może być krótsza niż długość ostrza.');
   return {
-    type, D, z: num(p.z, 'Liczba ostrzy z', { min: 1, max: 20, int: true }), shank: num(p.shank, 'Chwyt Ø (mm)', { min: 1, max: 50 }),
-    Lc: num(p.Lc, 'Długość części roboczej (mm)', { max: 300 }), L: num(p.L, 'Długość całkowita (mm)', { max: 500 }),
+    type, D, z, shank: num(p.shank, 'Chwyt Ø (mm)', { min: 1, max: 50 }), Lc, reach, L,
     r, angle: type === 'fazownik' || type === 'wiertlo' ? num(p.angle, 'Kąt (fazownik / wiertło, °)', { min: 30, max: 180 }) : null,
     material: txt(p.material, 'Materiał (VHM, HSS…)', 20), coating: txt(p.coating, 'Pokrycie', 30),
   };

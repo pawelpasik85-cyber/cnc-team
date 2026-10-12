@@ -1,4 +1,4 @@
-"""Zrzuty: Narzędzia i oprawki (runda 18). Użycie: python scripts/screenshots-tools.py http://127.0.0.1:3000 docs/screenshots — kod 1 przy błędach."""
+"""Zrzuty: Narzędzia i oprawki (rundy 18–19). Użycie: python scripts/screenshots-tools.py http://127.0.0.1:3000 docs/screenshots — kod 1 przy błędach."""
 import sys
 from playwright.sync_api import sync_playwright
 base, out = sys.argv[1], sys.argv[2]
@@ -27,10 +27,12 @@ with sync_playwright() as p:
     loc = pg.evaluate("fetch('/api/tools').then(r=>r.json()).then(l=>l.find(t=>t.name==='Głowica Ø32 RDMT10'))")
     if loc["location"] != "Szafa G / półka 5" or loc["params"]["insert_code"] != "RDMT10" or loc["params"]["D"] != 32: errors.append("zły zapis: " + str(loc))
     pg.goto(base + "/#/narzedzia?rodzaj=frez"); pg.wait_for_timeout(400); pg.click("#addTool"); pg.wait_for_selector("dialog[open]")
-    pg.fill("dialog[open] input[name=name]", "Wiertło Ø5 ostre"); pg.select_option("dialog[open] select[name=p_type]", "wiertlo"); pg.fill("dialog[open] input[name=p_D]", "5"); pg.fill("dialog[open] input[name=p_angle]", "30"); pg.fill("dialog[open] input[name=p_Lc]", "10"); pg.fill("dialog[open] input[name=p_L]", "60")
+    pg.fill("dialog[open] input[name=name]", "Wiertło Ø5 ostre"); pg.select_option("dialog[open] select[name=p_type]", "wiertlo"); pg.fill("dialog[open] input[name=p_D]", "5"); pg.fill("dialog[open] input[name=p_angle]", "30"); pg.fill("dialog[open] input[name=p_z]", "2"); pg.fill("dialog[open] input[name=p_Lc]", "10"); pg.fill("dialog[open] input[name=p_L]", "60")
     pg.dispatch_event("dialog[open] form", "change"); pg.wait_for_timeout(200); shot(pg, "117-narzedzia-nowy-podglad", full=False)
     pg.click("dialog[open] button[type=submit]"); pg.wait_for_timeout(800)
     if pg.locator("dialog[open]").count(): errors.append("dodanie nie zapisało: " + pg.inner_text("dialog[open] .form-error"))
+    pg.goto(base + "/#/narzedzia?rodzaj=frez&szukaj=szyjka"); pg.wait_for_timeout(500); pg.click(".tl-card .tl-pic >> nth=0"); pg.wait_for_selector("dialog[open]"); shot(pg, "118-narzedzia-frez-wymiary", full=False)
+    pg.click("dialog[open] [data-act=edit]"); pg.wait_for_selector("dialog[open] .tl-preview svg"); shot(pg, "119-narzedzia-frez-formularz", full=False)
     ctx.close()
     ctx, pg = mk(b, True); login(pg, "adam")
     shot(pg, "116-narzedzia-programista-telefon", "#/narzedzia?rodzaj=frez", full=False)
