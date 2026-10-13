@@ -243,7 +243,8 @@ VIEWS.dzisiaj = async (main) => {
   const alerts = (d.alerts || []).map(a => `<li>${icon('alert')} ${esc(a.message)}${a.remaining_min != null ? ` <b>${hm(a.remaining_min)}</b> pozostało, zmian do końca miesiąca: ${a.remaining_shifts ?? '—'}` : ''}</li>`).join('');
   const reminders = (d.leave_reminders || []).map(r => `<li>${r.level === 'ostrzezenie' ? tag('ostrzeżenie', 'warn', 'alert') : tag('przypomnienie', 'accent')} ${esc(r.name)}: pula ${r.year}, saldo ${hm(r.balance_min)}. <span class="muted">${esc(r.text)}</span></li>`).join('');
   main.innerHTML = head('Centrum programowania', `Dzisiaj: ${plDate(d.today)} · strefa Europe/Warsaw`) + `
-    <div class="machines">${d.board.map(b => `<div class="machine-col">${plate(b)}${isAdmin() ? `<p class="small no-print" style="margin:4px 0 0"><a href="#/maszyny">${icon('board')}Zmień kartę maszyny (projekt, etap, osoba)</a></p>` : ''}${b.project_full ? projectCard(b.project_full, { start: b.project_start, heading: `Aktualnie na ${b.machine.name}` }) : `<section class="panel"><p class="muted small">Brak projektu na tej maszynie.</p></section>`}</div>`).join('')}</div>
+    <div class="machines">${d.board.map(b => machineInfo(b, d.today)).join('')}</div>
+    ${d.active_projects ? deadlinesPanel(d.active_projects, d.today) : ''}
     <h2 class="section-h">Pozostałe informacje</h2>
     <div class="cols">
       <section class="panel"><h3>Na zmianie dziś</h3><ul class="plain">${shifts || '<li class="muted">Brak zmian w grafiku.</li>'}</ul></section>
@@ -252,7 +253,6 @@ VIEWS.dzisiaj = async (main) => {
         <p><a class="btn" href="#/plan">${icon('list')}Polecenia na dziś i jutro</a></p></section>` : ''}
       ${d.my_requests ? `<section class="panel"><h3>Moje zgłoszenia</h3><ul class="plain">${d.my_requests.map(r => `<li>${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])} · ${plDate(r.date_from)} ${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small muted">${esc(r.decision_note)}</span>` : ''}</li>`).join('') || '<li class="muted">Brak zgłoszeń.</li>'}</ul>
         <p><a class="btn primary" href="#/zglos">${icon('summons')}Zgłoś spóźnienie, nieobecność lub odrobienie</a></p></section>` : ''}
-      ${d.delayed_projects ? `<section class="panel"><h3>Projekty opóźnione lub ponad plan godzin</h3><ul class="plain">${d.delayed_projects.map(p => { const r = p.hours ? hoursResult(p.hours) : null; return `<li>${machineChip(p)} <a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> ${esc(p.part_no)}</a>${delayLine(p)}${r && r.cls === 'over' ? `<p class="small" style="margin:2px 0 0"><span class="result-chip over">${esc(r.big)}</span> ${esc(r.line)}</p>` : ''}</li>`; }).join('') || '<li class="muted">Wszystkie aktywne projekty idą zgodnie z planem.</li>'}</ul></section>` : ''}
       ${d.my_balance ? `<section class="panel"><h3>Moje saldo do odrobienia (${plMonth(d.today.slice(0, 7))})</h3><div class="stat-row"><div class="stat"><b>${hm(d.my_balance.remaining_min)}</b><span>pozostało</span></div><div class="stat"><b>${d.my_balance.remaining_shifts}</b><span>zmian do końca miesiąca</span></div></div></section>` : ''}
       <section class="panel"><h3>Alerty rozliczeń</h3><ul class="plain">${alerts || '<li class="muted">Brak aktywnych alertów.</li>'}</ul>
         ${d.pending_makeups ? `<p class="notice">Odrabiania oczekujące na zatwierdzenie: ${d.pending_makeups}. <a href="#/wyjscia">Przejdź</a></p>` : ''}
@@ -264,6 +264,122 @@ VIEWS.dzisiaj = async (main) => {
 };
 
 const PROGRAM_STATUS = { brak: 'brak', w_przygotowaniu: 'w przygotowaniu', gotowy: 'gotowy', zweryfikowany: 'zweryfikowany' };
+
+// ---------- Centrum programowania: jedna karta na maszynę (parametry + aktualny projekt) ----------
+const dniPl = (n) => `${n} ${Math.abs(n) === 1 ? 'dzień' : 'dni'}`;
+const PRIO_LABEL = { 1: 'najwyższy', 2: 'wysoki', 3: 'normalny', 4: 'niski', 5: 'najniższy' };
+function prioChip(p) { return `<span class="prio prio-${Math.min(5, Math.max(1, Number(p) || 3))}" title="Priorytet (1 = najwyższy)">P${esc(p)} · ${esc(PRIO_LABEL[p] || '')}</span>`; }
+// termin: ile dni zostało albo ile po terminie
+function dueInfo(due, today, done = false) {
+  if (!due) return { text: 'brak terminu', cls: '' };
+  if (done) return { text: 'zakończony', cls: 'ok' };
+  const n = daysBetween(today, due);
+  if (n < 0) return { text: `${dniPl(-n)} po terminie`, cls: 'danger' };
+  if (n === 0) return { text: 'termin dziś', cls: 'danger' };
+  return { text: `za ${dniPl(n)}`, cls: n <= 3 ? 'warn' : '' };
+}
+// stan względem planu w jednym zdaniu
+function planState(s) {
+  if (!s) return { label: 'brak danych', cls: '', text: '' };
+  const lvl = DELAY_LEVEL[s.level] || DELAY_LEVEL.brak_danych;
+  const text = s.planned_percent === null || s.planned_percent === undefined ? (s.note || '')
+    : s.delay_pct > 0 ? `opóźnienie ${s.delay_pct}%${s.level === 'zgodnie' ? ' (w tolerancji)' : ''}` : s.ahead_pct > 0 ? `przed planem ${s.ahead_pct}%` : 'zgodnie z planem';
+  const extra = s.overdue_tasks ? ` · zadania po terminie: ${s.overdue_tasks}` : '';
+  return { label: lvl[0], cls: lvl[1], text: text + extra, late: s.level === 'opozniony' || s.level === 'zagrozony', done: s.level === 'zakonczony' };
+}
+// pasek postępu: wykonano / pozostało + znacznik planu na dziś
+function progressBig(s, prog, exec) {
+  const a = s && s.actual_percent !== null && s.actual_percent !== undefined ? s.actual_percent : null;
+  const pl = s && s.planned_percent !== null && s.planned_percent !== undefined ? s.planned_percent : null;
+  const late = !!(s && (s.level === 'opozniony' || s.level === 'zagrozony'));
+  return `<div class="mi-prog">
+    <div class="mi-prog-head"><div><b>${a === null ? '—' : `${a}%`}</b><span>wykonano</span></div><div class="right"><b>${a === null ? '—' : `${100 - a}%`}</b><span>pozostało</span></div></div>
+    <div class="mi-track ${late ? 'late' : ''}" role="progressbar" aria-label="Postęp projektu" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a ?? 0}">
+      <div class="fill" style="width:${a ?? 0}%"></div>${pl !== null ? `<i class="plan-mark" style="left:${Math.min(100, pl)}%" title="Plan na dziś ${pl}%"></i>` : ''}</div>
+    ${pl !== null ? `<p class="mi-prog-note small"><span class="pm-key"></span> plan na dziś <b>${pl}%</b>${late ? ` · brakuje <b>${pl - a}%</b>` : a !== null && a > pl ? ` · zapas <b>${a - pl}%</b>` : ''}</p>` : ''}
+    <div class="mi-sub"><span>Przygotowanie programu</span><div class="mini"><i style="width:${prog?.percent ?? 0}%"></i></div><b>${prog?.percent ?? '—'}${prog?.percent != null ? '%' : ''}</b>
+      <span>Wykonanie detalu</span><div class="mini exec"><i style="width:${exec?.percent ?? 0}%"></i></div><b>${exec?.percent ?? '—'}${exec?.percent != null ? '%' : ''}</b></div>
+  </div>`;
+}
+function machineInfo(b, today) {
+  const m = b.machine, th = machineTheme(m), p = b.project_full, st = b.project_start;
+  const blocked = b.block_reason || (b.project && b.project.blocked);
+  const fact = (label, value, extra = '') => `<div class="mi-fact ${extra}"><dt>${label}</dt><dd>${value}</dd></div>`;
+  let body;
+  if (p) {
+    const s = p.schedule, ps = planState(s), due = dueInfo(p.due_date, today, ps.done);
+    const startDate = st ? st.date : p.start_date;
+    const lasted = startDate && startDate <= today ? daysBetween(startDate, today) + 1 : null;
+    const work = startDate && startDate <= today ? workdaysIn(startDate, today) : null;
+    const planDays = p.start_date && p.due_date ? daysBetween(p.start_date, p.due_date) + 1 : null;
+    const h = p.hours;
+    const r = h ? hoursResult(h) : null;
+    const tech = (p.tech_data || []).filter(t => !t.stale);
+    const withAct = tech.filter(t => t.machine_actual_min != null);
+    const mEst = tech.reduce((a, t) => a + (t.machine_est_min || 0), 0), mAct = withAct.reduce((a, t) => a + t.machine_actual_min, 0);
+    const mEstDone = withAct.reduce((a, t) => a + (t.machine_est_min || 0), 0);
+    body = `
+      <div class="mi-proj">
+        <p class="mi-kicker">Aktualny projekt</p>
+        <h3><a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> · ${esc(p.part_no)} <span class="rev">rev ${esc(p.part_rev)}</span></a></h3>
+        <p class="small muted mi-desc">${esc(p.part_family || 'bez rodziny')}${p.description ? ` · ${esc(p.description)}` : ''}</p>
+        <div class="mi-chips">${tag(ps.label, ps.cls, ps.cls === 'warn' || ps.cls === 'danger' ? 'alert' : ps.cls === 'ok' ? 'check' : '')}${ps.text && ps.text !== ps.label ? `<span class="mi-state ${ps.cls}">${esc(ps.text)}</span>` : ''}${prioChip(p.priority)}${blocked ? tag(b.block_reason || p.block_reason || 'blokada', 'danger', 'block') : ''}${p.tasks && p.tasks.some(t => t.status === 'zablokowane') ? tag('zablokowane zadanie', 'warn', 'alert') : ''}</div>
+      </div>
+      ${progressBig(s, p.progress_program, p.progress_execution)}
+      <dl class="mi-facts">
+        ${fact(startDate && startDate > today ? 'Planowany start' : 'Rozpoczęty', startDate ? `<b>${DOW[weekday(startDate) - 1]} ${plDate(startDate)}</b>${st && st.shift ? `<br><span class="small">zmiana ${esc(st.shift.short || '')} ${esc(st.shift.start)}–${esc(st.shift.end)}</span>` : st && st.source === 'czas' ? '<br><span class="small muted">poza grafikiem</span>' : ''}${st && st.employee_id ? `<br>${person(st.employee_id)}` : ''}${st && st.source === 'projekt' ? '<br><span class="small muted">data z projektu</span>' : ''}` : '—')}
+        ${fact('Trwa', lasted ? `<b>${dniPl(lasted)}</b><br><span class="small muted">${work} dni rob.${planDays ? ` · plan wg dat projektu: ${dniPl(planDays)}` : ''}</span>` : '<span class="muted">jeszcze nie rozpoczęty</span>')}
+        ${fact('Termin', `<b>${plDate(p.due_date)}</b><br><span class="tag ${due.cls}">${esc(due.text)}</span>`, due.cls)}
+        ${fact('Przewidywany koniec', b.expected_end_at ? `<b>${esc(new Date(b.expected_end_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</b><br><span class="small muted">${esc(b.expected_end_source || '')}</span>` : '<span class="muted">brak danych</span>')}
+      </dl>
+      ${h ? `<div class="mi-time">
+        <h4>Czas programowania</h4>
+        <div class="mi-tiles">
+          <div><span>Przewidywany (plan)</span><b>${hShort(h.planned_min || null)}</b>${h.tasks_without_plan ? `<i>bez planu: ${h.tasks_without_plan} zad.</i>` : ''}</div>
+          <div><span>Rzeczywisty</span><b>${hShort(h.worked_min)}</b>${h.use_pct != null ? `<i>${h.use_pct}% planu</i>` : ''}${h.overtime_work_min ? `<i>w nadgodzinach ${hShort(h.overtime_work_min)} (${h.overtime_share_pct}%)</i>` : ''}</div>
+          <div class="${h.over_min > 0 ? 'bad' : ''}"><span>${h.over_min > 0 ? 'Ponad plan' : 'Pozostało'}</span><b>${hShort(h.over_min > 0 ? h.over_min : h.remaining_min)}</b>${h.forecast_min ? `<i>prognoza ${hShort(h.forecast_min)}</i>` : ''}</div>
+        </div>
+        ${r ? `<p class="small mi-result"><span class="result-chip ${r.cls}">${esc(r.big)}</span> ${esc(r.line)}</p>` : ''}
+      </div>` : ''}
+      ${tech.length ? `<p class="small mi-mtime">${icon('nc')} Czas maszyny (${tech.map(t => esc(t.operation_id)).join(', ')}): przewidywany <b>${hShort(mEst || null)}</b> · rzeczywisty <b>${withAct.length ? hShort(mAct) : '<span class="muted">brak danych</span>'}</b>${withAct.length && withAct.length < tech.length ? ` <span class="muted">(${withAct.length} z ${tech.length} operacji; przewidywany dla nich ${hShort(mEstDone || null)})</span>` : ''}</p>` : ''}`;
+  } else {
+    body = `<p class="muted small mi-none">Brak projektu na tej maszynie.</p>`;
+  }
+  return `<article class="mi theme-${th} ${blocked ? 'blocked' : ''}">
+    <header class="mi-head">
+      <div class="mi-emb">${machineEmblem(th, 46)}<b>${m.axes}X</b><span>${esc(m.control)}</span></div>
+      <div class="mi-mach"><div class="mi-name"><h2>${esc(m.name)} <span class="model">${esc(m.model || '')}</span></h2>${m.tool_holder ? `<span class="holder" title="Oprawki narzędziowe">${esc(m.tool_holder)}</span>` : ''}</div>
+        <details class="mi-params" open><summary>Parametry maszyny</summary><p class="small">${m.axes} osie · sterowanie ${esc(m.control)}${m.tool_holder ? ` · oprawki ${esc(m.tool_holder)}` : ''}${m.plate ? ` · ${esc(m.plate)}` : ''}${m.notes ? `<br>${esc(m.notes)}` : ''}</p></details></div>
+    </header>
+    <div class="mi-body">${body}
+      <dl class="mi-work">
+        <dt>Etap</dt><dd>${esc(b.stage || '—')}</dd>
+        <dt>Program NC</dt><dd>${b.project && b.project.nc_program ? `<span class="mono">${esc(b.project.nc_program)} · rev ${esc(b.project.nc_rev)}</span>` : '<span class="muted">brak danych</span>'}</dd>
+        <dt>Osoba</dt><dd>${b.assignee_id ? person(b.assignee_id) : '—'}</dd>
+        <dt>Następne zadanie</dt><dd>${b.next_task ? esc(b.next_task.title) : '—'}</dd>
+        <dt>Kolejny program</dt><dd>${tag(PROGRAM_STATUS[b.next_program_status] || 'brak', b.next_program_status === 'zweryfikowany' ? 'ok' : b.next_program_status === 'gotowy' ? 'accent' : '')}</dd>
+        ${p ? `<dt>Odpowiedzialni</dt><dd>${(p.responsible_ids || []).map(id => person(id)).join(', ') || '—'}</dd>
+        <dt>Projekt</dt><dd><span class="mono small">${esc(p.id)}</span> · ${esc(p.status)}</dd>` : ''}
+      </dl>
+      <p class="mi-links small no-print">${p ? `<a href="#/projekty/${encodeURIComponent(p.id)}">Otwórz projekt ›</a>` : ''}${isAdmin() ? `<a href="#/maszyny">${icon('board')}Zmień kartę maszyny</a>` : ''}</p>
+    </div></article>`;
+}
+// Terminy, priorytety i opóźnienia — wszystkie aktywne projekty, od najważniejszych
+function deadlinesPanel(list, today) {
+  const rows = [...list].sort((a, b) => (a.priority - b.priority) || String(a.due_date || '9999').localeCompare(String(b.due_date || '9999')));
+  return `<section class="panel dl-panel"><h3>Terminy, priorytety i opóźnienia</h3>
+    <p class="small muted">Aktywne projekty od najwyższego priorytetu, potem od najbliższego terminu.</p>
+    <ul class="dl-list">${rows.map(p => {
+      const ps = planState(p.schedule), due = dueInfo(p.due_date, today, planState(p.schedule).done), a = p.schedule ? p.schedule.actual_percent : null, pl = p.schedule ? p.schedule.planned_percent : null;
+      const r = p.hours ? hoursResult(p.hours) : null;
+      return `<li class="dl-row ${ps.cls}">
+        <div class="dl-proj">${prioChip(p.priority)}<a href="#/projekty/${encodeURIComponent(p.id)}"><span class="mono">${esc(p.order_no)}</span> · ${esc(p.part_no)}</a><span class="small muted">${esc(p.part_family || '')}</span></div>
+        <div class="dl-mach">${machineChip(p)}</div>
+        <div class="dl-due"><b>${plDate(p.due_date)}</b> <span class="tag ${due.cls}">${esc(due.text)}</span></div>
+        <div class="dl-prog"><div class="mi-track sm ${ps.late ? 'late' : ''} theme-${machineTheme(p)}"><div class="fill" style="width:${a ?? 0}%"></div>${pl !== null && pl !== undefined ? `<i class="plan-mark" style="left:${Math.min(100, pl)}%"></i>` : ''}</div><span class="small">${a === null || a === undefined ? '—' : `${a}%`}${pl !== null && pl !== undefined ? ` / plan ${pl}%` : ''}</span></div>
+        <div class="dl-state">${tag(ps.label, ps.cls)}${ps.text && ps.text !== ps.label ? ` <span class="small">${esc(ps.text)}</span>` : ''}${r && r.cls === 'over' ? ` <span class="result-chip over" title="${esc(r.line)}">${esc(r.big)}</span>` : ''}${p.blocked ? ` ${tag('blokada', 'danger', 'block')}` : ''}</div>
+      </li>`; }).join('') || '<li class="muted">Brak aktywnych projektów.</li>'}</ul></section>`;
+}
 function plate(b) {
   const m = b.machine;
   const p = b.project;

@@ -469,11 +469,13 @@ function buildRoutes() {
       out.pending_makeups = db.get(`SELECT COUNT(*) n FROM makeups WHERE status='oczekuje'`).n;
       out.pending_requests = db.get(`SELECT COUNT(*) n FROM requests WHERE status='nowe'`).n;
       out.orders_today = db.get(`SELECT COUNT(*) n, SUM(CASE WHEN ack_at IS NULL AND status='zaplanowane' THEN 1 ELSE 0 END) unread FROM work_orders WHERE work_date=? AND status != 'anulowane'`, d);
-      const ss = P.scheduleSettings(db);
       const withHours = can(user, 'view.efficiency');
-      out.delayed_projects = db.all(`SELECT id FROM projects WHERE status='aktywny'`).map(r => P.projectDetail(db, r.id, { withTimes: false, withHours }))
-        .filter(p => p.schedule.level === 'opozniony' || p.schedule.level === 'zagrozony' || (p.hours && (p.hours.over_min > 0 || (p.hours.done && p.hours.done.diff_min > 0))))
-        .map(p => ({ id: p.id, order_no: p.order_no, part_no: p.part_no, due_date: p.due_date, machine_id: p.machine_id, axes: p.axes, machine_name: p.machine_name, ...p.schedule, hours: p.hours, thresholds: ss }));
+      const active = db.all(`SELECT id FROM projects WHERE status='aktywny'`).map(r => P.projectDetail(db, r.id, { withTimes: false, withHours }));
+      // terminy, priorytety i opóźnienia wszystkich aktywnych projektów (Centrum programowania)
+      out.active_projects = active.map(p => ({ id: p.id, order_no: p.order_no, part_no: p.part_no, part_rev: p.part_rev, part_family: p.part_family,
+        machine_id: p.machine_id, machine_name: p.machine_name, axes: p.axes, start_date: p.start_date, due_date: p.due_date, priority: p.priority,
+        blocked: p.blocked, block_reason: p.block_reason, schedule: p.schedule,
+        hours: p.hours ? { planned_min: p.hours.planned_min, worked_min: p.hours.worked_min, remaining_min: p.hours.remaining_min, over_min: p.hours.over_min, done: p.hours.done } : null }));
       out.blocked_projects = db.all(`SELECT id, order_no, part_no, block_reason FROM projects WHERE blocked=1 AND status='aktywny'`);
     }
     return out;

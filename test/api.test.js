@@ -88,6 +88,14 @@ test('odmowa dostępu pracownika do raportów, API i eksportów; przełożony be
     assert.equal(csv.status, 200); assert.match(csv.headers.get('content-type'), /text\/csv/);
     assert.equal((await sup.call('POST', '/exits', { employee_id: e })).status, 403);
     assert.equal((await sup.call('GET', '/integration/cnc-process/export')).status, 403);
+    // Centrum programowania: terminy, priorytety i opóźnienia wszystkich aktywnych projektów
+    const tdy = await sup.call('GET', '/today');
+    assert.equal(tdy.status, 200);
+    assert.ok(Array.isArray(tdy.data.active_projects));
+    for (const ap of tdy.data.active_projects) {
+      assert.ok('priority' in ap && 'due_date' in ap && ap.schedule && 'actual_percent' in ap.schedule, 'pozycja ma priorytet, termin i stan planu');
+      assert.ok(!('tasks' in ap) && !('description' in ap), 'lista bez szczegółów zadań');
+    }
     const supExits = JSON.stringify((await sup.call('GET', '/exits?month=2026-10')).data);
     assert.ok(!supExits.includes('NOTATKA-POUFNA') && !supExits.includes('DOK-1'));
     const sup2 = client(base); await sup2.login('szef2');

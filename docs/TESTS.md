@@ -100,6 +100,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 27 — filtr rodzaju narzędzi, gwintowniki maszynowe / do otworów przelotowych (13.10.2026)
 **66 / 66 zaliczonych** (test gwintownika rozszerzony: wykonanie maszynowy / ręczny, otwory przelotowe / nieprzelotowe / uniwersalny, nieznana wartość → 400, frez do gwintów bez rodzaju otworu). Filtr „Rodzaj” w wyszukiwarce narzędzi: frezy (walcowo-czołowy, kulisty, torusowy, fazownik, wiertło, gwintownik, frez do gwintów), oprawki (ER, Weldon, termo, hydrauliczna, trzpieniowa), płytki (kształt) — z liczbą pozycji. Przegląd niezależny: 2 uwagi, poprawione. Zrzuty `152`–`154`.
 
+### Runda 28 — Centrum programowania: karta maszyny z pełną informacją o projekcie (13.10.2026)
+**66 / 66 zaliczonych** (test API: `/today` zwraca `active_projects` z priorytetem, terminem i stanem planu, bez zadań i opisów; programista nadal 403). Jedna karta na maszynę: parametry maszyny, aktualny projekt (nazwa, rodzina, opis), status planu i priorytet, pasek „wykonano / pozostało” ze znacznikiem planu na dziś, rozpoczęcie (dzień, zmiana, osoba), czas trwania (kalendarzowy i roboczy), termin z liczbą dni, przewidywany koniec, czas programowania (plan, rzeczywisty, pozostało / ponad plan, prognoza, nadgodziny), czas maszyny z danych technologicznych oraz dane z karty maszyny (etap, program NC, osoba, następne zadanie, kolejny program, blokada, odpowiedzialni). Pod maszynami panel „Terminy, priorytety i opóźnienia” dla wszystkich aktywnych projektów. Przegląd niezależny: 1 uwaga średnia (przepełnienie listy przy 761–1185 px) i 6 drobnych — poprawione. Skrypt `scripts/screenshots-r28.py` (1440 / 1024 / 412 px, przełożony). Zrzuty `160`, `161`, `162`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |
