@@ -8,15 +8,17 @@ const { bad, notFound, audit, reqStr, reqInt, oneOf } = require('../core');
 
 const KINDS = ['oprawka', 'glowica', 'plytka', 'frez'];
 const HOLDER_TYPES = ['tulejkowa', 'weldon', 'termo', 'hydrauliczna', 'trzpieniowa'];
-const MILL_TYPES = ['walcowo-czolowy', 'kulisty', 'torusowy', 'fazownik', 'wiertlo', 'gwintownik'];
+const MILL_TYPES = ['walcowo-czolowy', 'kulisty', 'torusowy', 'fazownik', 'wiertlo', 'gwintownik', 'frez-gwintowy'];
+const THREAD_TYPES = ['gwintownik', 'frez-gwintowy'];
 const SHAPES = ['A', 'C', 'D', 'R', 'S', 'T', 'V', 'W', 'O'];
 
-const num = (v, label, { min = 0, max = 2000, optional = true, int = false } = {}) => {
+const num = (v, label, { min = 0, max = 2000, optional = true, int = false, decimals = 2 } = {}) => {
   if (v === undefined || v === null || v === '') { if (optional) return null; throw bad(`Podaj: ${label}.`); }
   const n = Number(String(v).replace(',', '.'));
   if (!Number.isFinite(n) || n < min || n > max) throw bad(`${label}: wartość ${min}–${max}.`);
   if (int && !Number.isInteger(n)) throw bad(`${label}: liczba całkowita.`);
-  return Math.round(n * 100) / 100;
+  const f = 10 ** decimals;
+  return Math.round(n * f) / f;
 };
 // BT50, HSK40, HSK-A40 → porównywalna postać
 const normIface = (v) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^HSK[A-F](?=\d)/, 'HSK');
@@ -49,7 +51,12 @@ function normParams(kind, p = {}) {
   const r = type === 'torusowy' ? num(p.r, 'Promień naroża r (mm)', { max: 50 }) : null; // kulisty: r = D/2 z definicji
   if (r !== null && r > D / 2) throw bad('Promień naroża nie może być większy niż połowa średnicy.');
   // dane definiujące narzędzie: liczba ostrzy, długość ostrza (części skrawającej) i długość całkowita — obowiązkowe
-  const z = num(p.z, 'Liczba ostrzy z', { min: 1, max: 20, int: true, optional: false });
+  // gwintownik: bez liczby ostrzy; gwintownik i frez do gwintów: skok gwintu obowiązkowy
+  const z = type === 'gwintownik' ? null : num(p.z, 'Liczba ostrzy z', { min: 1, max: 20, int: true, optional: false });
+  const threaded = THREAD_TYPES.includes(type);
+  // skok z 4 miejscami po przecinku — gwinty calowe (np. 13 TPI = 1,9538 mm)
+  const pitch = threaded ? num(p.pitch, 'Skok gwintu P (mm)', { min: 0.1, max: 12, optional: false, decimals: 4 }) : null;
+  const thread = threaded ? txt(p.thread, 'Oznaczenie gwintu (np. M10, M10x1, G1/4)', 30) : null;
   const L = num(p.L, 'Długość całkowita L (mm)', { min: 1, max: 500, optional: false });
   const Lc = num(p.Lc, 'Długość ostrza Lc (mm)', { min: 0.1, max: 300, optional: type === 'fazownik' });
   const reach = type === 'fazownik' ? null : num(p.reach, 'Długość użyteczna l1 (mm)', { min: 0.1, max: 500 });
@@ -57,7 +64,7 @@ function normParams(kind, p = {}) {
   if (reach !== null && reach > L) throw bad('Długość użyteczna nie może być większa niż długość całkowita.');
   if (reach !== null && Lc !== null && reach < Lc) throw bad('Długość użyteczna (z szyjką) nie może być krótsza niż długość ostrza.');
   return {
-    type, D, z, shank: num(p.shank, 'Chwyt Ø (mm)', { min: 1, max: 50 }), Lc, reach, L,
+    type, D, z, pitch, thread, shank: num(p.shank, 'Chwyt Ø (mm)', { min: 1, max: 50 }), Lc, reach, L,
     r, angle: type === 'fazownik' || type === 'wiertlo' ? num(p.angle, 'Kąt (fazownik / wiertło, °)', { min: 30, max: 180 }) : null,
     material: txt(p.material, 'Materiał (VHM, HSS…)', 20), coating: txt(p.coating, 'Pokrycie', 30),
   };

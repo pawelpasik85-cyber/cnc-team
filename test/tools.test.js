@@ -132,6 +132,31 @@ test('narzędzia: ręczne przypisanie frezu do oprawek (w obie strony, w histori
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.er32] }, w.ids.head63), 400, /tylko do frezów/);
 });
 
+test('narzędzia: gwintownik bez liczby ostrzy, ze skokiem gwintu; frez do gwintów — ostrza i skok', () => {
+  const w = world();
+  const save = (params) => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'G', params: { D: 10, Lc: 20, L: 90, ...params } }).id;
+  const pr = (id) => JSON.parse(w.db.get('SELECT params FROM tools WHERE id=?', id).params);
+  throwsStatus(assert, () => save({ type: 'gwintownik' }), 400, /Skok gwintu/);
+  throwsStatus(assert, () => save({ type: 'gwintownik', pitch: 0 }), 400, /Skok gwintu/);
+  const tap = save({ type: 'gwintownik', pitch: '1,5', thread: 'M10', z: 4 });
+  assert.equal(pr(tap).pitch, 1.5); assert.equal(pr(tap).thread, 'M10');
+  assert.equal(pr(tap).z, null, 'liczba ostrzy nie jest zapisywana przy gwintowniku');
+  throwsStatus(assert, () => save({ type: 'frez-gwintowy', pitch: 1.5 }), 400, /ostrzy/);
+  throwsStatus(assert, () => save({ type: 'frez-gwintowy', z: 3 }), 400, /Skok gwintu/);
+  const tm = save({ type: 'frez-gwintowy', z: 3, pitch: 1.5, thread: 'M10' });
+  assert.deepEqual([pr(tm).z, pr(tm).pitch], [3, 1.5]);
+  assert.equal(pr(save({ type: 'gwintownik', pitch: 1.95380 })).pitch, 1.9538, 'skok calowy z 4 miejscami');
+  // migracja 014: dawny „gwintownik / frez do gwintów” z liczbą ostrzy → frez do gwintów; gwintownik bez ostrzy bez zmian
+  const now = new Date().toISOString();
+  const ins = (params) => Number(w.db.run(`INSERT INTO tools(kind,name,params,created_at,updated_at) VALUES ('frez','dawny',?,?,?)`, JSON.stringify(params), now, now).lastInsertRowid);
+  const oldMill = ins({ type: 'gwintownik', D: 7.8, z: 3 }), oldTap = ins({ type: 'gwintownik', D: 8, z: null });
+  w.db.exec(require('fs').readFileSync(require('path').join(__dirname, '../server/migrations/014_thread_mills.sql'), 'utf8'));
+  assert.equal(pr(oldMill).type, 'frez-gwintowy'); assert.equal(pr(oldTap).type, 'gwintownik');
+  // inne frezy nie mają skoku ani oznaczenia gwintu
+  const em = save({ type: 'walcowo-czolowy', z: 4, pitch: 1.5, thread: 'M10' });
+  assert.equal(pr(em).pitch, null); assert.equal(pr(em).thread, null);
+});
+
 test('narzędzia: przyjęcie / wydanie z powodem w historii, stan nie ujemny, wycofanie wymaga powodu', () => {
   const w = world();
   throwsStatus(assert, () => Tools.adjustStock(w.db, w.admin, w.ids.apmt11, { delta: 10 }), 400, /Powód/);

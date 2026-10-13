@@ -79,6 +79,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 20 — frezy przypisywane do oprawek ręcznie (13.10.2026)
 **65 / 65 zaliczonych.** Na prośbę kierownika usunięte automatyczne dopasowanie frez ↔ oprawka (po średnicy chwytu); kierownik zaznacza oprawki w edycji frezu (tabela `tool_links`, migracja 013). Test: przypisanie widoczne w obie strony i zapisane w historii; tylko oprawki z wykazu i tylko do frezów; edycja bez listy nie zmienia przypisań; przypisanie do oprawki wycofanej zostaje (wraca po przywróceniu), nowej wycofanej nie można dodać; programista nie widzi numerów wycofanych oprawek. Głowice ↔ oprawki i płytki — nadal z parametrów. Przegląd niezależny: 6 uwag, 5 poprawionych; świadomie bez blokady „frez Hartforda w oprawce Grimme” — przypisanie należy do zespołu. Zrzuty `113`, `120`.
 
+### Runda 21 — gwintowniki i frezy do gwintów (13.10.2026)
+**66 / 66 zaliczonych.** Uwaga kierownika: przy gwintowniku nie podaje się liczby ostrzy, potrzebny skok gwintu. Rozdzielone rodzaje: gwintownik (bez z) i frez do gwintów (z obowiązkowe); oba — skok gwintu P obowiązkowy (4 miejsca po przecinku dla gwintów calowych) i oznaczenie gwintu (np. M10x1). Migracja 014 przenosi dawne „gwintowniki” z liczbą ostrzy do frezów do gwintów. Rysunek: zwoje co skok, podpis „M8 P1,25”. Przegląd niezależny: 5 uwag, poprawione. Zrzuty `121`, `122`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

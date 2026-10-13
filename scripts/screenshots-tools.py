@@ -1,4 +1,4 @@
-"""Zrzuty: Narzędzia i oprawki (rundy 18–19). Użycie: python scripts/screenshots-tools.py http://127.0.0.1:3000 docs/screenshots — kod 1 przy błędach."""
+"""Zrzuty: Narzędzia i oprawki (rundy 18–21). Użycie: python scripts/screenshots-tools.py http://127.0.0.1:3000 docs/screenshots — kod 1 przy błędach."""
 import sys
 from playwright.sync_api import sync_playwright
 base, out = sys.argv[1], sys.argv[2]
@@ -36,6 +36,14 @@ with sync_playwright() as p:
     pg.locator("dialog[open] [data-f=holder_ids]").scroll_into_view_if_needed(); pg.wait_for_timeout(200); shot(pg, "120-narzedzia-frez-oprawki", full=False)
     if pg.locator("dialog[open] input[name=holder_ids]").count() < 5: errors.append("brak listy oprawek w formularzu frezu")
     if pg.locator("dialog[open] input[name=holder_ids]:checked").count() != 1: errors.append("zaznaczone przypisanie nie wczytane")
+    pg.goto(base + "/#/narzedzia?rodzaj=frez&szukaj=gwint"); pg.reload(); pg.wait_for_selector(".tl-card"); pg.wait_for_timeout(400); shot(pg, "121-narzedzia-gwintowniki", full=False)
+    pg.click("#addTool"); pg.wait_for_selector("dialog[open]")
+    pg.fill("dialog[open] input[name=name]", "Gwintownik M12"); pg.select_option("dialog[open] select[name=p_type]", "gwintownik"); pg.wait_for_timeout(150)
+    if pg.locator("dialog[open] [data-f=p_z]").is_visible(): errors.append("gwintownik: pole liczby ostrzy widoczne")
+    pg.fill("dialog[open] input[name=p_D]", "12"); pg.fill("dialog[open] input[name=p_pitch]", "1.75"); pg.fill("dialog[open] input[name=p_thread]", "M12"); pg.fill("dialog[open] input[name=p_Lc]", "20"); pg.fill("dialog[open] input[name=p_L]", "100")
+    pg.dispatch_event("dialog[open] form", "change"); pg.wait_for_timeout(200); shot(pg, "122-narzedzia-gwintownik-formularz", full=False)
+    pg.click("dialog[open] button[type=submit]"); pg.wait_for_timeout(800)
+    if pg.locator("dialog[open]").count(): errors.append("gwintownik nie zapisany: " + pg.inner_text("dialog[open] .form-error"))
     ctx.close()
     ctx, pg = mk(b, True); login(pg, "adam")
     shot(pg, "116-narzedzia-programista-telefon", "#/narzedzia?rodzaj=frez", full=False)

@@ -275,7 +275,8 @@ function seedTools(db, admin) {
   add('frez', 'Torusowy Ø10 R1', G, { type: 'torusowy', D: 10, z: 4, shank: 10, Lc: 20, L: 75, r: 1, material: 'VHM', coating: 'AlTiN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa G / szuflada 1' });
   add('frez', 'Fazownik 90° Ø12', null, { type: 'fazownik', D: 12, z: 4, shank: 12, L: 60, angle: 90, material: 'VHM', coating: 'TiN' }, { qty: 2, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
   add('frez', 'Wiertło VHM Ø8,5', null, { type: 'wiertlo', D: 8.5, z: 2, shank: 10, Lc: 40, L: 89, angle: 140, material: 'VHM', coating: 'TiAlN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
-  add('frez', 'Frez do gwintów M10', null, { type: 'gwintownik', D: 7.8, z: 3, shank: 10, Lc: 22, L: 70, material: 'VHM', coating: 'TiCN' }, { qty: 1, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
+  add('frez', 'Gwintownik M8', null, { type: 'gwintownik', D: 8, pitch: 1.25, thread: 'M8', shank: 8, Lc: 16, L: 90, material: 'HSS-E', coating: 'TiN' }, { qty: 3, min_qty: 2, manufacturer: 'Emuge', location: 'Szafa frezów 2' });
+  add('frez', 'Frez do gwintów M10', null, { type: 'frez-gwintowy', D: 7.8, z: 3, pitch: 1.5, thread: 'M10', shank: 10, Lc: 22, L: 70, material: 'VHM', coating: 'TiCN' }, { qty: 1, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
   // oprawki do frezów — przypisane ręcznie (jak w zespole)
   const id = (name) => db.get('SELECT id FROM tools WHERE name=?', name).id;
   const link = (mill, holders) => Tools.saveTool(db, admin, { holder_ids: holders.map(id) }, id(mill));
