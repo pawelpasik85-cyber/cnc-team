@@ -716,3 +716,25 @@ details.tl-low summary::-webkit-details-marker { display: none; }
   .tl-table .tl-pic-row svg.tool-svg { width: 100%; max-height: 120px; }
   .tl-table.k-frez td.tl-c-pic { grid-row: 1 / span 3; }
 }
+
+/* ---- Kalendarz: okienka szczegółów ---- */
+.ev-open { cursor: pointer; }
+.ev-tag.ev-open:hover { filter: brightness(.92); box-shadow: 0 0 0 1px var(--tone, #888); }
+.chip.ev.ev-open:hover { box-shadow: 0 0 0 2px var(--tone, var(--c-accent)); }
+.mc-open { border: 0; background: transparent; padding: 0 2px; margin: 0; font: inherit; color: inherit; cursor: pointer; border-radius: 3px; text-decoration: underline dotted; text-underline-offset: 2px; }
+.mc-open:hover, .mc-open:focus-visible { background: color-mix(in srgb, var(--m-mid, #888) 18%, transparent); }
+.info-dialog { width: min(640px, 96vw); }
+.info-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 var(--sp-3); }
+.info-dl dt { color: var(--c-ink-soft); }
+.info-dl dd { margin: 0; font-weight: 600; }
+.info-dialog h4 { margin: var(--sp-3) 0 var(--sp-1); }
+details.pm-group > summary { list-style: none; cursor: pointer; }
+details.pm-group > summary::-webkit-details-marker { display: none; }
+details.pm-closed { background: transparent; border-left-color: #8a949e; }
+details.pm-closed > summary b { color: var(--c-accent); }
+.pm-quick { display: grid; grid-template-columns: 1fr 110px auto; gap: var(--sp-2); align-items: end; margin-top: var(--sp-2); }
+@media (max-width: 520px) { .pm-quick { grid-template-columns: 1fr 1fr; } .pm-quick .wide { grid-column: 1 / -1; } }
+fieldset.seg { border: 1px solid var(--c-line); border-radius: var(--r-md); padding: 6px 10px; display: flex; gap: 16px; flex-wrap: wrap; margin: 0; }
+fieldset.seg legend { padding: 0 4px; font-size: var(--fs-sm); color: var(--c-ink-soft); }
+fieldset.seg label.inline { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.leave-sum { margin: 0; padding: 8px 10px; border-radius: var(--r-md); background: color-mix(in srgb, #1e9e5a 10%, var(--c-surface)); border-left: 4px solid #1e9e5a; }

@@ -27,15 +27,23 @@ function orderCard(o, { admin = false, mine = false, grouped = false, first = fa
 }
 
 // Polecenia jednej osoby podzielone na maszyny; „Inna praca” (bez maszyny) pokazywana tylko, gdy coś w niej jest
-function machineGroups(orders, { admin = false, mine = false, employeeId = null } = {}) {
+function machineGroups(orders, { admin = false, mine = false, employeeId = null, date = '' } = {}) {
   const groups = S.boot.machines.filter(m => m.active !== 0).map(m => ({ key: m.id, title: m.name, sub: `${m.axes}X · ${m.control}`, theme: machineTheme(m), list: orders.filter(o => o.machine_id === m.id) }));
   const other = orders.filter(o => !o.machine_id || !groups.some(g => g.key === o.machine_id));
   const box = (g) => `<div class="pm-group ${g.theme ? `theme-${g.theme}` : 'pm-other'}">
       <div class="pm-head">${g.theme ? machineEmblem(g.theme, 22) : icon('list')}<b>${esc(g.title)}</b>${g.sub ? `<span class="small muted">${esc(g.sub)}</span>` : ''}
         ${admin ? `<button type="button" class="link no-print pm-add" data-add-o="${employeeId}" data-machine="${esc(g.key)}">${icon('plus')}Polecenie</button>` : ''}</div>
       <ol class="orders">${g.list.map((o, k) => orderCard(o, { admin, mine, grouped: true, first: k === 0, last: k === g.list.length - 1 })).join('') || '<li class="muted small empty-orders">—</li>'}</ol></div>`;
-  return `${groups.filter(g => !mine || g.list.length).map(box).join('')}${other.length ? box({ key: '', title: 'Inna praca', sub: 'poza maszynami', theme: '', list: other })
-    : admin ? `<button type="button" class="link no-print pm-other-add" data-add-o="${employeeId}" data-machine="">${icon('plus')}Inna praca (poza maszynami)</button>` : ''}`;
+  // „Inna praca”: okno otwierane w razie potrzeby — kierownik wpisuje pozostałe obowiązki na zmianę od razu w okienku
+  const quick = admin ? `<form class="pm-quick no-print" data-quick="${employeeId}" data-date="${esc(date)}">
+      <label class="field wide">Obowiązek na zmianę<input name="title" required maxlength="200" placeholder="np. porządek w bibliotece narzędzi, dokumentacja, szkolenie"></label>
+      <label class="field">Czas (h)<input name="h" type="number" min="0" max="16" step="0.25" inputmode="decimal" placeholder="opcjonalnie"></label>
+      <button type="submit" class="primary">${icon('plus')}Dodaj</button></form>` : '';
+  const otherBox = other.length
+    ? `<details class="pm-group pm-other" open><summary class="pm-head">${icon('list')}<b>Inna praca</b><span class="small muted">pozostałe obowiązki na zmianę</span></summary>
+        <ol class="orders">${other.map((o, k) => orderCard(o, { admin, mine, grouped: true, first: k === 0, last: k === other.length - 1 })).join('')}</ol>${quick}</details>`
+    : admin ? `<details class="pm-group pm-other pm-closed no-print"><summary class="pm-head">${icon('plus')}<b>Inna praca</b><span class="small muted">otwórz, aby wpisać pozostałe obowiązki na zmianę</span></summary>${quick}</details>` : '';
+  return `${groups.map(box).join('')}${otherBox}`;
 }
 
 function orderForm(o = {}, ctx = {}) {
@@ -85,7 +93,7 @@ VIEWS.plan = async (main) => {
       <div class="plan-head">${person(e.employee_id)}<span class="small">${shiftTxt}</span>${e.absence ? tag(e.absence, 'warn', 'absence') : ''}</div>
       <div class="load ${e.load_pct > 100 ? 'over' : ''}" title="Plan poleceń wobec długości zmiany"><div class="track"><div class="fill" style="width:${Math.min(100, load)}%"></div></div>
         <span class="small">${hShort(e.planned_min)} z ${e.shift_min ? hShort(e.shift_min) : '—'}${e.load_pct !== null ? ` · ${e.load_pct}%` : ''}${e.unread ? ` · <b class="bad">nieprzeczytane: ${e.unread}</b>` : ''}</span></div>
-      ${machineGroups(e.orders, { admin, employeeId: e.employee_id })}
+      ${machineGroups(e.orders, { admin, employeeId: e.employee_id, date })}
     </section>`;
   }).join('');
   main.innerHTML = head('Plan pracy', `Polecenia na ${plDate(date)} (${DOW[weekday(date) - 1]}). Programista widzi swoje polecenia w aplikacji i potwierdza przeczytanie.`,
@@ -98,6 +106,13 @@ VIEWS.plan = async (main) => {
   const all = plan.employees.flatMap(e => e.orders);
   const ctx = { date, projects };
   $$('[data-add-o]').forEach(b => b.onclick = () => orderForm({}, { ...ctx, employee_id: Number(b.dataset.addO), machine_id: b.dataset.machine }));
+  $$('form[data-quick]').forEach(f => f.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const h = Number(String(f.elements.h.value || '').replace(',', '.'));
+    const btnEl = $('button[type=submit]', f); btnEl.disabled = true;
+    try { await post('/work-orders', { employee_id: Number(f.dataset.quick), work_date: f.dataset.date, title: f.elements.title.value.trim(), machine_id: null, planned_min: h > 0 ? Math.round(h * 60) : null }); }
+    catch (err) { toast(describeError(err), 'err'); btnEl.disabled = false; }
+  }));
   $$('[data-edit-o]').forEach(b => b.onclick = () => orderForm(all.find(o => o.id === Number(b.dataset.editO)), ctx));
   $$('[data-up]').forEach(b => b.onclick = () => post(`/work-orders/${b.dataset.up}/move`, { dir: 'up' }));
   $$('[data-down]').forEach(b => b.onclick = () => post(`/work-orders/${b.dataset.down}/move`, { dir: 'down' }));

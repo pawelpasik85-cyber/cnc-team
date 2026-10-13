@@ -88,6 +88,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 23 — uwagi po obejrzeniu na telefonie (13.10.2026)
 **66 / 66 zaliczonych.** Plan pracy podzielony na Hartford i Grimme, „Inna praca” jako sekcja dodawana tylko w razie potrzeby; zmiana kolejności poleceń w obrębie tej samej maszyny (test zaktualizowany: „inna praca” nie przeskakuje do Grimme). Rodzaje urlopu i nieobecności w jednolitych kolorach (kalendarz, kalendarz urlopów, karty, zgłoszenia, lista). Karta pracownika: tylko saldo do odrobienia, urlopy i nieobecności. Narzędzia: dane wyraźniej niż rysunek, na telefonie wiersz poziomo. Dane demo: zmiana I 06:00–14:00 dla wszystkich (bez etatu 7/8), polecenia w planie. Wersja pokazowa: logowanie własnym kontem (bez wyboru roli). Przegląd niezależny: 7 uwag, 6 poprawionych; 12-godzinna zmiana w danych demo zostaje celowo (zastępstwo za L4). Zrzuty `130`–`138`.
 
+### Runda 24 — okienka w kalendarzu, stały podział planu, prośba o urlop (13.10.2026)
+**66 / 66 zaliczonych** (zmiany w interfejsie). Kalendarz: kliknięcie nieobecności / zdarzenia otwiera okienko ze szczegółami (rodzaj w kolorze, termin, status; pracownik widzi tylko etykietę dopuszczoną przez serwer); kierownik i przełożony — kliknięcie tematu na maszynie otwiera okienko projektu (praca w tym dniu, postęp, otwarte zadania, opis). Plan pracy: Hartford i Grimme zawsze (także u programisty), „Inna praca” jako okno otwierane, z szybkim wpisaniem obowiązku. Zgłoś kierownikowi: „Urlop” — rodzaj, termin od – do albo liczba dni roboczych (weekendy i święta pomijane, początek przesuwany na dzień roboczy). Skrypt `scripts/screenshots-r24.py` sprawdza te ścieżki klikaniem. Przegląd niezależny: 6 uwag, poprawione (zamykanie okienka przy przejściu, długość uwagi, klawiatura, zablokowane zadania, urlop od weekendu, drobne). Zrzuty `140`–`146`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

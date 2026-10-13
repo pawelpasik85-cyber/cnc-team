@@ -2,6 +2,7 @@
 'use strict';
 
 const REQ_KIND = {
+  urlop: ['Urlop', 'leave', 'Od – do albo liczba dni'],
   spoznienie: ['Spóźnienie', 'today', 'O której przyjdziesz do pracy'],
   nieobecnosc: ['Nieobecność', 'absence', 'Cały dzień lub kilka dni'],
   wyjscie: ['Wyjście w trakcie zmiany', 'exit', 'Od której do której'],
@@ -21,8 +22,27 @@ function leaveChip(code) {
 }
 const REQ_STATUS = { nowe: ['czeka na decyzję', 'warn'], przyjete: ['przyjęte', 'ok'], odrzucone: ['odrzucone', 'danger'], wycofane: ['wycofane', ''] };
 
+// dni robocze (pn–pt bez świąt) w zakresie dat — do urlopu „od – do” i „liczba dni”
+function workdaysIn(from, to) {
+  const hol = new Set((S.boot.holidays || []).map(h => h.date));
+  let n = 0;
+  for (let d = from; d <= to; d = addDays(d, 1)) if (weekday(d) <= 5 && !hol.has(d)) n++;
+  return n;
+}
+// koniec urlopu po N dniach roboczych licząc od dnia początku (weekendy i święta pomijane)
+function endAfterWorkdays(from, n) {
+  const hol = new Set((S.boot.holidays || []).map(h => h.date));
+  let d = from, left = n, guard = 0;
+  while (guard++ < 400) {
+    if (weekday(d) <= 5 && !hol.has(d)) { left--; if (left <= 0) return d; }
+    d = addDays(d, 1);
+  }
+  return d;
+}
+const LEAVE_CODES = ['URLOP_WYP', 'URLOP_NA_ZADANIE', 'BEZPLATNY', 'OKOL_SLUB', 'OKOL_NARODZINY', 'OKOL_ZGON_BLISKI', 'OKOL_SLUB_DZIECKA', 'OKOL_ZGON_DALSZY'];
 function reqWhen(r) {
-  const d = `${plDate(r.date_from)}${r.date_to && r.date_to !== r.date_from ? ` – ${plDate(r.date_to)}` : ''}`;
+  const multi = r.kind === 'nieobecnosc' && LEAVE_CODES.includes(r.wanted_code) && r.date_to && r.date_to !== r.date_from;
+  const d = `${plDate(r.date_from)}${r.date_to && r.date_to !== r.date_from ? ` – ${plDate(r.date_to)}` : ''}${multi ? ` <span class="muted">(${workdaysIn(r.date_from, r.date_to)} dni rob.)</span>` : ''}`;
   if (r.kind === 'spoznienie') return `${d}${r.time_to ? ` · przyjście ${esc(r.time_to)}` : ''}`;
   return `${d}${r.time_from ? ` · ${esc(r.time_from)}–${esc(r.time_to || '')}` : ''}`;
 }
@@ -37,8 +57,15 @@ VIEWS.zglos = async (main) => {
       <div class="kind-pick" role="radiogroup" aria-label="Rodzaj zgłoszenia">${Object.entries(REQ_KIND).map(([k, [l, ic, hint]]) =>
         `<button type="button" class="kind" data-kind="${k}" role="radio" aria-checked="false">${icon(ic)}<b>${esc(l)}</b><span class="small muted">${esc(hint)}</span></button>`).join('')}</div>
       <form id="reqF" class="form-grid" hidden>
-        <label class="field">Dzień<input type="date" name="date_from" required value="${S.me.today}"></label>
-        <label class="field" data-show="nieobecnosc">Do dnia (opcjonalnie)<input type="date" name="date_to"></label>
+        <label class="field wide" data-show="urlop">Rodzaj urlopu<select name="leave_code">${LEAVE_CODES.map(k => `<option value="${k}">${esc(WANTED_LABEL[k])}</option>`).join('')}</select>
+          <span class="help">To prośba — urlop przyznaje i wpisuje kierownik.</span></label>
+        <fieldset class="field wide seg" data-show="urlop"><legend>Jak podajesz termin</legend>
+          <label class="inline"><input type="radio" name="lmode" value="od" checked> od – do</label>
+          <label class="inline"><input type="radio" name="lmode" value="dni"> liczba dni</label></fieldset>
+        <label class="field"><span data-dlbl>Dzień</span><input type="date" name="date_from" required value="${S.me.today}"></label>
+        <label class="field" data-show="nieobecnosc urlop" data-lm="od"><span data-tlbl>Do dnia (opcjonalnie)</span><input type="date" name="date_to"></label>
+        <label class="field" data-show="urlop" data-lm="dni">Liczba dni roboczych<input type="number" name="days" min="1" max="40" step="1" inputmode="numeric" placeholder="np. 5"></label>
+        <p class="wide small leave-sum" data-show="urlop" aria-live="polite"></p>
         <label class="field wide" data-show="nieobecnosc">O jaki rodzaj prosisz<select name="wanted_code"><option value="">— nie wiem / opiszę w uwadze —</option>${Object.entries(WANTED_LABEL).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
           <span class="help">Zaznaczasz tylko prośbę — urlop przyznaje i wpisuje kierownik.</span></label>
         <label class="field" data-show="wyjscie odrobienie nieobecnosc inne">Od godz.<input type="time" name="time_from"></label>
@@ -48,7 +75,7 @@ VIEWS.zglos = async (main) => {
         <div class="form-error wide" role="alert"></div>
       </form></section>
       <section class="panel"><h3>Moje zgłoszenia</h3>${table([
-        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(REQ_KIND[r.kind][0])}</b>${r.wanted_code ? ` ${leaveChip(r.wanted_code)}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
+        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(LEAVE_CODES.includes(r.wanted_code) ? 'Urlop' : REQ_KIND[r.kind][0])}</b>${r.wanted_code ? ` ${leaveChip(r.wanted_code)}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
         { key: r => r, label: 'Decyzja', fmt: r => `${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small">${esc(r.decision_note)}</span>` : ''}${r.decided_at ? `<br><span class="small muted">${new Date(r.decided_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })}</span>` : ''}` },
         { key: r => r, label: '', fmt: r => r.status === 'nowe' ? `<button class="link" data-withdraw="${r.id}">Wycofaj</button>` : '' },
       ], list, { empty: 'Nie masz jeszcze zgłoszeń.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section></div>`;
@@ -60,14 +87,47 @@ VIEWS.zglos = async (main) => {
     f.hidden = false;
     $$('[data-show]', f).forEach(el => el.classList.toggle('hidden', !el.dataset.show.split(' ').includes(kind)));
     $('[data-lbl]', f).textContent = kind === 'spoznienie' ? 'Przyjdę o godz.' : 'Do godz.';
+    $('[data-dlbl]', f).textContent = kind === 'urlop' ? 'Od dnia' : 'Dzień';
+    $('[data-tlbl]', f).textContent = kind === 'urlop' ? 'Do dnia' : 'Do dnia (opcjonalnie)';
+    leaveSync();
     f.date_from.focus();
   });
+  // urlop: od – do albo liczba dni roboczych (koniec liczony z pominięciem weekendów i świąt)
+  const leaveRange = () => {
+    let from = f.date_from.value; if (!from) return null;
+    const hol = new Set((S.boot.holidays || []).map(h => h.date));
+    for (let g = 0; g < 14 && (weekday(from) > 5 || hol.has(from)); g++) from = addDays(from, 1); // urlop zaczyna się w pierwszym dniu roboczym
+    const mode = (f.querySelector('input[name=lmode]:checked') || {}).value || 'od';
+    if (mode === 'dni') { const n = Math.floor(Number(f.days.value)); return n >= 1 ? { from, to: endAfterWorkdays(from, n), days: n } : null; }
+    const to = f.date_to.value || from;
+    return to >= from ? { from, to, days: workdaysIn(from, to) } : null;
+  };
+  function leaveSync() {
+    if (kind !== 'urlop') return;
+    const mode = (f.querySelector('input[name=lmode]:checked') || {}).value || 'od';
+    $$('[data-lm]', f).forEach(el => el.classList.toggle('hidden', el.dataset.lm !== mode || !el.dataset.show.split(' ').includes(kind)));
+    const r = leaveRange();
+    $('.leave-sum', f).innerHTML = r ? `Urlop: <b>${plDate(r.from)} – ${plDate(r.to)}</b> · <b>${r.days}</b> ${r.days === 1 ? 'dzień roboczy' : 'dni roboczych'} (bez weekendów i świąt)` : '<span class="muted">Podaj termin.</span>';
+  }
+  f.addEventListener('input', leaveSync); f.addEventListener('change', leaveSync);
   f.onsubmit = async (e) => {
     e.preventDefault();
     const btn = $('button[type=submit]', f); btn.disabled = true; $('.form-error', f).textContent = '';
-    const v = Object.fromEntries([...new FormData(f)].filter(([, x]) => x !== ''));
+    const raw = Object.fromEntries([...new FormData(f)].filter(([, x]) => x !== ''));
+    const { leave_code: leaveCode, lmode, days, ...v } = raw;
+    let sendKind = kind;
+    if (kind === 'urlop') {
+      const r = leaveRange();
+      if (!r) { $('.form-error', f).textContent = 'Podaj termin urlopu: od – do albo liczbę dni.'; btn.disabled = false; return; }
+      if (r.days < 1) { $('.form-error', f).textContent = 'W tym terminie nie ma dni roboczych.'; btn.disabled = false; return; }
+      sendKind = 'nieobecnosc'; v.date_from = r.from; v.date_to = r.to; v.wanted_code = leaveCode || 'URLOP_WYP';
+      delete v.time_from; delete v.time_to;
+      const prefix = `Urlop: ${r.days} ${r.days === 1 ? 'dzień roboczy' : 'dni roboczych'}`;
+      v.note = v.note ? `${prefix}. ${v.note}`.slice(0, 500) : prefix;
+    }
+    void lmode; void days;
     try {
-      await api('/requests', { method: 'POST', body: { kind, ...v, client_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) } });
+      await api('/requests', { method: 'POST', body: { ...v, kind: sendKind, client_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) } });
       toast('Wysłano. Kierownik zobaczy zgłoszenie.'); setTimeout(rerender, 50);
     } catch (err) { $('.form-error', f).textContent = describeError(err); btn.disabled = false; }
   };
@@ -87,7 +147,7 @@ async function localRequestsSection() {
   const list = await api('/requests');
   const html = `<section class="panel"><h3>Zgłoszenia pracowników</h3>${table([
     { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) },
-    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])}${r.wanted_code ? `<br><span class="small">prośba: ${leaveChip(r.wanted_code)}</span>` : ''}` },
+    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(LEAVE_CODES.includes(r.wanted_code) ? 'Urlop' : REQ_KIND[r.kind][0])}${r.wanted_code ? `<br><span class="small">prośba: ${leaveChip(r.wanted_code)}</span>` : ''}` },
     { key: r => r, label: 'Kiedy', fmt: r => reqWhen(r) },
     { key: 'note', label: 'Uwaga pracownika' },
     { key: r => new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Zgłoszono' },

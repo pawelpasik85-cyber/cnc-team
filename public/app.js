@@ -283,7 +283,56 @@ function plate(b) {
 
 // ---------- Kalendarz ----------
 const EVENT_ICON = { nieobecnosc: 'absence', wyjscie: 'exit', odrabianie: 'makeup', przekazanie: 'handover' };
+// Zdarzenia narysowane w kalendarzu (do okienka ze szczegółami po kliknięciu)
+let CAL_EV = [];
+const calEv = (ev) => { CAL_EV.push(ev); return CAL_EV.length - 1; };
+// Proste okno informacyjne (bez formularza)
+function infoDialog(title, html) {
+  const dlg = document.createElement('dialog');
+  dlg.className = 'info-dialog';
+  dlg.innerHTML = `<form method="dialog"><header><h3>${esc(title)}</h3><button type="button" class="link" data-close aria-label="Zamknij">✕</button></header><div class="content">${html}</div><footer><button type="button" class="primary" data-close>Zamknij</button></footer></form>`;
+  document.body.appendChild(dlg);
+  const back = document.activeElement;
+  const close = () => { dlg.close(); dlg.remove(); if (back && back.isConnected && back.focus) back.focus(); };
+  $$('[data-close]', dlg).forEach(b => b.addEventListener('click', close));
+  $$('a[href^="#"]', dlg).forEach(a => a.addEventListener('click', () => { dlg.close(); dlg.remove(); })); // przejście do innej strony zamyka okno
+  dlg.addEventListener('cancel', () => { dlg.remove(); if (back && back.isConnected && back.focus) back.focus(); });
+  dlg.showModal();
+  return dlg;
+}
+const EV_KIND_LABEL = { nieobecnosc: 'Nieobecność', wyjscie: 'Wyjście prywatne', odrabianie: 'Odrabianie', przekazanie: 'Przekazanie zmiany' };
+// Okienko: co to za nieobecność / zdarzenie (pracownik widzi tylko to, co pozwala jego uprawnienie — etykieta z serwera)
+function eventInfo(ev) {
+  const e = S.emp.get(ev.employee_id);
+  const range = ev.end_date && ev.end_date !== ev.date ? `${DOW[weekday(ev.date) - 1]} ${plDate(ev.date)} – ${DOW[weekday(ev.end_date) - 1]} ${plDate(ev.end_date)} (${daysBetween(ev.date, ev.end_date) + 1} dni kalendarzowych)` : `${DOW[weekday(ev.date) - 1]} ${plDate(ev.date)}`;
+  const rows = [
+    ['Osoba', e ? person(ev.employee_id) : '—'],
+    ['Rodzaj', ev.kind === 'nieobecnosc' ? `<span class="leave-chip ${evTone(ev)}">${esc(ev.label)}</span>` : `<span class="leave-chip ${evTone(ev)}">${esc(EV_KIND_LABEL[ev.kind] || ev.label)}</span>`],
+    ['Kiedy', esc(range)],
+    ev.time ? ['Godziny', esc(ev.time)] : null,
+    ev.status ? ['Status', esc(ev.status)] : null,
+    ev.minutes ? [ev.kind === 'nieobecnosc' ? 'Czas wg grafiku' : 'Czas', esc(hShort(ev.minutes))] : null,
+    ev.kind !== 'nieobecnosc' && ev.label && ev.label !== EV_KIND_LABEL[ev.kind] ? ['Opis', esc(ev.label)] : null,
+  ].filter(Boolean);
+  infoDialog(EV_KIND_LABEL[ev.kind] || 'Zdarzenie', `<dl class="info-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    ${isAdmin() && ev.kind === 'nieobecnosc' ? `<p class="small"><a href="#/absencje?t=lista">Urlopy i absencje — lista wpisów ›</a></p>` : ''}`);
+}
+// Okienko: temat na maszynie w danym dniu — dla kierownika i przełożonego
+async function machineTopicInfo(projectId, date, machineId, item) {
+  const m = S.boot.machines.find(x => x.id === machineId);
+  let p = null;
+  try { p = await api(`/projects/${encodeURIComponent(projectId)}`); } catch (err) { toast(describeError(err), 'err'); return; }
+  const open = (p.tasks || []).filter(t => t.status !== 'zakonczone' && t.status !== 'anulowane');
+  const shifts = item && item.shifts && item.shifts.length ? item.shifts.map(sh => `<li>zmiana <b>${esc(sh.short)}</b>${sh.start && sh.start !== '99' ? ` od ${esc(sh.start)}` : ''}: ${sh.employees.map(id => person(id)).join(', ')}${sh.minutes ? ` · ${esc(hShort(sh.minutes))}` : ''}</li>`).join('') : '';
+  infoDialog(`${m ? m.name : 'Maszyna'} — ${plDate(date)}`, `
+    ${shifts ? `<h4>Praca w tym dniu</h4><ul class="plain">${shifts}</ul>` : '<p class="small muted">W tym dniu bez wpisów czasu pracy — projekt w toku / obecnie na maszynie.</p>'}
+    ${typeof projectCard === 'function' ? projectCard(p) : ''}
+    ${p.description ? `<h4>Opis</h4><p>${esc(p.description)}</p>` : ''}
+    ${open.length ? `<h4>Otwarte zadania</h4><ul class="plain">${open.slice(0, 6).map(t => `<li><b>${esc(t.title)}</b>${t.assignee_id ? ` · ${person(t.assignee_id)}` : ''}${t.due_date ? ` · termin ${plDate(t.due_date)}` : ''}${t.status === 'zablokowane' ? ` ${tag('zablokowane', 'warn', 'block')}` : ''}</li>`).join('')}</ul>` : ''}
+    <p><a class="btn" href="#/projekty/${encodeURIComponent(p.id)}">Otwórz projekt ›</a></p>`);
+}
 VIEWS.kalendarz = async (main) => {
+  CAL_EV = [];
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const mode = q.get('tryb') || 'miesiac';
   const anchor = q.get('data') || S.me.today;
@@ -299,7 +348,11 @@ VIEWS.kalendarz = async (main) => {
     const r = mcal.find(x => x.date === d && x.machine_id === m.id) || { mode: 'brak', items: [] };
     const th = machineTheme(m);
     const tip = r.items.length ? r.items.map(i => `${i.order_no} ${i.part_no}${i.shifts.length ? `: ${i.shifts.map(sh => `zmiana ${sh.short} (${sh.employees.map(id => { const e = S.emp.get(id); return e ? `${e.first_name} ${e.last_name}` : ''; }).join(', ')})`).join('; ')}` : ''}`).join(' | ') : '';
-    return `<div class="mc-row theme-${th} mc-${r.mode}" title="${esc(`${m.name} — ${MC_MODE[r.mode]}${tip ? `: ${tip}` : ''}`)}">${machineEmblem(th, 16)}<b>${esc(m.name)}</b>${r.items.length ? r.items.map(i => `<span class="mc-item"><span class="mono">${esc(i.order_no)}</span>${i.shifts.map(sh => `<i>${esc(sh.short)}</i>`).join('')}</span>`).join('') : '<span class="muted">—</span>'}</div>`;
+    return `<div class="mc-row theme-${th} mc-${r.mode}" title="${esc(`${m.name} — ${MC_MODE[r.mode]}${tip ? `: ${tip}` : ''}`)}">${machineEmblem(th, 16)}<b>${esc(m.name)}</b>${r.items.length ? r.items.map(i => {
+      const inner = `<span class="mono">${esc(i.order_no)}</span>${i.shifts.map(sh => `<i>${esc(sh.short)}</i>`).join('')}`;
+      // kierownik i przełożony: kliknięcie otwiera okienko z rozszerzonym opisem tematu
+      return isEmployee() ? `<span class="mc-item">${inner}</span>` : `<button type="button" class="mc-item mc-open" data-mc="${esc(i.project_id)}" data-mcd="${d}" data-mcm="${esc(m.id)}" title="Szczegóły tematu">${inner}</button>`;
+    }).join('') : '<span class="muted">—</span>'}</div>`;
   }).join('');
   const holidays = new Map(S.boot.holidays.map(h => [h.date, h.name]));
   const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t]));
@@ -318,7 +371,7 @@ VIEWS.kalendarz = async (main) => {
       <div class="num" data-dow="${DOW[weekday(d) - 1]}, ${plDate(d)}"><span class="desk-only">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}</div>
       ${view !== 'ludzie' ? machineRows(d) : ''}
       ${view !== 'maszyny' ? daySched.map(s => shiftChip(s, tpl, dayEv.filter(ev => ev.employee_id === s.employee_id))).join('') : ''}
-      ${view === 'maszyny' ? '' : ''}${dayEv.filter(ev => view !== 'maszyny' && !daySched.some(s => s.employee_id === ev.employee_id)).map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ${evTone(ev)} ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" title="${esc(ev.label)} ${esc(ev.status || '')}">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
+      ${view === 'maszyny' ? '' : ''}${dayEv.filter(ev => view !== 'maszyny' && !daySched.some(s => s.employee_id === ev.employee_id)).map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ev-open ${evTone(ev)} ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" data-ev="${calEv(ev)}" role="button" tabindex="0" title="${esc(ev.label)} ${esc(ev.status || '')} — kliknij, aby zobaczyć szczegóły">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
     </div>`;
   }
   main.innerHTML = head('Kalendarz', 'Maszyny i projekty na każdej zmianie, grafik zmian i zdarzenia. Linia przerywana — wpis planowany; przekreślenie — anulowany.',
@@ -335,6 +388,18 @@ VIEWS.kalendarz = async (main) => {
   on('genShift', () => generateForm(anchor));
   on('extraShift', () => extraShiftForm(anchor));
   on('bulkMode', () => bulkModeForm(anchor, from, to));
+  // kliknięcie nieobecności / zdarzenia — okienko ze szczegółami (także na tagu w zmianie, bez otwierania edycji zmiany)
+  $$('.cal [data-ev]', main).forEach(el => {
+    const go = (e) => { e.stopPropagation(); e.preventDefault(); const ev = CAL_EV[Number(el.dataset.ev)]; if (ev) eventInfo(ev); };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go(e); });
+  });
+  $$('.cal [data-mc]', main).forEach(b => b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (b.dataset.busy) return; b.dataset.busy = '1'; setTimeout(() => { delete b.dataset.busy; }, 1500);
+    const r = mcal.find(x => x.date === b.dataset.mcd && x.machine_id === b.dataset.mcm);
+    machineTopicInfo(b.dataset.mc, b.dataset.mcd, b.dataset.mcm, r && r.items.find(i => i.project_id === b.dataset.mc));
+  }));
   if (isAdmin()) $$('.cal [data-shift]', main).forEach(b => b.addEventListener('click', () => {
     const s = sched.find(x => x.id === Number(b.dataset.shift));
     if (s) editShiftForm(s, sched);
@@ -359,7 +424,7 @@ function shiftChip(s, tpl, evs = []) {
   const ot = s.overtime_min ? ` · nadgodziny ${hShort(s.overtime_min)}` : '';
   const evTxt = evs.map(ev => `${ev.label}${ev.time ? ` ${ev.time}` : ''}${ev.status ? ` (${ev.status})` : ''}`).join('; ');
   const tip = `${e ? e.first_name + ' ' + e.last_name : ''}: ${s.start_local.time}–${s.end_local.time}${mode ? ` · ${MODE_LABEL[mode]}` : ''}${ot}${s.reason ? ` · ${s.reason}` : ''}${evTxt ? ` · ${evTxt}` : ''}`;
-  const tags = evs.map(ev => `<span class="ev-tag ${evTone(ev)} ${/anulowan/.test(ev.status || '') ? 'cancel' : ''} ${/planowan|oczekuje/.test(ev.status || '') ? 'plan' : ''}">${esc(ev.short || '•')}${ev.time ? ` ${esc(ev.time)}` : ''}</span>`).join('');
+  const tags = evs.map(ev => `<span class="ev-tag ev-open ${evTone(ev)} ${/anulowan/.test(ev.status || '') ? 'cancel' : ''} ${/planowan|oczekuje/.test(ev.status || '') ? 'plan' : ''}" data-ev="${calEv(ev)}" ${isAdmin() ? '' : 'role="button" tabindex="0"'} title="${esc(ev.label)} — kliknij, aby zobaczyć szczegóły">${esc(ev.short || '•')}${ev.time ? ` ${esc(ev.time)}` : ''}</span>`).join('');
   const absent = evs.some(ev => ev.kind === 'nieobecnosc' && !/anulowan/.test(ev.status || ''));
   const inner = `${icon('spindle')}<b>${esc(initials(e))}</b>${modeBadge(s)} <span class="${absent ? 'shift-off' : ''}">${esc(tpl.get(s.shift_template_id)?.short || '')} ${s.start_local.time}–${s.end_local.time}</span>${tags}`;
   const cls = `chip shift ${mode ? `mode-${mode}` : ''} ${evs.length ? 'has-ev' : ''}`;
