@@ -300,7 +300,7 @@ VIEWS.narzedzia = async (main) => {
   const link = (patch) => { const n = new URLSearchParams(q); for (const [k, v] of Object.entries(patch)) { if (v) n.set(k, v); else n.delete(k); } return `#/narzedzia?${n}`; };
 
   main.innerHTML = head('Narzędzia i oprawki',
-    admin ? 'Wykaz oprawek, głowic, płytek i frezów z rysunkiem, stanem i tym, co do czego pasuje. Dopasowania liczone są z parametrów (trzpień, zakres zacisku, gniazdo płytki).'
+    admin ? 'Wykaz oprawek, głowic, płytek i frezów z rysunkiem, stanem i tym, co do czego pasuje. Głowice i płytki dobierane są z parametrów (trzpień, gniazdo płytki); oprawki do frezów przypisujesz ręcznie w edycji frezu.'
       : 'Wykaz narzędzi prowadzi kierownik — tu możesz sprawdzić parametry, stan i co do czego pasuje.',
     admin ? btn('addTool', `Dodaj: ${TOOL_KIND[kind].single.toLowerCase()}`) : '') +
     `<nav class="section-tabs" aria-label="Rodzaj narzędzi">${TOOL_TABS.map(([k, l]) => `<a href="${link({ rodzaj: k })}" class="${k === kind ? 'active' : ''}" ${k === kind ? 'aria-current="page"' : ''}>${icon('cutter')}<span>${esc(l)}</span><span class="count">${counts[k]}</span></a>`).join('')}</nav>
@@ -318,7 +318,7 @@ VIEWS.narzedzia = async (main) => {
     const fd = new FormData(e.target);
     location.hash = link({ maszyna: fd.get('maszyna'), szukaj: (fd.get('szukaj') || '').trim(), wycofane: fd.get('wycofane') });
   };
-  on('addTool', () => toolForm(kind));
+  on('addTool', () => toolForm(kind, null, list));
   $$('[data-tool]', main).forEach(el => el.addEventListener('click', (e) => { e.preventDefault(); const t = byId.get(Number(el.dataset.tool)); if (t) toolDetail(t, byId); }));
   $$('.tl-card', main).forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === el) toolDetail(byId.get(Number(el.dataset.id)), byId); }));
 };
@@ -333,7 +333,7 @@ function toolCard(t) {
       <p class="small">${esc(toolKeyLine(t))}</p>
       <p class="small muted">${[t.manufacturer, t.machine_id ? machineShort(t.machine_id) : 'uniwersalne', t.location].filter(Boolean).map(esc).join(' · ')}</p>
       <div class="tl-stock">${stockTag(t)}${t.active ? '' : ` ${tag('wycofane', '', 'block')}`}</div>
-      ${fits.length ? `<div class="small tl-fits"><span class="muted">Pasuje do:</span> ${fits.slice(0, 4).map(f => `<button type="button" class="link" data-tool="${f.id}">${esc(f.name)}</button>`).join('')}${fits.length > 4 ? `<button type="button" class="link" data-tool="${t.id}">+${fits.length - 4} więcej</button>` : ''}</div>` : ''}
+      ${fits.length ? `<div class="small tl-fits"><span class="muted">${t.kind === 'frez' ? 'Oprawki:' : 'Pasuje do:'}</span> ${fits.slice(0, 4).map(f => `<button type="button" class="link" data-tool="${f.id}">${esc(f.name)}</button>`).join('')}${fits.length > 4 ? `<button type="button" class="link" data-tool="${t.id}">+${fits.length - 4} więcej</button>` : ''}</div>` : ''}
     </div>
   </article>`;
 }
@@ -360,10 +360,10 @@ function toolDetail(t, byId) {
           ${t.note ? `<p class="small">${esc(t.note)}</p>` : ''}
         </div>
       </div>
-      <h4>Pasuje do</h4>
+      <h4>${t.kind === 'frez' ? 'Przypisane oprawki' : 'Pasuje do'}</h4>
       ${groups.length ? groups.map(([l, a]) => `<div class="tl-fit-group"><span class="small muted">${esc(l)}</span><div class="tl-fit-row">${a.map(f => `<button type="button" class="tl-mini" data-open="${f.id}" title="${esc(f.name)}">${f.params ? drawTool(f, { w: f.kind === 'glowica' ? 120 : f.kind === 'frez' ? 34 : 56 }) : ''}<span class="small mono">${esc(f.name)}</span></button>`).join('')}</div></div>`).join('')
-        : `<p class="small muted">${t.kind === 'plytka' ? 'Żadna głowica w wykazie nie ma gniazda pasującego do tej płytki.' : t.kind === 'frez' ? 'Żadna oprawka w wykazie nie ma zakresu zacisku na ten chwyt.' : 'Brak dopasowań w wykazie.'}</p>`}
-      <p class="small muted">Dopasowanie jest liczone z parametrów wpisanych w wykazie — przed użyciem sprawdź katalog producenta i wysięg.</p>
+        : `<p class="small muted">${t.kind === 'plytka' ? 'Żadna głowica w wykazie nie ma gniazda pasującego do tej płytki.' : t.kind === 'frez' ? 'Nie przypisano oprawek — przypisuje kierownik w edycji frezu.' : 'Brak dopasowań w wykazie.'}</p>`}
+      <p class="small muted">${t.kind === 'frez' ? 'Oprawki do frezu są przypisane ręcznie.' : t.kind === 'plytka' ? 'Dopasowanie liczone z gniazda głowicy.' : `Głowice i płytki dobierane z parametrów (trzpień, chwyt, gniazdo)${t.kind === 'oprawka' ? '; frezy — przypisane ręcznie' : ''} — przed użyciem sprawdź katalog producenta i wysięg.`}</p>
     </div>
     <footer>${admin ? `<button type="button" data-act="edit">Edytuj</button><button type="button" data-act="in">${icon('plus')}Przyjęcie</button><button type="button" data-act="out">Wydanie / zużycie</button>${t.active ? '<button type="button" class="danger" data-act="off">Wycofaj</button>' : '<button type="button" data-act="on">Przywróć</button>'}` : ''}<button type="button" class="primary" data-close>Zamknij</button></footer></form>`;
   document.body.appendChild(dlg);
@@ -372,7 +372,7 @@ function toolDetail(t, byId) {
   dlg.addEventListener('cancel', () => dlg.remove());
   $$('[data-open]', dlg).forEach(b => b.addEventListener('click', () => { const n = byId.get(Number(b.dataset.open)); if (n) { close(); toolDetail(n, byId); } }));
   const act = (name, fn) => { const b = $(`[data-act="${name}"]`, dlg); if (b) b.addEventListener('click', () => { close(); fn(); }); };
-  act('edit', () => toolForm(t.kind, t));
+  act('edit', () => toolForm(t.kind, t, [...byId.values()]));
   act('in', () => stockForm(t, 1));
   act('out', () => stockForm(t, -1));
   act('off', () => confirmReason(`Wycofać z użytku: ${t.name}?`, 'Pozycja zniknie z wykazu dla zespołu (zostaje w historii i w widoku „pokaż wycofane”).', (reason) => post(`/tools/${t.id}`, { active: false, reason }, undefined, 'PUT'), 'Wycofaj'));
@@ -394,7 +394,7 @@ function stockForm(t, sign) {
   });
 }
 
-function toolForm(kind, t = null) {
+function toolForm(kind, t = null, all = []) {
   const p = (t && t.params) || {};
   const num = (name, label, extra = {}) => ({ name: `p_${name}`, label, type: 'number', step: 'any', value: p[name] ?? '', ...extra });
   const txt = (name, label, extra = {}) => ({ name: `p_${name}`, label, value: p[name] ?? '', ...extra });
@@ -428,11 +428,15 @@ function toolForm(kind, t = null) {
       num('r', 'Promień naroża r (mm)', { show: v => v.p_type === 'torusowy' }), num('angle', 'Kąt (°)', { show: v => v.p_type === 'fazownik' || v.p_type === 'wiertlo' }),
       txt('material', 'Materiał', { help: 'VHM, HSS-E…' }), txt('coating', 'Pokrycie')];
   }
+  // frez: oprawki przypisuje kierownik ręcznie (bez automatycznego dopasowania)
+  const holderOpts = all.filter(h => h.kind === 'oprawka' && h.active).map(h => [h.id, `${h.name}${h.machine_id ? ` (${machineShort(h.machine_id)})` : ''}`]);
+  const holderField = kind === 'frez' ? [{ name: 'holder_ids', label: 'Oprawki, w których używamy tego frezu', type: 'multi', wide: true, value: (t && t.holder_ids) || [], options: holderOpts }] : [];
   const fields = [
     { name: 'preview', type: 'info', html: '<div class="tl-preview" aria-live="polite"></div>' },
     { name: 'name', label: kind === 'plytka' ? 'Oznaczenie ISO płytki' : 'Oznaczenie / nazwa', required: true, value: t ? t.name : '', help: kind === 'plytka' ? 'np. APMT1604PDER-M2 — początek musi zgadzać się z gniazdem głowicy' : '' },
     { name: 'machine_id', label: 'Maszyna', type: 'select', value: t ? t.machine_id || '' : '', placeholder: '— uniwersalne —', options: machines },
     ...params,
+    ...holderField,
     { name: 'manufacturer', label: 'Producent', value: t ? t.manufacturer || '' : '' },
     { name: 'catalog_no', label: 'Nr katalogowy', value: t ? t.catalog_no || '' : '' },
     { name: 'code', label: 'Numer własny', value: t ? t.code || '' : '' },
@@ -461,7 +465,7 @@ function toolForm(kind, t = null) {
     },
     afterRender: (form) => form.dispatchEvent(new Event('change')),
     submit: (v, idem) => {
-      const body = { kind, name: v.name, machine_id: v.machine_id, manufacturer: v.manufacturer, catalog_no: v.catalog_no, code: v.code, location: v.location, note: v.note, min_qty: v.min_qty ?? 0, params: collect(v) };
+      const body = { ...(kind === 'frez' ? { holder_ids: (v.holder_ids || []).map(Number) } : {}), kind, name: v.name, machine_id: v.machine_id, manufacturer: v.manufacturer, catalog_no: v.catalog_no, code: v.code, location: v.location, note: v.note, min_qty: v.min_qty ?? 0, params: collect(v) };
       if (t) return post(`/tools/${t.id}`, { ...body, reason: v.reason }, idem, 'PUT');
       return post('/tools', { ...body, qty: v.qty ?? 0 }, idem);
     },

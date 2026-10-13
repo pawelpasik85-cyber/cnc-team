@@ -29,16 +29,17 @@ function world() {
 const byName = (list) => Object.fromEntries(list.map(t => [t.name, t]));
 const fitNames = (t) => t.fits.map(f => f.name).sort();
 
-test('narzędzia: dopasowania z parametrów (trzpień, zakres zacisku, gniazdo płytki, maszyna); stan poniżej minimum', () => {
+test('narzędzia: dopasowania z parametrów (trzpień, chwyt głowicy, gniazdo płytki, maszyna); frezy bez automatycznego dopasowania; stan poniżej minimum', () => {
   const w = world();
   const t = byName(Tools.listTools(w.db));
   assert.deepEqual(fitNames(t['BT50-FMB22']), ['Głowica Ø63']);
   assert.deepEqual(fitNames(t['Głowica Ø63']), ['APMT1604PDER-M2', 'BT50-FMB22']);
   assert.deepEqual(fitNames(t['BT50-SLN20']), ['Frez Ø25 chwyt 20'], 'Weldon Ø20 ↔ głowica z chwytem Ø20');
   assert.deepEqual(fitNames(t['Frez Ø25 chwyt 20']), ['BT50-ER32', 'BT50-SLN20', 'apmt1135pder'], 'gniazdo płytki bez rozróżniania wielkości liter i spacji');
-  assert.deepEqual(fitNames(t['VHM Ø6']), ['BT50-ER32', 'HSK40-SF06'], 'chwyt = D, gdy nie podano');
-  assert.deepEqual(fitNames(t['Kulisty Ø6 (Hartford)']), ['BT50-ER32'], 'frez przypisany do Hartforda nie jest łączony z oprawką Grimme');
-  assert.deepEqual(fitNames(t['VHM Ø25']), [], 'Ø25 poza zakresem ER32 (3–20)');
+  // frezy: oprawki nie są dobierane automatycznie (zespół przypisuje sam)
+  assert.deepEqual(fitNames(t['VHM Ø6']), []);
+  assert.deepEqual(fitNames(t['BT50-ER32']), ['Frez Ø25 chwyt 20'], 'oprawka bez automatycznie dobranych frezów');
+  assert.deepEqual(fitNames(t['HSK40-SF06']), []);
   assert.equal(t.apmt1135pder.low, true); assert.equal(t['APMT1604PDER-M2'].low, false);
 });
 
@@ -70,7 +71,6 @@ test('narzędzia: edycja częściowa nie kasuje pól; oprawka zgodna z wrzecione
   const auto = Tools.saveTool(w.db, w.admin, { kind: 'oprawka', name: 'HSK-A40 ER16', params: { interface: 'HSK-A40', type: 'tulejkowa', clamp_min: 1, clamp_max: 10 } }).id;
   assert.equal(w.db.get('SELECT machine_id FROM tools WHERE id=?', auto).machine_id, G, 'przypisana wg interfejsu');
   const t = byName(Tools.listTools(w.db));
-  assert.equal(fitNames(t['Kulisty Ø6 (Hartford)']).includes('HSK-A40 ER16'), false);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'glowica', name: 'x', params: { D: 50, z: 2.5 } }), 400, /całkowita/);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { active: 'false' }, w.ids.vhm6), 400, /aktywne/);
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'x', params: { type: 'torusowy', D: 6, r: 4, z: 4, Lc: 12, L: 57 } }), 400, /połowa/);
@@ -101,6 +101,35 @@ test('narzędzia: frez definiują liczba ostrzy, długość ostrza i długość 
   throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { params: { type: 'walcowo-czolowy', D: 6 } }, old), 400, /ostrzy/);
   // fazownik — długość ostrza nieobowiązkowa
   Tools.saveTool(w.db, w.admin, { kind: 'frez', name: 'Faz', params: { type: 'fazownik', D: 10, z: 4, L: 60, angle: 90 } });
+});
+
+test('narzędzia: ręczne przypisanie frezu do oprawek (w obie strony, w historii); tylko aktywne oprawki; edycja bez listy nie zmienia przypisań', () => {
+  const w = world();
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.head63] }, w.ids.vhm6), 400, /tylko oprawki/);
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { holder_ids: 'x' }, w.ids.vhm6), 400);
+  Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.sf6g, w.ids.er32, w.ids.er32] }, w.ids.vhm6);
+  let t = byName(Tools.listTools(w.db));
+  assert.deepEqual(fitNames(t['VHM Ø6']), ['BT50-ER32', 'HSK40-SF06']);
+  assert.deepEqual(t['VHM Ø6'].holder_ids.sort(), [w.ids.er32, w.ids.sf6g].sort());
+  assert.deepEqual(fitNames(t['HSK40-SF06']), ['VHM Ø6']);
+  const a = w.db.get(`SELECT old_value, new_value FROM audit_log WHERE entity='tool' AND entity_id=? ORDER BY id DESC LIMIT 1`, String(w.ids.vhm6));
+  assert.match(a.new_value, /oprawki/);
+  Tools.saveTool(w.db, w.admin, { location: 'Szafa 1' }, w.ids.vhm6);
+  assert.equal(byName(Tools.listTools(w.db))['VHM Ø6'].fits.length, 2, 'edycja bez listy oprawek nie kasuje przypisań');
+  Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.sf6g] }, w.ids.vhm6);
+  assert.deepEqual(fitNames(byName(Tools.listTools(w.db))['VHM Ø6']), ['HSK40-SF06']);
+  Tools.saveTool(w.db, w.admin, { active: false, reason: 'pęknięta' }, w.ids.sf6g);
+  assert.deepEqual(fitNames(byName(Tools.listTools(w.db))['VHM Ø6']), [], 'wycofana oprawka nie jest pokazywana');
+  assert.deepEqual(byName(Tools.listTools(w.db))['VHM Ø6'].holder_ids, [], 'bez numerów wycofanych oprawek');
+  // edycja frezu z listą bez wycofanej oprawki nie kasuje przypisania do niej; po przywróceniu wraca
+  Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.er32] }, w.ids.vhm6);
+  Tools.saveTool(w.db, w.admin, { active: true, reason: 'naprawiona' }, w.ids.sf6g);
+  assert.deepEqual(fitNames(byName(Tools.listTools(w.db))['VHM Ø6']), ['BT50-ER32', 'HSK40-SF06']);
+  // nowa wycofana oprawka — odrzucona
+  Tools.saveTool(w.db, w.admin, { active: false, reason: 'zgubiona' }, w.ids.fmb22);
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.er32, w.ids.fmb22] }, w.ids.vhm6), 400, /wycofana/);
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { holder_ids: [true] }, w.ids.vhm6), 400, /numerów/);
+  throwsStatus(assert, () => Tools.saveTool(w.db, w.admin, { holder_ids: [w.ids.er32] }, w.ids.head63), 400, /tylko do frezów/);
 });
 
 test('narzędzia: przyjęcie / wydanie z powodem w historii, stan nie ujemny, wycofanie wymaga powodu', () => {

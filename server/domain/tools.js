@@ -1,8 +1,8 @@
 'use strict';
 // Narzędziownia: oprawki (BT50 — Hartford, HSK40 — Grimme), głowice frezujące, płytki i frezy.
 // Dopasowanie liczone z parametrów: głowica ↔ płytki (oznaczenie płytki zaczyna się od kodu gniazda głowicy),
-// oprawka trzpieniowa ↔ głowica (ten sam trzpień), oprawka zaciskowa ↔ frez lub głowica z chwytem (średnica chwytu w zakresie oprawki);
-// oprawka i narzędzie przypisane do różnych maszyn nie są łączone.
+// oprawka trzpieniowa ↔ głowica (ten sam trzpień), oprawka zaciskowa ↔ głowica z chwytem (średnica chwytu w zakresie oprawki);
+// oprawka i głowica przypisane do różnych maszyn nie są łączone. Frezy ↔ oprawki — tylko ręczne przypisanie przez kierownika.
 const T = require('../time');
 const { bad, notFound, audit, reqStr, reqInt, oneOf } = require('../core');
 
@@ -65,8 +65,9 @@ function normParams(kind, p = {}) {
 
 function rowOut(r) { return { ...r, params: JSON.parse(r.params || '{}'), active: !!r.active, low: r.qty < r.min_qty }; }
 
-// Dopasowania liczone na żywo z parametrów
-function compat(list) {
+// Dopasowania: głowica ↔ oprawka i głowica ↔ płytka liczone z parametrów;
+// frez ↔ oprawka wyłącznie z ręcznego przypisania (tabela tool_links) — bez automatycznego dopasowania
+function compat(list, links = []) {
   const holders = list.filter(t => t.kind === 'oprawka'), heads = list.filter(t => t.kind === 'glowica');
   const inserts = list.filter(t => t.kind === 'plytka'), mills = list.filter(t => t.kind === 'frez');
   const fitsShank = (h, d) => d && h.params.type !== 'trzpieniowa' && h.params.clamp_min !== null && d >= h.params.clamp_min - 1e-6 && d <= (h.params.clamp_max ?? h.params.clamp_min) + 1e-6;
@@ -76,18 +77,19 @@ function compat(list) {
   // narzędzie przypisane do innej maszyny niż oprawka nie jest do niej proponowane (płytki są wspólne)
   const sameMachine = (a, b) => !a.machine_id || !b.machine_id || a.machine_id === b.machine_id;
   const headFitsHolder = (h, g) => sameMachine(h, g) && (fitsArbor(h, g) || (g.params.shank && fitsShank(h, g.params.shank)));
-  const millFitsHolder = (h, m) => sameMachine(h, m) && fitsShank(h, m.params.shank || m.params.D);
+  const linked = new Set(links.map(l => `${l.mill_id}:${l.holder_id}`));
+  const millFitsHolder = (h, m) => linked.has(`${m.id}:${h.id}`);
   for (const t of list) {
     if (t.kind === 'oprawka') t.fits = [...heads.filter(g => headFitsHolder(t, g)), ...mills.filter(m => millFitsHolder(t, m))].map(ref);
     if (t.kind === 'glowica') t.fits = [...holders.filter(h => headFitsHolder(h, t)), ...inserts.filter(p => insertFits(t, p))].map(ref);
     if (t.kind === 'plytka') t.fits = heads.filter(g => insertFits(g, t)).map(ref);
-    if (t.kind === 'frez') t.fits = holders.filter(h => millFitsHolder(h, t)).map(ref);
+    if (t.kind === 'frez') { t.fits = holders.filter(h => millFitsHolder(h, t)).map(ref); t.holder_ids = t.fits.map(f => f.id); } // tylko oprawki widoczne na liście (bez wycofanych dla nie-kierownika)
   }
   return list;
 }
 
 function listTools(db, { all = false } = {}) {
-  return compat(db.all(`SELECT * FROM tools WHERE (? = 1 OR active = 1) ORDER BY kind, machine_id, name`, all ? 1 : 0).map(rowOut));
+  return compat(db.all(`SELECT * FROM tools WHERE (? = 1 OR active = 1) ORDER BY kind, machine_id, name`, all ? 1 : 0).map(rowOut), db.all('SELECT mill_id, holder_id FROM tool_links'));
 }
 
 function saveTool(db, user, body, id) {
@@ -118,22 +120,41 @@ function saveTool(db, user, body, id) {
       if (m.length === 1) d.machine_id = m[0].id;
     }
   }
+  // frez: oprawki przypisane ręcznie (lista id aktywnych oprawek); nieprzesłane przy edycji — bez zmian
+  let holderIds = null;
+  if (has('holder_ids') && kind !== 'frez') throw bad('Oprawki przypisuje się tylko do frezów.');
+  const oldLinks = old ? db.all('SELECT holder_id FROM tool_links WHERE mill_id=? ORDER BY holder_id', id).map(l => l.holder_id) : [];
+  if (kind === 'frez' && has('holder_ids')) {
+    if (!Array.isArray(body.holder_ids) || body.holder_ids.length > 200 || !body.holder_ids.every(x => Number.isInteger(typeof x === 'string' && /^\d+$/.test(x) ? Number(x) : x))) throw bad('Oprawki: lista numerów oprawek.');
+    holderIds = [...new Set(body.holder_ids.map(Number))];
+    for (const hid of holderIds) {
+      const h = db.get(`SELECT kind, active, name FROM tools WHERE id=?`, hid);
+      if (!h || h.kind !== 'oprawka') throw bad('Przypisać można tylko oprawki z wykazu.');
+      if (!h.active && !oldLinks.includes(hid)) throw bad(`Oprawka ${h.name} jest wycofana.`);
+    }
+    // przypisania do wycofanych oprawek (niewidocznych w formularzu) zostają — wrócą po przywróceniu oprawki
+    for (const hid of oldLinks) if (!holderIds.includes(hid) && !db.get('SELECT active FROM tools WHERE id=?', hid).active) holderIds.push(hid);
+    holderIds.sort((a, b) => a - b);
+  }
   const action = !old ? 'utworzenie' : old.active && !d.active ? 'wycofanie' : !old.active && d.active ? 'przywrocenie' : 'edycja';
   if (action === 'wycofanie') reqStr(body.reason, 'Powód wycofania z użytku');
   if (action === 'przywrocenie') reqStr(body.reason, 'Powód przywrócenia');
   return db.tx(() => {
     const now = T.nowIso();
+    const setLinks = (mid) => { db.run('DELETE FROM tool_links WHERE mill_id=?', mid); for (const hid of holderIds) db.run('INSERT INTO tool_links(mill_id, holder_id) VALUES (?,?)', mid, hid); };
     if (old) {
       const cols = Object.keys(d);
       db.run(`UPDATE tools SET ${cols.map(c => `${c}=?`).join(',')}, updated_at=? WHERE id=?`, ...cols.map(c => d[c]), now, id);
-      audit(db, user, 'tool', id, action, old, d, body.reason);
+      if (holderIds) setLinks(id);
+      audit(db, user, 'tool', id, action, kind === 'frez' ? { ...old, oprawki: oldLinks } : old, kind === 'frez' ? { ...d, oprawki: holderIds || oldLinks } : d, body.reason);
       return { id };
     }
     const qty = reqInt(body.qty ?? 0, 'Stan', { min: 0, max: 100000 });
     const cols = Object.keys(d);
     const r = db.run(`INSERT INTO tools(${cols.join(',')},qty,created_at,updated_at) VALUES (${cols.map(() => '?').join(',')},?,?,?)`, ...cols.map(c => d[c]), qty, now, now);
     const nid = Number(r.lastInsertRowid);
-    audit(db, user, 'tool', nid, 'utworzenie', null, { ...d, qty });
+    if (holderIds) setLinks(nid);
+    audit(db, user, 'tool', nid, 'utworzenie', null, { ...d, qty, ...(holderIds ? { oprawki: holderIds } : {}) });
     return { id: nid };
   });
 }

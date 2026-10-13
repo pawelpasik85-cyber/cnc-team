@@ -76,6 +76,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 19 — dane frezu: ostrza i długości (12.10.2026)
 **64 / 64 zaliczonych.** Nowy test: liczba ostrzy z, długość ostrza Lc i długość całkowita L obowiązkowe (Lc nieobowiązkowe dla fazownika), Lc ≤ L, długość użyteczna z szyjką l1 między Lc a L; pozycje zapisane wcześniej bez tych danych można wycofać, przywrócić i zmienić ich stan bez uzupełniania (edycja parametrów wymaga uzupełnienia). Rysunek frezu z linią wymiarową Lc / l1 / L i szyjką. Przegląd niezależny: 6 uwag, poprawione. Zrzuty `118`, `119`.
 
+### Runda 20 — frezy przypisywane do oprawek ręcznie (13.10.2026)
+**65 / 65 zaliczonych.** Na prośbę kierownika usunięte automatyczne dopasowanie frez ↔ oprawka (po średnicy chwytu); kierownik zaznacza oprawki w edycji frezu (tabela `tool_links`, migracja 013). Test: przypisanie widoczne w obie strony i zapisane w historii; tylko oprawki z wykazu i tylko do frezów; edycja bez listy nie zmienia przypisań; przypisanie do oprawki wycofanej zostaje (wraca po przywróceniu), nowej wycofanej nie można dodać; programista nie widzi numerów wycofanych oprawek. Głowice ↔ oprawki i płytki — nadal z parametrów. Przegląd niezależny: 6 uwag, 5 poprawionych; świadomie bez blokady „frez Hartforda w oprawce Grimme” — przypisanie należy do zespołu. Zrzuty `113`, `120`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

@@ -276,6 +276,15 @@ function seedTools(db, admin) {
   add('frez', 'Fazownik 90° Ø12', null, { type: 'fazownik', D: 12, z: 4, shank: 12, L: 60, angle: 90, material: 'VHM', coating: 'TiN' }, { qty: 2, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
   add('frez', 'Wiertło VHM Ø8,5', null, { type: 'wiertlo', D: 8.5, z: 2, shank: 10, Lc: 40, L: 89, angle: 140, material: 'VHM', coating: 'TiAlN' }, { qty: 3, min_qty: 2, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
   add('frez', 'Frez do gwintów M10', null, { type: 'gwintownik', D: 7.8, z: 3, shank: 10, Lc: 22, L: 70, material: 'VHM', coating: 'TiCN' }, { qty: 1, min_qty: 1, manufacturer: 'Fenes', location: 'Szafa frezów 2' });
+  // oprawki do frezów — przypisane ręcznie (jak w zespole)
+  const id = (name) => db.get('SELECT id FROM tools WHERE name=?', name).id;
+  const link = (mill, holders) => Tools.saveTool(db, admin, { holder_ids: holders.map(id) }, id(mill));
+  link('VHM Ø6 z4', ['HSK40-SF06-80', 'BT50-ER32-100']);
+  link('VHM Ø10 z4', ['HSK40-SF10-80']);
+  link('VHM Ø12 z3 długi', ['BT50-SF12-120']);
+  link('Kulisty R3 Ø6 szyjka 30', ['HSK40-SF06-80']);
+  link('Torusowy Ø10 R1', ['HSK40-SF10-80']);
+  link('Wiertło VHM Ø8,5', ['BT50-ER32-100']);
 }
 
 module.exports = { seedDemo, DEMO_PASSWORD };

@@ -18,7 +18,7 @@
 - Przerwa niewliczana jest odejmowana tylko od pełnej zmiany; przy wyjściu w trakcie zmiany liczy się rzeczywisty czas nieobecności.
 - Wyszukiwanie/filtrowanie listy zdarzeń po maszynie i projekcie dotyczy przekazań zmian (nieobecności nie są przypisane do maszyn).
 - Widok do wydruku/PDF korzysta z funkcji drukowania przeglądarki („Zapisz jako PDF”).
-- Narzędzia i oprawki: rysunki są schematyczne (generowane z parametrów), nie są rysunkami katalogowymi; dopasowanie liczone z wpisanych parametrów (trzpień, zakres zacisku, gniazdo płytki, interfejs maszyny) — nie sprawdza wysięgu, kolizji ani danych skrawania. Stan magazynowy prowadzony ręcznie (przyjęcie / wydanie), bez powiązania z zamówieniami i bez przypisania narzędzi do programów NC.
+- Narzędzia i oprawki: rysunki są schematyczne (generowane z parametrów), nie są rysunkami katalogowymi; dopasowanie głowic i płytek liczone z wpisanych parametrów (trzpień, chwyt, gniazdo płytki, interfejs maszyny), oprawki do frezów przypisywane ręcznie — nie sprawdza wysięgu, kolizji ani danych skrawania. Stan magazynowy prowadzony ręcznie (przyjęcie / wydanie), bez powiązania z zamówieniami i bez przypisania narzędzi do programów NC.
 - Zrzuty ekranów wymagają opcjonalnego Pythona + Playwright (`scripts/screenshots.py`) — nie są potrzebne do działania aplikacji.
 
 ## Serwer firmowy i dostęp z domu
