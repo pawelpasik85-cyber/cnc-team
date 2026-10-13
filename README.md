@@ -58,7 +58,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 Po zakończeniu projektu: wykres przebiegu (godziny narastająco i postęp wobec planu, zadania plan vs wykonanie) oraz porównanie z podobnymi zakończonymi projektami — propozycje można odrzucać. Miesiąc wobec tego samego miesiąca rok wcześniej i cały rok wobec innych lat. Każdy widok można zapisać jako raport (z komentarzem), wydrukować / zapisać jako PDF, pobrać CSV i — według decyzji kierownika — udostępnić przełożonemu.
 
 ## Narzędzia i oprawki
-Wykaz oprawek (BT50 — Hartford, HSK40 — Grimme), głowic frezujących, płytek i frezów z rysunkiem generowanym z parametrów, stanem (czerwone poniżej minimum) i listą „pasuje do” (głowice i płytki — z parametrów; oprawki do frezów — przypisywane ręcznie). Wpisuje i zmienia kierownik (przyjęcie / wydanie, wycofanie — z powodem w historii); programiści i przełożony przeglądają.
+Wykaz oprawek (BT50 — Hartford, HSK40 — Grimme), głowic frezujących, płytek i frezów w układzie katalogowym (wiersz: rysunek z wymiarami, nazwa, średnica, ostrza, materiał, stan — 0–1 szt czerwony, 2 szt żółty) i listą „pasuje do” (głowice i płytki — z parametrów; oprawki do frezów — przypisywane ręcznie). Wpisuje i zmienia kierownik (przyjęcie / wydanie, wycofanie — z powodem w historii); programiści i przełożony przeglądają.
 
 ## Telefony
 

@@ -187,7 +187,7 @@ function drawInsert(t, { w = 120 } = {}) {
 }
 
 // Frez / wiertło — chwyt, część robocza ze spiralą, zakończenie wg rodzaju
-function drawMill(t, { w = 80 } = {}) {
+function drawMill(t, { w = 80, horizontal = false } = {}) {
   const p = t.params || {}; const id = `tg${++toolUid}`;
   const D = Number(p.D) || 10, sh = Number(p.shank) || D;
   const k = 40 / Math.max(D, sh);
@@ -234,11 +234,29 @@ function drawMill(t, { w = 80 } = {}) {
   if (p.Lc) dims.push(dim(68, yCut, yTip, `Lc ${mm(p.Lc)}`));
   if (neck) dims.push(dim(68 + (p.Lc ? 14 : 0), yNeck, yTip, `l1 ${mm(p.reach)}`));
   if (p.L) dims.push(dim(68 + (p.Lc ? 14 : 0) + (neck ? 14 : 0), yShank, yTip, `L ${mm(p.L)}`));
+  const label = `${THREADED(p.type) ? `${esc(p.thread || `Ø${mm(D)}`)}${p.pitch ? ` P${esc(mm(p.pitch))}` : ''}` : `Ø${esc(mm(D))}`}${p.z && !THREADED(p.type) ? ` z${esc(mm(p.z))}` : ''}${p.type === 'torusowy' && p.r ? ` R${esc(mm(p.r))}` : p.type === 'kulisty' ? ` R${esc(mm(D / 2))}` : ''}`;
+  const aria = esc(`${MILL_LABEL[p.type] || 'Frez'}${p.thread ? ` ${p.thread}` : ''}${p.pitch ? ` skok ${mm(p.pitch)}` : ''} Ø${mm(D)}${p.z && p.type !== 'gwintownik' ? ` z${mm(p.z)}` : ''}${p.Lc ? `, ostrze ${mm(p.Lc)} mm` : ''}${p.reach ? `, użyteczna ${mm(p.reach)} mm` : ''}${p.L ? `, długość ${mm(p.L)} mm` : ''}`);
+  if (horizontal) {
+    // widok katalogowy: narzędzie leży poziomo (chwyt z lewej, ostrze z prawej), wymiary Lc / l1 / L pod spodem
+    const hdim = (Y, x1, x2, txt) => `<g class="tool-svg-dimline"><path d="M${x1} ${Y - 3} v6 M${x2} ${Y - 3} v6 M${x1} ${Y} H${x2}" stroke="#2a3036" stroke-width=".7" fill="none"/>
+      <text x="${(x1 + x2) / 2}" y="${Y - 2}" text-anchor="middle" class="tool-svg-dim tool-svg-dim-h">${esc(txt)}</text></g>`;
+    const hd = [];
+    let Y = 78;
+    if (p.Lc) { hd.push(hdim(Y, yCut, yTip, `Lc ${mm(p.Lc)}`)); Y += 13; }
+    if (neck) { hd.push(hdim(Y, yNeck, yTip, `l1 ${mm(p.reach)}`)); Y += 13; }
+    if (p.L) { hd.push(hdim(Y, yShank, yTip, `L ${mm(p.L)}`)); Y += 13; }
+    const vh = Math.max(66, Y - 4);
+    return `<svg class="tool-svg tool-svg-h" viewBox="0 0 204 ${vh}" width="${w}" role="img" aria-label="${aria}">
+    <defs>${metalDefs(`${id}s`, shankTone)}${metalDefs(`${id}k`, coatTone(p.coating))}</defs>
+    <g transform="translate(0 80) rotate(-90)">${parts.join('')}</g>${hd.join('')}
+    <text x="200" y="13" text-anchor="end" class="tool-svg-dim tool-svg-dim-h">${label}</text>
+  </svg>`;
+  }
   const vw = 80 + (p.Lc ? 14 : 0) + (neck ? 14 : 0) + (p.L ? 14 : 0);
-  return `<svg class="tool-svg" viewBox="0 0 ${vw} 214" width="${Math.round(w * vw / 80)}" role="img" aria-label="${esc(`${MILL_LABEL[p.type] || 'Frez'}${p.thread ? ` ${p.thread}` : ''}${p.pitch ? ` skok ${mm(p.pitch)}` : ''} Ø${mm(D)}${p.z && p.type !== 'gwintownik' ? ` z${mm(p.z)}` : ''}${p.Lc ? `, ostrze ${mm(p.Lc)} mm` : ''}${p.L ? `, długość ${mm(p.L)} mm` : ''}`)}">
+  return `<svg class="tool-svg" viewBox="0 0 ${vw} 214" width="${Math.round(w * vw / 80)}" role="img" aria-label="${aria}">
     <defs>${metalDefs(`${id}s`, shankTone)}${metalDefs(`${id}k`, coatTone(p.coating))}</defs>
     ${parts.join('')}${dims.join('')}
-    <text x="40" y="211" text-anchor="middle" class="tool-svg-dim">${THREADED(p.type) ? `${esc(p.thread || `Ø${mm(D)}`)}${p.pitch ? ` P${esc(mm(p.pitch))}` : ''}` : `Ø${esc(mm(D))}`}${p.z && !THREADED(p.type) ? ` z${esc(mm(p.z))}` : ''}${p.type === 'torusowy' && p.r ? ` R${esc(mm(p.r))}` : p.type === 'kulisty' ? ` R${esc(mm(D / 2))}` : ''}</text>
+    <text x="40" y="211" text-anchor="middle" class="tool-svg-dim">${label}</text>
   </svg>`;
 }
 
@@ -279,9 +297,10 @@ function machineShort(id) {
   const m = S.boot.machines.find(x => x.id === id);
   return m ? m.name : 'uniwersalne';
 }
+// stan: 0–1 szt — czerwony, 2 szt — żółty (mało, zwrócić uwagę); poniżej ustawionego minimum — dopisek
+const stockLevel = (q) => (q <= 1 ? 'red' : q === 2 ? 'yellow' : 'ok');
 function stockTag(t) {
-  if (t.low) return tag(`${t.qty} szt · min. ${t.min_qty}`, 'err', 'alert');
-  return tag(`${t.qty} szt`, t.qty ? 'ok' : '');
+  return `<span class="st st-${stockLevel(t.qty)}" title="${t.qty <= 1 ? 'Bardzo mało na stanie' : t.qty === 2 ? 'Mało na stanie' : 'Stan'}"><b>${t.qty}</b> szt</span>${t.low ? ` <span class="small st-min">min. ${t.min_qty}</span>` : ''}`;
 }
 
 // ---------- Widok ----------
@@ -298,7 +317,7 @@ VIEWS.narzedzia = async (main) => {
     && (!text || [t.name, t.code, t.manufacturer, t.catalog_no, t.location, toolKeyLine(t)].filter(Boolean).join(' ').toLowerCase().includes(text));
   const counts = Object.fromEntries(TOOL_TABS.map(([k]) => [k, list.filter(t => t.kind === k && match(t)).length]));
   const items = list.filter(t => t.kind === kind && match(t));
-  const low = list.filter(t => t.low && t.active);
+  const low = list.filter(t => t.active && (t.qty <= 2 || t.low)).sort((a, b) => a.qty - b.qty);
   const link = (patch) => { const n = new URLSearchParams(q); for (const [k, v] of Object.entries(patch)) { if (v) n.set(k, v); else n.delete(k); } return `#/narzedzia?${n}`; };
 
   main.innerHTML = head('Narzędzia i oprawki',
@@ -312,8 +331,9 @@ VIEWS.narzedzia = async (main) => {
       ${admin ? `<label class="field inline"><input type="checkbox" name="wycofane" value="1" ${showAll ? 'checked' : ''}> pokaż wycofane</label>` : ''}
       <button class="primary">Filtruj</button>
     </form>
-    ${admin && low.length ? `<div class="panel tl-low">${icon('alert')} <b>Poniżej stanu minimalnego (${low.length}):</b> ${low.map(t => `<button type="button" class="link" data-tool="${t.id}">${esc(t.name)} (${t.qty}/${t.min_qty})</button>`).join(', ')}</div>` : ''}
-    <div class="tl-grid">${items.map(t => toolCard(t)).join('') || `<div class="empty">${list.some(t => t.kind === kind) ? 'Nic nie pasuje do filtra.' : admin ? `Brak pozycji. Dodaj pierwszą przyciskiem „Dodaj”.` : 'Kierownik nie wpisał jeszcze narzędzi tego rodzaju.'}</div>`}</div>`;
+    ${low.length ? `<details class="panel tl-low"><summary>${icon('alert')} <b>Mało na stanie:</b> ${[['red', '0–1 szt', low.filter(t => t.qty <= 1).length], ['yellow', '2 szt', low.filter(t => t.qty === 2).length], ['min', 'poniżej minimum', low.filter(t => t.qty > 2).length]].filter(x => x[2]).map(([c, l, n]) => `<span class="st st-${c}"><b>${n}</b> ${l}</span>`).join(' ')} <span class="small muted">— pokaż listę</span></summary>
+      <div class="tl-low-list">${low.map(t => `<button type="button" class="link" data-tool="${t.id}">${esc(t.name)} <span class="st st-${stockLevel(t.qty)}"><b>${t.qty}</b></span></button>`).join(' ')}</div></details>` : ''}
+    <div class="tl-cat-wrap">${items.length ? toolCatalog(kind, items) : `<div class="empty">${list.some(t => t.kind === kind) ? 'Nic nie pasuje do filtra.' : admin ? `Brak pozycji. Dodaj pierwszą przyciskiem „Dodaj”.` : 'Kierownik nie wpisał jeszcze narzędzi tego rodzaju.'}</div>`}</div>`;
 
   $('#tlf').onsubmit = (e) => {
     e.preventDefault();
@@ -321,23 +341,34 @@ VIEWS.narzedzia = async (main) => {
     location.hash = link({ maszyna: fd.get('maszyna'), szukaj: (fd.get('szukaj') || '').trim(), wycofane: fd.get('wycofane') });
   };
   on('addTool', () => toolForm(kind, null, list));
-  $$('[data-tool]', main).forEach(el => el.addEventListener('click', (e) => { e.preventDefault(); const t = byId.get(Number(el.dataset.tool)); if (t) toolDetail(t, byId); }));
-  $$('.tl-card', main).forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === el) toolDetail(byId.get(Number(el.dataset.id)), byId); }));
+  $$('[data-tool]', main).forEach(el => el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const t = byId.get(Number(el.dataset.tool)); if (t) toolDetail(t, byId); }));
+  // cały wiersz klikalny myszą/palcem; z klawiatury — przycisk z nazwą (czytniki ekranu ogłaszają go jako przycisk)
+  $$('tr[data-row]', main).forEach(el => el.addEventListener('click', () => toolDetail(byId.get(Number(el.dataset.row)), byId)));
 };
 
-function toolCard(t) {
-  const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';
-  const fits = t.fits || [];
-  return `<article class="tl-card panel k-${t.kind} ${theme ? `theme-${theme}` : 'tl-neutral'} ${t.active ? '' : 'tl-off'}" data-id="${t.id}" tabindex="0">
-    <button type="button" class="tl-pic" data-tool="${t.id}" aria-label="Szczegóły: ${esc(t.name)}">${drawTool(t)}</button>
-    <div class="tl-body">
-      <header><b class="mono">${esc(t.name)}</b>${t.code ? ` <span class="small muted">nr ${esc(t.code)}</span>` : ''}</header>
-      <p class="small">${esc(toolKeyLine(t))}</p>
-      <p class="small muted">${[t.manufacturer, t.machine_id ? machineShort(t.machine_id) : 'uniwersalne', t.location].filter(Boolean).map(esc).join(' · ')}</p>
-      <div class="tl-stock">${stockTag(t)}${t.active ? '' : ` ${tag('wycofane', '', 'block')}`}</div>
-      ${fits.length ? `<div class="small tl-fits"><span class="muted">${t.kind === 'frez' ? 'Oprawki:' : 'Pasuje do:'}</span> ${fits.slice(0, 4).map(f => `<button type="button" class="link" data-tool="${f.id}">${esc(f.name)}</button>`).join('')}${fits.length > 4 ? `<button type="button" class="link" data-tool="${t.id}">+${fits.length - 4} więcej</button>` : ''}</div>` : ''}
-    </div>
-  </article>`;
+// Widok katalogowy: jedno narzędzie w wierszu — rysunek, najważniejsze dane, na końcu stan; reszta parametrów po kliknięciu
+const CATALOG_COLS = {
+  oprawka: [['Interfejs', p => p.interface], ['Rodzaj', p => HOLDER_LABEL[p.type] || p.type],
+    ['Zacisk / trzpień', p => (p.type === 'trzpieniowa' ? `trzpień Ø${mm(p.arbor)}` : p.clamp_min != null ? `Ø${mm(p.clamp_min)}${p.clamp_max && p.clamp_max !== p.clamp_min ? `–${mm(p.clamp_max)}` : ''}` : '')],
+    ['Wysięg', p => (p.gauge ? `${mm(p.gauge)} mm` : '')]],
+  glowica: [['Średnica', p => `Ø${mm(p.D)}`], ['Ostrza', p => mm(p.z)], ['Gniazdo płytki', p => p.insert_code || ''], ['Kąt', p => (p.lead ? `${mm(p.lead)}°` : '')]],
+  plytka: [['Kształt', p => p.shape || ''], ['Wielkość', p => `${mm(p.size)} mm${p.radius ? ` · r${mm(p.radius)}` : ''}`], ['Gatunek', p => p.grade || ''], ['Pokrycie', p => p.coating || '']],
+  frez: [['Średnica', p => (THREADED(p.type) && p.thread ? `${p.thread} · Ø${mm(p.D)}` : `Ø${mm(p.D)}`)],
+    ['Ostrza', p => (p.type === 'gwintownik' ? `skok ${mm(p.pitch)}` : `${mm(p.z)}${p.type === 'frez-gwintowy' && p.pitch ? ` · skok ${mm(p.pitch)}` : ''}`)],
+    ['Materiał', p => [p.material, p.coating].filter(Boolean).join(' · ')]],
+};
+function toolCatalog(kind, items) {
+  const cols = CATALOG_COLS[kind];
+  const picW = kind === 'frez' ? 260 : kind === 'glowica' ? 150 : kind === 'oprawka' ? 56 : 70;
+  return `<table class="tl-table k-${kind}"><thead><tr><th class="tl-c-pic">Rysunek</th><th>Nazwa</th>${cols.map(([l]) => `<th>${esc(l)}</th>`).join('')}<th class="tl-c-st">Stan</th></tr></thead>
+    <tbody>${items.map(t => {
+      const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';
+      return `<tr data-row="${t.id}" class="${theme ? `theme-${theme}` : 'tl-neutral'} ${t.active ? '' : 'tl-off'}">
+        <td class="tl-c-pic"><div class="tl-pic-row">${drawTool(t, { w: picW, horizontal: true })}</div></td>
+        <td class="tl-c-name" data-l="Nazwa"><button type="button" class="link tl-open mono" data-tool="${t.id}">${esc(t.name)}</button><span class="small muted">${[t.machine_id ? machineShort(t.machine_id) : 'uniwersalne', t.location, t.active ? '' : 'wycofane'].filter(Boolean).map(esc).join(' · ')}</span></td>
+        ${cols.map(([l, f]) => `<td data-l="${esc(l)}">${esc(f(t.params || {}) || '—')}</td>`).join('')}
+        <td class="tl-c-st" data-l="Stan">${stockTag(t)}</td></tr>`;
+    }).join('')}</tbody></table>`;
 }
 
 function toolDetail(t, byId) {
@@ -345,12 +376,12 @@ function toolDetail(t, byId) {
   const dlg = document.createElement('dialog');
   dlg.className = 'tl-dialog';
   const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';
-  const big = t.kind === 'glowica' ? { w: 360 } : t.kind === 'oprawka' ? { w: 200 } : t.kind === 'frez' ? { w: 130 } : { w: 220 };
+  const big = t.kind === 'glowica' ? { w: 360 } : t.kind === 'oprawka' ? { w: 200 } : t.kind === 'frez' ? { w: 420, horizontal: true } : { w: 220 };
   const fits = (t.fits || []).map(f => byId.get(f.id) || f);
   const groups = TOOL_TABS.map(([k, l]) => [l, fits.filter(f => f.kind === k)]).filter(([, a]) => a.length);
   dlg.innerHTML = `<form method="dialog"><header><h3>${esc(TOOL_KIND[t.kind].single)}: <span class="mono">${esc(t.name)}</span></h3><button type="button" class="link" data-close aria-label="Zamknij">✕</button></header>
     <div class="content">
-      <div class="tl-detail ${theme ? `theme-${theme}` : 'tl-neutral'}">
+      <div class="tl-detail k-${t.kind} ${theme ? `theme-${theme}` : 'tl-neutral'}">
         <div class="tl-pic big">${drawTool(t, big)}</div>
         <div>
           <dl class="tl-facts">${toolFacts(t).map(([l, v]) => `<dt>${esc(l)}</dt><dd>${esc(v)}</dd>`).join('')}
@@ -363,15 +394,17 @@ function toolDetail(t, byId) {
         </div>
       </div>
       <h4>${t.kind === 'frez' ? 'Przypisane oprawki' : 'Pasuje do'}</h4>
-      ${groups.length ? groups.map(([l, a]) => `<div class="tl-fit-group"><span class="small muted">${esc(l)}</span><div class="tl-fit-row">${a.map(f => `<button type="button" class="tl-mini" data-open="${f.id}" title="${esc(f.name)}">${f.params ? drawTool(f, { w: f.kind === 'glowica' ? 120 : f.kind === 'frez' ? 34 : 56 }) : ''}<span class="small mono">${esc(f.name)}</span></button>`).join('')}</div></div>`).join('')
+      ${groups.length ? groups.map(([l, a]) => `<div class="tl-fit-group"><span class="small muted">${esc(l)}</span><div class="tl-fit-row">${a.map(f => `<button type="button" class="tl-mini" data-open="${f.id}" title="${esc(f.name)}">${f.params ? drawTool(f, { w: f.kind === 'glowica' ? 120 : f.kind === 'frez' ? 140 : 56, horizontal: true }) : ''}<span class="small mono">${esc(f.name)}</span></button>`).join('')}</div></div>`).join('')
         : `<p class="small muted">${t.kind === 'plytka' ? 'Żadna głowica w wykazie nie ma gniazda pasującego do tej płytki.' : t.kind === 'frez' ? 'Nie przypisano oprawek — przypisuje kierownik w edycji frezu.' : 'Brak dopasowań w wykazie.'}</p>`}
       <p class="small muted">${t.kind === 'frez' ? 'Oprawki do frezu są przypisane ręcznie.' : t.kind === 'plytka' ? 'Dopasowanie liczone z gniazda głowicy.' : `Głowice i płytki dobierane z parametrów (trzpień, chwyt, gniazdo)${t.kind === 'oprawka' ? '; frezy — przypisane ręcznie' : ''} — przed użyciem sprawdź katalog producenta i wysięg.`}</p>
     </div>
     <footer>${admin ? `<button type="button" data-act="edit">Edytuj</button><button type="button" data-act="in">${icon('plus')}Przyjęcie</button><button type="button" data-act="out">Wydanie / zużycie</button>${t.active ? '<button type="button" class="danger" data-act="off">Wycofaj</button>' : '<button type="button" data-act="on">Przywróć</button>'}` : ''}<button type="button" class="primary" data-close>Zamknij</button></footer></form>`;
   document.body.appendChild(dlg);
-  const close = () => { dlg.close(); dlg.remove(); };
+  const back = document.activeElement;
+  const restore = () => { if (back && back.isConnected && back.focus) back.focus(); };
+  const close = () => { dlg.close(); dlg.remove(); restore(); };
   $$('[data-close]', dlg).forEach(b => b.addEventListener('click', close));
-  dlg.addEventListener('cancel', () => dlg.remove());
+  dlg.addEventListener('cancel', () => { dlg.remove(); restore(); });
   $$('[data-open]', dlg).forEach(b => b.addEventListener('click', () => { const n = byId.get(Number(b.dataset.open)); if (n) { close(); toolDetail(n, byId); } }));
   const act = (name, fn) => { const b = $(`[data-act="${name}"]`, dlg); if (b) b.addEventListener('click', () => { close(); fn(); }); };
   act('edit', () => toolForm(t.kind, t, [...byId.values()]));

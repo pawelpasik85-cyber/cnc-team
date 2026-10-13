@@ -82,6 +82,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 21 — gwintowniki i frezy do gwintów (13.10.2026)
 **66 / 66 zaliczonych.** Uwaga kierownika: przy gwintowniku nie podaje się liczby ostrzy, potrzebny skok gwintu. Rozdzielone rodzaje: gwintownik (bez z) i frez do gwintów (z obowiązkowe); oba — skok gwintu P obowiązkowy (4 miejsca po przecinku dla gwintów calowych) i oznaczenie gwintu (np. M10x1). Migracja 014 przenosi dawne „gwintowniki” z liczbą ostrzy do frezów do gwintów. Rysunek: zwoje co skok, podpis „M8 P1,25”. Przegląd niezależny: 5 uwag, poprawione. Zrzuty `121`, `122`.
 
+### Runda 22 — widok katalogowy narzędzi (13.10.2026)
+**66 / 66 zaliczonych** (zmiana tylko w interfejsie). Wykaz jak katalog: jedno narzędzie w wierszu — rysunek (frez poziomo, z wymiarami Lc / l1 / L), nazwa, średnica, ostrza (przy gwintowniku skok), materiał, na końcu stan; pozostałe parametry po kliknięciu. Stan 0–1 szt czerwony, 2 szt żółty; zwijane podsumowanie „Mało na stanie”. Telefon: wiersz jako karta. Przegląd niezależny (z klikaniem w Playwright, tryb jasny/ciemny, 390 px): 3 uwagi + 2 drobne, poprawione (kolory w trybie ciemnym, nazwa jako przycisk dla klawiatury i czytnika ekranu, powrót fokusu po zamknięciu). Zrzuty `110`–`121`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |
