@@ -85,6 +85,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 22 — widok katalogowy narzędzi (13.10.2026)
 **66 / 66 zaliczonych** (zmiana tylko w interfejsie). Wykaz jak katalog: jedno narzędzie w wierszu — rysunek (frez poziomo, z wymiarami Lc / l1 / L), nazwa, średnica, ostrza (przy gwintowniku skok), materiał, na końcu stan; pozostałe parametry po kliknięciu. Stan 0–1 szt czerwony, 2 szt żółty; zwijane podsumowanie „Mało na stanie”. Telefon: wiersz jako karta. Przegląd niezależny (z klikaniem w Playwright, tryb jasny/ciemny, 390 px): 3 uwagi + 2 drobne, poprawione (kolory w trybie ciemnym, nazwa jako przycisk dla klawiatury i czytnika ekranu, powrót fokusu po zamknięciu). Zrzuty `110`–`121`.
 
+### Runda 23 — uwagi po obejrzeniu na telefonie (13.10.2026)
+**66 / 66 zaliczonych.** Plan pracy podzielony na Hartford i Grimme, „Inna praca” jako sekcja dodawana tylko w razie potrzeby; zmiana kolejności poleceń w obrębie tej samej maszyny (test zaktualizowany: „inna praca” nie przeskakuje do Grimme). Rodzaje urlopu i nieobecności w jednolitych kolorach (kalendarz, kalendarz urlopów, karty, zgłoszenia, lista). Karta pracownika: tylko saldo do odrobienia, urlopy i nieobecności. Narzędzia: dane wyraźniej niż rysunek, na telefonie wiersz poziomo. Dane demo: zmiana I 06:00–14:00 dla wszystkich (bez etatu 7/8), polecenia w planie. Wersja pokazowa: logowanie własnym kontem (bez wyboru roli). Przegląd niezależny: 7 uwag, 6 poprawionych; 12-godzinna zmiana w danych demo zostaje celowo (zastępstwo za L4). Zrzuty `130`–`138`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

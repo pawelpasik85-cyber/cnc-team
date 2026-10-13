@@ -443,7 +443,7 @@ p .mode-badge { display: inline-block; margin: 0 2px; }
 .rs-axis span:nth-child(2) { transform: translateX(-50%); border-left: 2px solid var(--c-ink); padding-left: 4px; top: -4px; }
 
 /* ---------- Kalendarz urlopów ---------- */
-.tone-uw { --tone: #1e9e5a; } .tone-uz { --tone: #7cb518; } .tone-l4 { --tone: #d64545; } .tone-care { --tone: #8e5bd6; }
+.tone-uw { --tone: #1e9e5a; } .tone-uz { --tone: #c99a06; } .tone-l4 { --tone: #d64545; } .tone-care { --tone: #8e5bd6; }
 .tone-force { --tone: #e07a1f; } .tone-family { --tone: #d6589a; } .tone-event { --tone: #2f80d1; } .tone-unpaid { --tone: #7a8691; }
 .tone-train { --tone: #0f9b9b; } .tone-other { --tone: #5c6b7a; }
 .lc-head { display: flex; align-items: flex-end; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
@@ -680,3 +680,39 @@ details.tl-low summary::-webkit-details-marker { display: none; }
   :root:not([data-theme="light"]) .st-min { color: #ffb4ad; }
 }
 .tool-svg-dim-h { font-size: 11px; }
+
+/* ---- Plan pracy: podział na maszyny ---- */
+.pm-group { border: 1px solid var(--c-line); border-left: 4px solid var(--m-mid, #8a949e); border-radius: var(--r-md); padding: var(--sp-2); margin-top: var(--sp-2); background: linear-gradient(180deg, var(--m-soft, transparent), transparent 60px); }
+.pm-group.pm-other { border-left-style: dashed; border-left-color: #8a949e; }
+.pm-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.pm-head b { color: var(--m-ink, var(--c-ink)); }
+.pm-head svg.emblem { width: 22px; height: 22px; }
+.pm-add { margin-left: auto; }
+.pm-other-add { margin-top: var(--sp-2); font-size: var(--fs-sm); }
+.pm-group .orders { margin: 0; }
+.chip.ev[class*="tone-"] { background: color-mix(in srgb, var(--tone) 16%, var(--c-surface)); border-left: 4px solid var(--tone); }
+.leave-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.leave-chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-weight: 600; font-size: var(--fs-sm); color: var(--c-ink); background: color-mix(in srgb, var(--tone) 18%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent); border-left: 4px solid var(--tone); }
+.emp-balance { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); border: 1px solid var(--c-line); border-left: 4px solid #1e9e5a; background: var(--c-paper); }
+.emp-balance > span:first-child { font-weight: 600; }
+.emp-balance b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.emp-balance.due { border-left-color: #e07a1f; }
+.emp-balance.due b { color: #b4570b; }
+:root[data-theme="dark"] .emp-balance.due b { color: #ffb066; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .emp-balance.due b { color: #ffb066; } }
+/* katalog: dane wyraźniej niż rysunek */
+.tl-table tbody td[data-l]:not(.tl-c-name):not(.tl-c-st) { font-size: var(--fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-table.k-frez .tl-pic-row { min-width: 196px; }
+.tl-pic-row svg.tool-svg { max-height: 76px; }
+.tl-table.k-oprawka .tl-pic-row svg { max-height: 80px; }
+.tl-c-name .tl-open { font-size: 1.05rem; }
+@media (max-width: 760px) {
+  /* telefon: wiersz poziomo — mały rysunek z lewej, dane z prawej */
+  .tl-table tbody tr { grid-template-columns: 96px 1fr 1fr; column-gap: 8px; align-items: start; }
+  .tl-table td.tl-c-pic { grid-column: 1; grid-row: 1 / span 4; padding-right: 0; }
+  .tl-table td.tl-c-name { grid-column: 2 / -1; }
+  .tl-table td.tl-c-st { grid-column: 2 / -1; border-top: 0; padding-top: 0; }
+  .tl-table .tl-pic-row { min-width: 0 !important; padding: 2px; }
+  .tl-table .tl-pic-row svg.tool-svg { width: 100%; max-height: 120px; }
+  .tl-table.k-frez td.tl-c-pic { grid-row: 1 / span 3; }
+}

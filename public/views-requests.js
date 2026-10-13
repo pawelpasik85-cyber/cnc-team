@@ -13,6 +13,12 @@ const WANTED_LABEL = { URLOP_WYP: 'Urlop wypoczynkowy', URLOP_NA_ZADANIE: 'Urlop
   OPIEKA_188: 'Opieka nad dzieckiem (art. 188)', SILA_WYZSZA: 'Siła wyższa (art. 148¹)', OKOL_SLUB: 'Okolicznościowy — ślub', OKOL_NARODZINY: 'Okolicznościowy — narodziny dziecka',
   OKOL_ZGON_BLISKI: 'Okolicznościowy — zgon osoby bliskiej', OKOL_SLUB_DZIECKA: 'Okolicznościowy — ślub dziecka', OKOL_ZGON_DALSZY: 'Okolicznościowy — zgon dalszej rodziny',
   BEZPLATNY: 'Urlop bezpłatny', KREW: 'Oddawanie krwi', BADANIA_PROFIL: 'Badania profilaktyczne', SZKOLENIOWY: 'Szkolenie', WEZWANIE: 'Wezwanie (sąd, urząd)', WOJSKO: 'Obowiązki wojskowe', INNE_USTAWOWE: 'Inne zwolnienie ustawowe' };
+// rodzaj urlopu jako kolorowa plakietka (te same kolory co w kalendarzu urlopów)
+function leaveChip(code) {
+  if (!code) return '';
+  const c = (S.boot.categories || []).find(x => x.code === code);
+  return `<span class="leave-chip tone-${absTone(c ? c.icon : 'other', code)}">${esc(WANTED_LABEL[code] || (c && c.name) || code)}</span>`;
+}
 const REQ_STATUS = { nowe: ['czeka na decyzję', 'warn'], przyjete: ['przyjęte', 'ok'], odrzucone: ['odrzucone', 'danger'], wycofane: ['wycofane', ''] };
 
 function reqWhen(r) {
@@ -42,7 +48,7 @@ VIEWS.zglos = async (main) => {
         <div class="form-error wide" role="alert"></div>
       </form></section>
       <section class="panel"><h3>Moje zgłoszenia</h3>${table([
-        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(REQ_KIND[r.kind][0])}</b>${r.wanted_code ? ` — ${esc(WANTED_LABEL[r.wanted_code] || '')}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
+        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(REQ_KIND[r.kind][0])}</b>${r.wanted_code ? ` ${leaveChip(r.wanted_code)}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
         { key: r => r, label: 'Decyzja', fmt: r => `${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small">${esc(r.decision_note)}</span>` : ''}${r.decided_at ? `<br><span class="small muted">${new Date(r.decided_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })}</span>` : ''}` },
         { key: r => r, label: '', fmt: r => r.status === 'nowe' ? `<button class="link" data-withdraw="${r.id}">Wycofaj</button>` : '' },
       ], list, { empty: 'Nie masz jeszcze zgłoszeń.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section></div>`;
@@ -81,7 +87,7 @@ async function localRequestsSection() {
   const list = await api('/requests');
   const html = `<section class="panel"><h3>Zgłoszenia pracowników</h3>${table([
     { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) },
-    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])}${r.wanted_code ? `<br><span class="small">prośba: <b>${esc(WANTED_LABEL[r.wanted_code] || r.wanted_code)}</b></span>` : ''}` },
+    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(REQ_KIND[r.kind][0])}${r.wanted_code ? `<br><span class="small">prośba: ${leaveChip(r.wanted_code)}</span>` : ''}` },
     { key: r => r, label: 'Kiedy', fmt: r => reqWhen(r) },
     { key: 'note', label: 'Uwaga pracownika' },
     { key: r => new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Zgłoszono' },
@@ -115,7 +121,7 @@ function requestAcceptForm(r) {
   const { options, cats, byCode } = requestTargetOptions(r.kind);
   openForm({
     title: `Przyjmij: ${REQ_KIND[r.kind][0]} — ${S.emp.get(r.employee_id)?.first_name || ''}`,
-    intro: `<p class="small">${reqWhen(r)}${r.wanted_code ? `<br>Pracownik prosi o: <b>${esc(WANTED_LABEL[r.wanted_code] || r.wanted_code)}</b> (możesz wybrać inną kategorię)` : ''}${r.note ? `<br>Uwaga: ${esc(r.note)}` : ''}</p><p class="small muted">Wpis powstanie z odnośnikiem do zgłoszenia #${r.id}; w historii zapisze się, kto przyjął.</p>`,
+    intro: `<p class="small">${reqWhen(r)}${r.wanted_code ? `<br>Pracownik prosi o: ${leaveChip(r.wanted_code)} (możesz wybrać inną kategorię)` : ''}${r.note ? `<br>Uwaga: ${esc(r.note)}` : ''}</p><p class="small muted">Wpis powstanie z odnośnikiem do zgłoszenia #${r.id}; w historii zapisze się, kto przyjął.</p>`,
     fields: [
       { name: 'target', label: 'Jak rozliczyć', type: 'select', options, value: options[0][0], placeholder: false, wide: true },
       { name: 'category_id', label: 'Kategoria nieobecności', type: 'select', options: cats.map(c => [c.id, c.subtype ? `${c.name} — ${c.subtype}` : c.name]), value: (r.wanted_code && byCode(r.wanted_code)) || byCode('INNE_USPRAW'), placeholder: false, wide: true, show: v => v.target === 'absence' },

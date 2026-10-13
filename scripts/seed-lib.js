@@ -72,12 +72,11 @@ function seedDemo(db) {
   People.addTerms(db, admin, adam, { valid_from: '2023-03-01', fte_num: 1, fte_den: 1, daily_norm_min: 480, weekly_norm_min: 2400, leave_day_min: 480 });
   People.addTerms(db, admin, bartosz, { valid_from: '2023-03-01', fte_num: 1, fte_den: 1, daily_norm_min: 480, weekly_norm_min: 2400, leave_day_min: 480 });
   People.addTerms(db, admin, celina, { valid_from: '2023-03-01', fte_num: 1, fte_den: 1, daily_norm_min: 480, weekly_norm_min: 2400, leave_day_min: 480 });
-  People.addTerms(db, admin, celina, { valid_from: '2026-07-01', fte_num: 7, fte_den: 8, daily_norm_min: 420, weekly_norm_min: 2100, leave_day_min: 420, note: 'Zmiana etatu na 7/8 od 1.07.2026' });
 
   const users = [['przelozony', 'Przełożony', 'supervisor', null], ['adam', 'Adam Nowicki', 'employee', adam], ['bartosz', 'Bartosz Wilk', 'employee', bartosz], ['celina', 'Celina Kruk', 'employee', celina]];
   for (const [login, name, role, emp] of users) People.saveUser(db, admin, { login, display_name: name, role, employee_id: emp, password: DEMO_PASSWORD });
 
-  // Grafik: rotacja tygodniowa I/II/III od 31.08.2026 do 29.11.2026 (pn–pt). Celina na 7/8 — zmiana I 06:00–13:00.
+  // Grafik: rotacja tygodniowa I/II/III od 31.08.2026 do 29.11.2026 (pn–pt): zmiana I 06:00–14:00, II 14:00–22:00, III 22:00–06:00.
   const tpl = Object.fromEntries(db.all('SELECT id, short FROM shift_templates').map(t => [t.short, t.id]));
   let monday = '2026-08-31';
   const rot = [[adam, bartosz, celina], [celina, adam, bartosz], [bartosz, celina, adam]];
@@ -86,19 +85,14 @@ function seedDemo(db) {
     const fri = T.addDays(monday, 4);
     for (const [emp, short] of [[e1, 'I'], [e2, 'II'], [e3, 'III']]) {
       const body = { employee_id: emp, shift_template_id: tpl[short], from: monday, to: fri };
-      if (emp === celina && monday >= '2026-07-01') { // 7 h dziennie
-        const t = db.get('SELECT * FROM shift_templates WHERE id=?', tpl[short]);
-        const [h, m] = t.start_time.split(':').map(Number);
-        body.start_time = t.start_time; body.end_time = `${String((h + 7) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      }
       People.generateSchedule(db, admin, body);
     }
   }
 
   // Pule urlopu (wymiar z kadr, w minutach)
   for (const id of emps) {
-    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2025, entitlement_min: id === celina ? 2 * 420 : 0, reason: 'Saldo zaległego urlopu wg kadr na 01.01.2026', opening: true });
-    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2026, entitlement_min: id === celina ? 23 * 420 : 26 * 480, reason: id === celina ? 'Wymiar proporcjonalny do etatu 7/8 wg kadr' : 'Wymiar 26 dni wg kadr' });
+    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2025, entitlement_min: id === celina ? 2 * 480 : 0, reason: 'Saldo zaległego urlopu wg kadr na 01.01.2026', opening: true });
+    Abs.createPool(db, admin, { employee_id: id, acquisition_year: 2026, entitlement_min: 26 * 480, reason: 'Wymiar 26 dni wg kadr' });
   }
   const pool2026adam = db.get('SELECT id FROM leave_pools WHERE employee_id=? AND acquisition_year=2026', adam).id;
   Abs.adjustPool(db, admin, pool2026adam, { minutes: -480, reason: 'Korekta ewidencji: urlop udzielony w 2026 przed wdrożeniem aplikacji', hr_document_ref: 'KADRY/2026/014' });
@@ -236,6 +230,16 @@ function seedDemo(db) {
       { kind: 'projekt', ref: p2, cause: 'zmiana_zakresu', note: 'Klient dosłał nową rewizję rysunku w trakcie programowania 5X; część ścieżek do ponownego przygotowania. Termin uzgodniony na nowo.' },
       { kind: 'notatka', title: 'Obsada zmian', cause: 'inne', note: 'L4 jednej osoby 5–7.10 — zmiany wydłużone do 12 h i dzień dodatkowy w sobotę.' },
     ] });
+  // Plan pracy na 6–7.10: polecenia na Hartford i Grimme, rzadko inna praca (poza maszynami)
+  const O = require('../server/domain/orders');
+  const ord = (employee_id, work_date, body) => O.createOrder(db, admin, { employee_id, work_date, ...body });
+  for (const d of ['2026-10-06', '2026-10-07']) {
+    ord(celina, d, { project_id: p1, task_id: t3, machine_id: 'M-HARTFORD', planned_min: 240, details: 'Symulacja w NX, sprawdzić kolizję oprawki BT50-ER32 przy kieszeni 3.' });
+    ord(celina, d, { project_id: p2, machine_id: 'M-GRIMME', title: 'Przegląd ścieżek 5X po zmianie mocowania', planned_min: 120 });
+    ord(adam, d, { project_id: p1, task_id: t2, machine_id: 'M-HARTFORD', planned_min: 300 });
+  }
+  ord(adam, '2026-10-06', { machine_id: null, title: 'Uporządkowanie biblioteki narzędzi w NX', planned_min: 90, details: 'Nowe frezy VHM i oprawki HSK40 w bibliotece.' });
+  for (const d of ['2026-10-08', '2026-10-09']) ord(bartosz, d, { project_id: p2, task_id: t7, machine_id: 'M-GRIMME', planned_min: 360, details: 'Strategia 5X dla żebra, tolerancja ±0,02.' }); // po powrocie z L4
   seedTools(db, admin);
   X.recomputeAlerts(db);
   return { admin, adam, bartosz, celina, p1, p2, p3 };

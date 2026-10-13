@@ -359,7 +359,7 @@ const CATALOG_COLS = {
 };
 function toolCatalog(kind, items) {
   const cols = CATALOG_COLS[kind];
-  const picW = kind === 'frez' ? 260 : kind === 'glowica' ? 150 : kind === 'oprawka' ? 56 : 70;
+  const picW = kind === 'frez' ? 190 : kind === 'glowica' ? 120 : kind === 'oprawka' ? 44 : 56; // rysunek mniejszy — na pierwszym planie dane
   return `<table class="tl-table k-${kind}"><thead><tr><th class="tl-c-pic">Rysunek</th><th>Nazwa</th>${cols.map(([l]) => `<th>${esc(l)}</th>`).join('')}<th class="tl-c-st">Stan</th></tr></thead>
     <tbody>${items.map(t => {
       const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';

@@ -154,8 +154,11 @@ function moveOrder(db, user, id, dir) {
   const o = getOrder(db, id);
   const step = dir === 'up' ? -1 : dir === 'down' ? 1 : null;
   if (!step) throw bad('Kierunek: up / down.');
-  const list = db.all('SELECT id, seq FROM work_orders WHERE employee_id = ? AND work_date = ? ORDER BY seq, id', o.employee_id, o.work_date);
-  const i = list.findIndex(x => x.id === id), j = i + step;
+  const list = db.all('SELECT id, seq, machine_id FROM work_orders WHERE employee_id = ? AND work_date = ? ORDER BY seq, id', o.employee_id, o.work_date);
+  const i = list.findIndex(x => x.id === id);
+  // kolejność w obrębie tej samej maszyny (Hartford / Grimme / inna praca) — tak, jak plan jest pokazany
+  let j = i + step;
+  while (j >= 0 && j < list.length && (list[j].machine_id || null) !== (o.machine_id || null)) j += step;
   if (j < 0 || j >= list.length) return { id };
   db.tx(() => {
     list.forEach((x, k) => { x.seq = k + 1; });

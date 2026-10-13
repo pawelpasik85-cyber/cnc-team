@@ -3,25 +3,39 @@
 
 const ORDER_STATUS = { zaplanowane: ['do wykonania', 'accent'], wykonane: ['wykonane', 'ok'], czesciowo: ['częściowo', 'warn'], niewykonane: ['niewykonane', 'danger'], anulowane: ['anulowane', ''] };
 
-function orderCard(o, { admin = false, mine = false } = {}) {
+function orderCard(o, { admin = false, mine = false, grouped = false, first = false, last = false } = {}) {
   const th = o.machine_id ? machineTheme({ id: o.machine_id, axes: o.axes }) : null;
   return `<li class="order ${o.status} ${th ? `theme-${th}` : ''}">
     <span class="seq">${o.seq}</span>
     <div class="o-body">
       <div class="o-title"><b>${esc(o.title)}</b> ${tag(...ORDER_STATUS[o.status])}${o.carried ? ` ${tag('przeniesione', '', 'makeup')}` : ''}</div>
       ${o.details ? `<p class="small o-details">${esc(o.details)}</p>` : ''}
-      <div class="o-meta small">${o.project_id ? `<a href="#/projekty/${encodeURIComponent(o.project_id)}"><span class="mono">${esc(o.order_no)}</span> ${esc(o.part_no)}</a>` : ''}
-        ${o.task_title && o.task_title !== o.title ? `· zadanie: ${esc(o.task_title)}` : ''} ${o.machine_id ? machineChip(o) : ''} ${o.planned_min ? `· ${icon('today')} ${hShort(o.planned_min)}` : ''}</div>
+      <div class="o-meta small">${[o.project_id ? `<a href="#/projekty/${encodeURIComponent(o.project_id)}"><span class="mono">${esc(o.order_no)}</span> ${esc(o.part_no)}</a>` : '',
+        o.task_title && o.task_title !== o.title ? `zadanie: ${esc(o.task_title)}` : '',
+        o.machine_id && (!grouped || !S.boot.machines.some(m => m.id === o.machine_id && m.active !== 0)) ? machineChip(o) : '',
+        o.planned_min ? `${icon('today')} ${hShort(o.planned_min)}` : ''].filter(Boolean).join(' · ')}</div>
       ${o.result_note ? `<p class="small o-result">${icon('check')} ${esc(o.result_note)}${o.closed_by_name ? ` <span class="muted">— ${esc(o.closed_by_name)}</span>` : ''}</p>` : ''}
       <div class="o-ack small">${o.ack_at ? `${icon('check')} przeczytane ${new Date(o.ack_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : (o.status === 'zaplanowane' ? '<span class="unread">nieprzeczytane</span>' : '')}</div>
     </div>
     <div class="o-actions no-print">
       ${mine && !o.ack_at && o.status === 'zaplanowane' ? `<button class="primary" data-ack="${o.id}">${icon('check')}Potwierdzam przeczytanie</button>` : ''}
       ${admin && o.status !== 'anulowane' ? `
-        ${o.status === 'zaplanowane' ? `<button class="link" data-up="${o.id}" aria-label="W górę">▲</button><button class="link" data-down="${o.id}" aria-label="W dół">▼</button><button class="link" data-edit-o="${o.id}">Edytuj</button>` : ''}
+        ${o.status === 'zaplanowane' ? `${first ? '' : `<button class="link" data-up="${o.id}" aria-label="W górę">▲</button>`}${last ? '' : `<button class="link" data-down="${o.id}" aria-label="W dół">▼</button>`}<button class="link" data-edit-o="${o.id}">Edytuj</button>` : ''}
         <button class="link" data-close-o="${o.id}">${o.status === 'zaplanowane' ? 'Oceń wykonanie' : 'Zmień ocenę'}</button>
         <button class="link" data-cancel-o="${o.id}">Anuluj</button>` : ''}
     </div></li>`;
+}
+
+// Polecenia jednej osoby podzielone na maszyny; „Inna praca” (bez maszyny) pokazywana tylko, gdy coś w niej jest
+function machineGroups(orders, { admin = false, mine = false, employeeId = null } = {}) {
+  const groups = S.boot.machines.filter(m => m.active !== 0).map(m => ({ key: m.id, title: m.name, sub: `${m.axes}X · ${m.control}`, theme: machineTheme(m), list: orders.filter(o => o.machine_id === m.id) }));
+  const other = orders.filter(o => !o.machine_id || !groups.some(g => g.key === o.machine_id));
+  const box = (g) => `<div class="pm-group ${g.theme ? `theme-${g.theme}` : 'pm-other'}">
+      <div class="pm-head">${g.theme ? machineEmblem(g.theme, 22) : icon('list')}<b>${esc(g.title)}</b>${g.sub ? `<span class="small muted">${esc(g.sub)}</span>` : ''}
+        ${admin ? `<button type="button" class="link no-print pm-add" data-add-o="${employeeId}" data-machine="${esc(g.key)}">${icon('plus')}Polecenie</button>` : ''}</div>
+      <ol class="orders">${g.list.map((o, k) => orderCard(o, { admin, mine, grouped: true, first: k === 0, last: k === g.list.length - 1 })).join('') || '<li class="muted small empty-orders">—</li>'}</ol></div>`;
+  return `${groups.filter(g => !mine || g.list.length).map(box).join('')}${other.length ? box({ key: '', title: 'Inna praca', sub: 'poza maszynami', theme: '', list: other })
+    : admin ? `<button type="button" class="link no-print pm-other-add" data-add-o="${employeeId}" data-machine="">${icon('plus')}Inna praca (poza maszynami)</button>` : ''}`;
 }
 
 function orderForm(o = {}, ctx = {}) {
@@ -37,7 +51,7 @@ function orderForm(o = {}, ctx = {}) {
       { name: 'task_id', label: 'Zadanie z projektu (opcjonalnie)', type: 'select', options: tasksOf(o.project_id), value: o.task_id, wide: true },
       { name: 'title', label: 'Polecenie (puste = nazwa zadania)', value: o.title, wide: true },
       { name: 'details', label: 'Szczegóły: co dokładnie, na co uważać, narzędzia, oprawki', type: 'textarea', value: o.details, wide: true },
-      { name: 'machine_id', label: 'Maszyna', type: 'select', options: machineOptions(), value: o.machine_id },
+      { name: 'machine_id', label: 'Maszyna', type: 'select', options: machineOptions(), placeholder: '— inna praca (poza maszynami) —', value: o.id ? o.machine_id : ctx.machine_id },
       { name: 'planned_min', label: 'Przewidywany czas', type: 'hm', value: o.planned_min },
     ],
     onChange: (v, form) => {
@@ -46,7 +60,7 @@ function orderForm(o = {}, ctx = {}) {
         sel.dataset.p = String(v.project_id);
         sel.innerHTML = '<option value="">— bez zadania —</option>' + tasksOf(v.project_id).map(([id, l]) => `<option value="${id}" ${id === o.task_id ? 'selected' : ''}>${esc(l)}</option>`).join('');
         const p = projects.find(x => x.id === v.project_id);
-        if (p && p.machine_id && !form.elements.machine_id.value) form.elements.machine_id.value = p.machine_id;
+        if (!o.id && p && p.machine_id && !form.elements.machine_id.value && ctx.machine_id !== '') form.elements.machine_id.value = p.machine_id;
       }
     },
     submit: (v, idem) => {
@@ -71,8 +85,7 @@ VIEWS.plan = async (main) => {
       <div class="plan-head">${person(e.employee_id)}<span class="small">${shiftTxt}</span>${e.absence ? tag(e.absence, 'warn', 'absence') : ''}</div>
       <div class="load ${e.load_pct > 100 ? 'over' : ''}" title="Plan poleceń wobec długości zmiany"><div class="track"><div class="fill" style="width:${Math.min(100, load)}%"></div></div>
         <span class="small">${hShort(e.planned_min)} z ${e.shift_min ? hShort(e.shift_min) : '—'}${e.load_pct !== null ? ` · ${e.load_pct}%` : ''}${e.unread ? ` · <b class="bad">nieprzeczytane: ${e.unread}</b>` : ''}</span></div>
-      <ol class="orders">${e.orders.map(o => orderCard(o, { admin })).join('') || '<li class="muted small empty-orders">Brak poleceń.</li>'}</ol>
-      ${admin ? `<button class="no-print" data-add-o="${e.employee_id}">${icon('plus')}Polecenie</button>` : ''}
+      ${machineGroups(e.orders, { admin, employeeId: e.employee_id })}
     </section>`;
   }).join('');
   main.innerHTML = head('Plan pracy', `Polecenia na ${plDate(date)} (${DOW[weekday(date) - 1]}). Programista widzi swoje polecenia w aplikacji i potwierdza przeczytanie.`,
@@ -84,7 +97,7 @@ VIEWS.plan = async (main) => {
   on('pprint', () => window.print());
   const all = plan.employees.flatMap(e => e.orders);
   const ctx = { date, projects };
-  $$('[data-add-o]').forEach(b => b.onclick = () => orderForm({}, { ...ctx, employee_id: Number(b.dataset.addO) }));
+  $$('[data-add-o]').forEach(b => b.onclick = () => orderForm({}, { ...ctx, employee_id: Number(b.dataset.addO), machine_id: b.dataset.machine }));
   $$('[data-edit-o]').forEach(b => b.onclick = () => orderForm(all.find(o => o.id === Number(b.dataset.editO)), ctx));
   $$('[data-up]').forEach(b => b.onclick = () => post(`/work-orders/${b.dataset.up}/move`, { dir: 'up' }));
   $$('[data-down]').forEach(b => b.onclick = () => post(`/work-orders/${b.dataset.down}/move`, { dir: 'down' }));
@@ -106,7 +119,7 @@ async function myPlanView(main, q) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(dQ) ? dQ : S.me.today;
   const list = await api(`/work-orders/my?from=${date}&to=${addDays(date, 1)}`);
   const day = (d) => list.filter(o => o.work_date === d);
-  const section = (d, label) => `<section class="panel"><h3>${esc(label)} — ${plDate(d)}</h3><ol class="orders">${day(d).map(o => orderCard(o, { mine: true })).join('') || '<li class="muted small empty-orders">Brak poleceń na ten dzień.</li>'}</ol></section>`;
+  const section = (d, label) => `<section class="panel"><h3>${esc(label)} — ${plDate(d)}</h3>${day(d).length ? machineGroups(day(d), { mine: true }) : '<p class="muted small">Brak poleceń na ten dzień.</p>'}</section>`;
   main.innerHTML = head('Moje polecenia', 'Polecenia od kierownika na zmianę. Potwierdź, że je przeczytałeś — kierownik to zobaczy.',
     `<a class="btn" href="#/plan?d=${addDays(date, -1)}">‹</a><a class="btn" href="#/plan">Dziś</a><a class="btn" href="#/plan?d=${addDays(date, 1)}">›</a>`) +
     section(date, date === S.me.today ? 'Dziś' : 'Dzień') + section(addDays(date, 1), 'Następny dzień');

@@ -27,13 +27,18 @@ test('polecenia: zadanie i maszyna z projektu, kolejność, ostrzeżenia o grafi
   const a = O.createOrder(w.db, w.admin, { employee_id: w.e, work_date: '2026-10-06', task_id: w.tid, planned_min: 300 });
   const o1 = w.db.get('SELECT * FROM work_orders WHERE id=?', a.id);
   assert.equal(o1.title, 'Programowanie 5X'); assert.equal(o1.project_id, w.pid); assert.equal(o1.machine_id, 'M-GRIMME'); assert.equal(o1.seq, 1);
-  const b = O.createOrder(w.db, w.admin, { employee_id: w.e, work_date: '2026-10-06', title: 'Weryfikacja programu OP20', planned_min: 240 });
+  const b = O.createOrder(w.db, w.admin, { employee_id: w.e, work_date: '2026-10-06', title: 'Weryfikacja programu OP20', machine_id: 'M-GRIMME', planned_min: 240 });
   assert.match(b.warnings.join(), /przekracza długość zmiany/);
   const c = O.createOrder(w.db, w.admin, { employee_id: w.e, work_date: '2026-10-10', title: 'Sobota' });
   assert.match(c.warnings.join(), /nie ma w tym dniu zmiany/);
   throwsStatus(assert, () => O.createOrder(w.db, w.admin, { employee_id: w.e, work_date: '2026-10-06' }), 400, /Wpisz polecenie/);
   O.moveOrder(w.db, w.admin, b.id, 'up');
   assert.deepEqual(w.db.all(`SELECT id FROM work_orders WHERE work_date='2026-10-06' ORDER BY seq`).map(r => r.id), [b.id, a.id]);
+  // kolejność zmienia się w obrębie tej samej maszyny: „inna praca” między nimi jest pomijana, a jej strzałki nie przeskakują do Grimme
+  const x = O.createOrder(w.db, w.admin, { employee_id: w.e, work_date: '2026-10-06', title: 'Biblioteka narzędzi', machine_id: null });
+  O.moveOrder(w.db, w.admin, x.id, 'up');
+  assert.deepEqual(w.db.all(`SELECT id FROM work_orders WHERE work_date='2026-10-06' ORDER BY seq`).map(r => r.id), [b.id, a.id, x.id]);
+  w.db.run(`UPDATE work_orders SET status='anulowane' WHERE id=?`, x.id);
   const day = O.dayPlan(w.db, '2026-10-06').employees.find(x => x.employee_id === w.e);
   assert.equal(day.planned_min, 540); assert.equal(day.shift_min, 480); assert.equal(day.load_pct, 113); assert.equal(day.unread, 2);
   throwsStatus(assert, () => O.updateOrder(w.db, w.admin, a.id, { status: 'czesciowo' }), 400, /co zostało/);

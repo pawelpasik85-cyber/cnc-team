@@ -13,24 +13,14 @@ VIEWS.pracownicy = async (main) => {
   // programista: jego prośby o urlop czekające na decyzję kierownika
   const pendingReq = isEmployee() ? (await api('/requests').catch(() => [])).filter(r => r.kind === 'nieobecnosc' && r.status === 'nowe') : [];
   const yearNav = leave.length ? `<span class="lc-yearnav"><span class="muted small">Urlopy</span><a class="btn" href="#/pracownicy?rok=${year - 1}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${year}</span><a class="btn" href="#/pracownicy?rok=${year + 1}" aria-label="Następny rok">›</a></span>` : '';
-  const machines = new Map(S.boot.machines.map(m => [m.id, m]));
-  main.innerHTML = peopleTabs('pracownicy') + head(isEmployee() ? 'Mój profil i urlopy' : 'Pracownicy', isEmployee() ? 'Ile urlopu wykorzystałeś i ile zostało. Urlop wpisuje kierownik — o urlop poproś w „Zgłoś kierownikowi” (nieobecność).' : `Profile, wymiar etatu, normy, kompetencje i obsługiwane maszyny${leave.length ? ', a pod każdym — wykorzystane urlopy i nieobecności w roku' : ''}.`, yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
+  main.innerHTML = peopleTabs('pracownicy') + head(isEmployee() ? 'Mój profil i urlopy' : 'Pracownicy', isEmployee() ? 'Saldo do odrobienia oraz ile urlopu wykorzystałeś i ile zostało. Urlop wpisuje kierownik — o urlop poproś w „Zgłoś kierownikowi” (nieobecność).' : 'Przy każdym pracowniku: saldo do odrobienia, urlopy i nieobecności w roku.', yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
     `<div class="cols">${emps.map(e => {
       const t = e.current_terms; const b = balances.find(x => x.employee_id === e.id);
       return `<section class="panel"><div class="page-head" style="margin:0 0 var(--sp-2)"><h3>${person(e.id)}</h3>${e.active ? tag('aktywny', 'ok') : tag('nieaktywny')}</div>
-        <dl class="small" style="display:grid;grid-template-columns:150px 1fr;gap:3px 10px;margin:0">
-          ${e.employment_start ? `<dt class="muted">Zatrudnienie</dt><dd style="margin:0">${plDate(e.employment_start)} – ${e.employment_end ? plDate(e.employment_end) : 'obecnie'}</dd>` : ''}
-          ${t ? `<dt class="muted">Etat od ${plDate(t.valid_from)}</dt><dd style="margin:0">${t.fte_num}/${t.fte_den}, norma ${hm(t.daily_norm_min)} / dzień, ${hm(t.weekly_norm_min)} / tydzień</dd><dt class="muted">Przelicznik urlopu</dt><dd style="margin:0">1 dzień = ${hm(t.leave_day_min)}</dd>` : ''}
-          <dt class="muted">Maszyny</dt><dd style="margin:0">${(e.machine_ids || []).map(m => tag(`${machines.get(m)?.name || m} ${machines.get(m)?.axes || ''}X`, 'accent')).join(' ') || '—'}</dd>
-          <dt class="muted">Kompetencje</dt><dd style="margin:0">${(e.competences || []).map(c => tag(c)).join(' ') || '—'}</dd>
-          ${b ? `<dt class="muted">Saldo do odrobienia</dt><dd style="margin:0">${hm(b.remaining_min)}</dd>` : ''}
-          ${e.initial_settlement_note !== undefined ? `<dt class="muted">Dane początkowe</dt><dd style="margin:0">${esc(e.initial_settlement_note || '—')} ${e.initial_settlement_approved_at ? tag('zatwierdzone', 'ok', 'check') : tag('niezatwierdzone', 'warn')}</dd>` : ''}
-          ${e.hr_reference ? `<dt class="muted">Referencja kadrowa</dt><dd style="margin:0">${icon('lock')} ${esc(e.hr_reference)}</dd>` : ''}
-        </dl>
+        <div class="emp-balance ${b && b.remaining_min > 0 ? 'due' : ''}"><span>Saldo do odrobienia</span><b>${b ? hm(b.remaining_min) : '0:00'}</b><span class="small muted">${b && b.remaining_min > 0 ? 'do odrobienia w tym miesiącu' : 'nic do odrobienia'}</span></div>
         ${leaveBy.has(e.id) ? `<div class="lc-emp"><h4>Urlopy i nieobecności ${year}</h4>${leaveRows(leaveBy.get(e.id), year)}</div>` : ''}
-        ${isEmployee() ? `<div class="lc-emp"><h4>Moje prośby czekające na akceptację</h4>${pendingReq.length ? `<ul class="plain">${pendingReq.map(r => `<li>${tag('czeka na kierownika', 'warn')} <b>${esc(WANTED_LABEL[r.wanted_code] || 'Nieobecność')}</b> · ${reqWhen(r)}</li>`).join('')}</ul>` : '<p class="small muted">Brak. Urlop zaznaczasz w „Zgłoś kierownikowi” → Nieobecność; przyznaje go i wpisuje kierownik.</p>'}
+        ${isEmployee() ? `<div class="lc-emp"><h4>Moje prośby czekające na akceptację</h4>${pendingReq.length ? `<ul class="plain">${pendingReq.map(r => `<li>${tag('czeka na kierownika', 'warn')} ${r.wanted_code ? leaveChip(r.wanted_code) : '<b>Nieobecność</b>'} · ${reqWhen(r)}</li>`).join('')}</ul>` : '<p class="small muted">Brak. Urlop zaznaczasz w „Zgłoś kierownikowi” → Nieobecność; przyznaje go i wpisuje kierownik.</p>'}
           <p><a class="btn" href="#/zglos">${icon('summons')}Poproś o urlop / nieobecność</a></p></div>` : ''}
-        ${e.terms && e.terms.length > 1 ? `<details class="small"><summary>Historia etatu (${e.terms.length})</summary>${table([{ key: 'valid_from', label: 'Od', fmt: 'date' }, { key: r => `${r.fte_num}/${r.fte_den}`, label: 'Etat' }, { key: 'daily_norm_min', label: 'Norma dobowa', fmt: 'hm' }, { key: 'note', label: 'Uwagi' }], e.terms)}</details>` : ''}
         ${isAdmin() ? `<div class="toolbar" style="margin-top:var(--sp-3)"><button data-edit="${e.id}">Edytuj</button><button data-terms="${e.id}">Zmiana etatu</button>${!e.initial_settlement_approved_at ? `<button data-approve="${e.id}">Zatwierdź dane początkowe</button>` : ''}</div>` : ''}
       </section>`;
     }).join('')}</div>`;
@@ -189,7 +179,7 @@ VIEWS.absencje = async (main) => {
       <label class="field">Kategoria<select name="kat"><option value="">wszystkie</option>${S.boot.categories.filter(c => c.name).map(c => `<option value="${c.id}" ${String(c.id) === q.get('kat') ? 'selected' : ''}>${esc(c.subtype ? `${c.name} — ${c.subtype}` : c.name)}</option>`).join('')}</select></label>
       <button class="primary">Filtruj</button></form>
       <section class="panel">${table([
-      { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) }, { key: r => r, label: 'Kategoria', fmt: r => `${icon(ICON_PATHS[r.icon] ? r.icon : 'absence')} ${esc(r.category_label)}` },
+      { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) }, { key: r => r, label: 'Kategoria', fmt: r => `<span class="leave-chip tone-${absTone(r.icon, r.code || r.category_short)}">${esc(r.category_label)}</span>` },
       { key: r => `${plDate(r.start_date)}${r.end_date !== r.start_date ? ` – ${plDate(r.end_date)}` : ''}${r.start_local ? ` ${r.start_local.time}–${r.end_local.time}` : ''}`, label: 'Okres' },
       { key: 'unit', label: 'Jednostka' }, { key: 'days', label: 'Dni wg grafiku', num: true }, { key: 'minutes', label: 'Czas wg grafiku', fmt: 'hm' }, { key: 'pool_year', label: 'Pula' },
       { key: 'status', label: 'Status', fmt: v => tag(...STATUS_TAG[v]) },
@@ -260,7 +250,7 @@ VIEWS.absencje = async (main) => {
 // ---------- Kalendarz urlopów: kafelki dni z nieobecnościami, pod spodem karty programistów z wykorzystaniem ----------
 // Kolor kategorii według rodzaju (ikony) — ten sam w kalendarzu i na kartach
 const ABS_TONE = { leave: 'uw', medical: 'l4', care: 'care', force: 'force', family: 'family', event: 'event', unpaid: 'unpaid', training: 'train', blood: 'event', summons: 'other', military: 'other', exit: 'other', other: 'other', absence: 'other' };
-const absTone = (icon, code) => (code === 'URLOP_NA_ZADANIE' ? 'uz' : ABS_TONE[icon] || 'other');
+const absTone = (icon, code) => (code === 'URLOP_NA_ZADANIE' || code === 'UŻ' ? 'uz' : code === 'SILA_WYZSZA' || code === 'SW' ? 'force' : ABS_TONE[icon] || 'other');
 const daysTxt = (d) => `${Number(d.toFixed ? d.toFixed(1) : d).toString().replace('.', ',')} ${Math.abs(d) === 1 ? 'dzień' : 'dni'}`;
 const minAsDays = (min, dayMin) => (dayMin ? daysTxt(Math.round((min / dayMin) * 10) / 10) : hShort(min));
 

@@ -235,7 +235,7 @@ VIEWS.dzisiaj = async (main) => {
   setTimeout(() => $$('[data-ack]').forEach(b => b.onclick = async () => { b.disabled = true; try { await api(`/work-orders/${b.dataset.ack}/ack`, { method: 'POST' }); toast('Potwierdzono.'); rerender(); } catch (e) { toast(e.message, 'err'); b.disabled = false; } }), 0);
   const tpl = new Map(S.boot.shift_templates.map(t => [t.id, t]));
   const shifts = d.shifts.map(s => `<li>${person(s.employee_id)} — ${tag(tpl.get(s.shift_template_id)?.name || 'zmiana')} <span class="muted">${s.start.time}–${s.end.time}${s.work_date !== d.today ? ' (od wczoraj)' : ''}</span></li>`).join('');
-  const abs = d.absences.map(a => `<li>${person(a.employee_id)} — ${tag(a.category_label, '', a.icon)} <span class="muted">${a.status}</span></li>`).join('');
+  const abs = d.absences.map(a => `<li>${person(a.employee_id)} — <span class="leave-chip tone-${absTone(a.icon, a.code || a.category_short)}">${esc(a.category_label)}</span> <span class="muted">${a.status}</span></li>`).join('');
   const alerts = (d.alerts || []).map(a => `<li>${icon('alert')} ${esc(a.message)}${a.remaining_min != null ? ` <b>${hm(a.remaining_min)}</b> pozostało, zmian do końca miesiąca: ${a.remaining_shifts ?? '—'}` : ''}</li>`).join('');
   const reminders = (d.leave_reminders || []).map(r => `<li>${r.level === 'ostrzezenie' ? tag('ostrzeżenie', 'warn', 'alert') : tag('przypomnienie', 'accent')} ${esc(r.name)}: pula ${r.year}, saldo ${hm(r.balance_min)}. <span class="muted">${esc(r.text)}</span></li>`).join('');
   main.innerHTML = head('Centrum programowania', `Dzisiaj: ${plDate(d.today)} · strefa Europe/Warsaw`) + `
@@ -318,7 +318,7 @@ VIEWS.kalendarz = async (main) => {
       <div class="num" data-dow="${DOW[weekday(d) - 1]}, ${plDate(d)}"><span class="desk-only">${Number(d.slice(8))}</span>${holidays.has(d) ? `<em>${esc(holidays.get(d))}</em>` : ''}</div>
       ${view !== 'ludzie' ? machineRows(d) : ''}
       ${view !== 'maszyny' ? daySched.map(s => shiftChip(s, tpl, dayEv.filter(ev => ev.employee_id === s.employee_id))).join('') : ''}
-      ${view === 'maszyny' ? '' : ''}${dayEv.filter(ev => view !== 'maszyny' && !daySched.some(s => s.employee_id === ev.employee_id)).map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" style="border-left-color:${esc(e?.color || '#888')}" title="${esc(ev.label)} ${esc(ev.status || '')}">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
+      ${view === 'maszyny' ? '' : ''}${dayEv.filter(ev => view !== 'maszyny' && !daySched.some(s => s.employee_id === ev.employee_id)).map(ev => { const e = S.emp.get(ev.employee_id); return `<div class="chip ev ${evTone(ev)} ${ev.status === 'anulowana' || ev.status === 'anulowane' ? 'cancel' : ''} ${ev.status === 'planowana' || ev.status === 'planowane' ? 'plan' : ''}" title="${esc(ev.label)} ${esc(ev.status || '')}">${icon(ev.icon && ICON_PATHS[ev.icon] ? ev.icon : EVENT_ICON[ev.kind])}<b>${esc(initials(e))}</b> ${esc(ev.short || '')} ${esc(ev.time || ev.label)}</div>`; }).join('')}
     </div>`;
   }
   main.innerHTML = head('Kalendarz', 'Maszyny i projekty na każdej zmianie, grafik zmian i zdarzenia. Linia przerywana — wpis planowany; przekreślenie — anulowany.',
@@ -328,7 +328,7 @@ VIEWS.kalendarz = async (main) => {
      <label class="field">Osoba<select id="calEmp"><option value="">wszyscy</option>${empOptions().map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
      ${isAdmin() ? btn('addShift', 'Zmiana w grafiku') + btn('extraShift', 'Dzień dodatkowy / nadgodziny', 'plus', '') + btn('bulkMode', 'Zmiana trybu pracy', 'calendar', '') + btn('genShift', 'Generuj grafik', 'calendar', '') : ''}`) +
     `<h2>${esc(title)}</h2><div class="cal ${mode === 'tydzien' ? 'week' : ''}">${cells}</div>
-     <p class="small muted">Legenda: na górze każdego dnia — oba tematy: co idzie na Hartford i na Grimme. Pełne tło ze zmianami I / II / III — praca tego dnia (z wpisów czasu pracy); przerywana ramka — projekt w toku bez wpisów tego dnia albo obecnie na maszynie (dziś i dalej, z karty maszyny); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby: <span class="ev-tag tone-l4">L4</span> nieobecność (godziny zmiany przekreślone), <span class="ev-tag tone-force">WP</span> wyjście prywatne, <span class="ev-tag tone-uw">OD</span> odrabianie, <span class="ev-tag tone-event">PZ</span> przekazanie zmiany; <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
+     <p class="small muted">Legenda: na górze każdego dnia — oba tematy: co idzie na Hartford i na Grimme. Pełne tło ze zmianami I / II / III — praca tego dnia (z wpisów czasu pracy); przerywana ramka — projekt w toku bez wpisów tego dnia albo obecnie na maszynie (dziś i dalej, z karty maszyny); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby (godziny zmiany przekreślone przy nieobecności) — kolor wg rodzaju: <span class="leave-legend"><span class="ev-tag tone-uw">UW</span> urlop wypoczynkowy <span class="ev-tag tone-uz">UŻ</span> na żądanie <span class="ev-tag tone-l4">L4</span> chorobowe <span class="ev-tag tone-care">OP</span> opieka <span class="ev-tag tone-force">SW</span> siła wyższa <span class="ev-tag tone-family">UR</span> rodzicielski <span class="ev-tag tone-event">OK</span> okolicznościowy <span class="ev-tag tone-train">SZ</span> szkolenie <span class="ev-tag tone-other">•</span> inna nieobecność <span class="ev-tag tone-unpaid">WP</span> wyjście prywatne <span class="ev-tag tone-train">OD</span> odrabianie <span class="ev-tag tone-event">PZ</span> przekazanie zmiany.</span> <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
   $('#calEmp').onchange = (e) => { location.hash = link({ osoba: e.target.value }); };
   $('#calView').onchange = (e) => { location.hash = link({ widok: e.target.value }); };
   on('addShift', () => shiftForm(anchor));
@@ -350,14 +350,16 @@ function modeBadge(s) {
   return '';
 }
 // Zmiana z grafiku; za czasem pracy — to, co zmieniło dzień tej osoby: nieobecność, wyjście prywatne, odrabianie, przekazanie
-const EV_TONE = { nieobecnosc: 'tone-l4', wyjscie: 'tone-force', odrabianie: 'tone-uw', przekazanie: 'tone-event' };
+const EV_TONE = { nieobecnosc: 'tone-l4', wyjscie: 'tone-unpaid', odrabianie: 'tone-train', przekazanie: 'tone-event' };
+// nieobecność — kolor wg rodzaju (urlop wypoczynkowy, na żądanie, L4, opieka, siła wyższa…), te same kolory co w kalendarzu urlopów
+const evTone = (ev) => (ev.kind === 'nieobecnosc' ? `tone-${absTone(ev.icon, ev.short)}` : EV_TONE[ev.kind] || 'tone-other');
 function shiftChip(s, tpl, evs = []) {
   const e = S.emp.get(s.employee_id);
   const mode = s.mode && s.mode !== 'standardowa' ? s.mode : '';
   const ot = s.overtime_min ? ` · nadgodziny ${hShort(s.overtime_min)}` : '';
   const evTxt = evs.map(ev => `${ev.label}${ev.time ? ` ${ev.time}` : ''}${ev.status ? ` (${ev.status})` : ''}`).join('; ');
   const tip = `${e ? e.first_name + ' ' + e.last_name : ''}: ${s.start_local.time}–${s.end_local.time}${mode ? ` · ${MODE_LABEL[mode]}` : ''}${ot}${s.reason ? ` · ${s.reason}` : ''}${evTxt ? ` · ${evTxt}` : ''}`;
-  const tags = evs.map(ev => `<span class="ev-tag ${EV_TONE[ev.kind] || 'tone-other'} ${/anulowan/.test(ev.status || '') ? 'cancel' : ''} ${/planowan|oczekuje/.test(ev.status || '') ? 'plan' : ''}">${esc(ev.short || '•')}${ev.time ? ` ${esc(ev.time)}` : ''}</span>`).join('');
+  const tags = evs.map(ev => `<span class="ev-tag ${evTone(ev)} ${/anulowan/.test(ev.status || '') ? 'cancel' : ''} ${/planowan|oczekuje/.test(ev.status || '') ? 'plan' : ''}">${esc(ev.short || '•')}${ev.time ? ` ${esc(ev.time)}` : ''}</span>`).join('');
   const absent = evs.some(ev => ev.kind === 'nieobecnosc' && !/anulowan/.test(ev.status || ''));
   const inner = `${icon('spindle')}<b>${esc(initials(e))}</b>${modeBadge(s)} <span class="${absent ? 'shift-off' : ''}">${esc(tpl.get(s.shift_template_id)?.short || '')} ${s.start_local.time}–${s.end_local.time}</span>${tags}`;
   const cls = `chip shift ${mode ? `mode-${mode}` : ''} ${evs.length ? 'has-ev' : ''}`;
