@@ -91,6 +91,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 24 — okienka w kalendarzu, stały podział planu, prośba o urlop (13.10.2026)
 **66 / 66 zaliczonych** (zmiany w interfejsie). Kalendarz: kliknięcie nieobecności / zdarzenia otwiera okienko ze szczegółami (rodzaj w kolorze, termin, status; pracownik widzi tylko etykietę dopuszczoną przez serwer); kierownik i przełożony — kliknięcie tematu na maszynie otwiera okienko projektu (praca w tym dniu, postęp, otwarte zadania, opis). Plan pracy: Hartford i Grimme zawsze (także u programisty), „Inna praca” jako okno otwierane, z szybkim wpisaniem obowiązku. Zgłoś kierownikowi: „Urlop” — rodzaj, termin od – do albo liczba dni roboczych (weekendy i święta pomijane, początek przesuwany na dzień roboczy). Skrypt `scripts/screenshots-r24.py` sprawdza te ścieżki klikaniem. Przegląd niezależny: 6 uwag, poprawione (zamykanie okienka przy przejściu, długość uwagi, klawiatura, zablokowane zadania, urlop od weekendu, drobne). Zrzuty `140`–`146`.
 
+### Runda 25 — menu programisty, prośba o urlop / zwolnienie (13.10.2026)
+**66 / 66 zaliczonych.** Menu programisty: Mój profil, Kalendarz, Plan pracy, Zgłoś kierownikowi, Narzędzia i oprawki, Moje konto. „Zgłoś”: zamiast „Nieobecność” — „Urlop / zwolnienie” ze wszystkimi rodzajami jako kolorowe karty (kolory jak w profilu), przy każdym ile zostało; wykorzystane wyszarzone i niedostępne, ponad pozostałą pulę nie da się wysłać; dni albo godziny zgodnie z jednostką rodzaju (SW / art. 188 — jednostka ustalona po pierwszym użyciu), limity na rok z daty początku. Kafelki z grafiką w kolorach kalendarza; spóźnienie — osobny kolor. Przegląd niezależny: 6 uwag, poprawione. Skrypt `scripts/screenshots-r24.py` sprawdza to klikaniem (UŻ ponad limit, wezwanie tylko w godzinach, krew tylko w dniach, limity 2027). Zrzuty `145`, `147`, `148`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

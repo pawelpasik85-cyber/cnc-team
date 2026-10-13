@@ -1,4 +1,4 @@
-"""Zrzuty i klikanie: runda 24 — okienka w kalendarzu, inna praca w planie, prośba o urlop. Użycie: python scripts/screenshots-r24.py http://127.0.0.1:3000 docs/screenshots"""
+"""Zrzuty i klikanie: rundy 24–25. Użycie: python scripts/screenshots-r24.py http://127.0.0.1:3000 docs/screenshots"""
 import sys
 from playwright.sync_api import sync_playwright
 base, out = sys.argv[1], sys.argv[2]
@@ -43,8 +43,31 @@ with sync_playwright() as p:
     if pg.locator(".cal .mc-open").count(): errors.append("programista ma klikalne tematy maszyn")
     shot(pg, "144-tel-plan-programista", "#/plan?d=2026-10-06", full=False)
     if pg.locator(".pm-group.theme-grimme").count() == 0: errors.append("brak okna Grimme u programisty")
+    pg.click("#menuBtn"); pg.wait_for_timeout(300)
+    order = pg.eval_on_selector_all("#rail a[data-nav]", "els => els.map(e => e.dataset.nav)")
+    if order[:6] != ["pracownicy", "kalendarz", "plan", "zglos", "narzedzia", "ustawienia"]: errors.append("kolejność menu: " + str(order))
+    if "Mój profil" not in pg.inner_text("#rail") or "urlopy" in pg.inner_text("#rail a[data-nav=pracownicy]"): errors.append("nazwa profilu")
+    shot(pg, "148-tel-menu-programisty", full=False)
+    pg.keyboard.press("Escape"); pg.goto(base + "/#/kalendarz"); pg.wait_for_timeout(300)
     pg.goto(base + "/#/zglos"); pg.wait_for_selector("[data-kind=urlop]")
-    pg.click("[data-kind=urlop]"); pg.check("input[name=lmode][value=dni]"); pg.fill("input[name=date_from]", "2026-10-12"); pg.fill("input[name=days]", "5"); pg.wait_for_timeout(200)
+    if pg.locator("[data-kind=nieobecnosc]").count(): errors.append("kafelek Nieobecność nadal jest")
+    pg.click("[data-kind=urlop]"); pg.wait_for_timeout(200)
+    if pg.locator(".lv-opt").count() < 15: errors.append("za mało rodzajów urlopu: %d" % pg.locator(".lv-opt").count())
+    shot(pg, "147-tel-zglos-rodzaje", full=True)
+    pg.click(".lv-opt:has(input[value=URLOP_NA_ZADANIE])"); pg.check("input[name=lmode][value=dni]"); pg.fill("input[name=date_from]", "2026-10-12"); pg.fill("input[name=days]", "5"); pg.wait_for_timeout(200)
+    if "Zostało tylko" not in pg.inner_text(".leave-sum"): errors.append("brak blokady ponad limit UŻ: " + pg.inner_text(".leave-sum"))
+    pg.click("#reqF button[type=submit]"); pg.wait_for_timeout(300)
+    if "Zostało tylko" not in pg.inner_text("#reqF .form-error"): errors.append("wysłano ponad limit")
+    # rodzaj tylko w godzinach: wezwanie — tryb godzin, bez dni
+    pg.click(".lv-opt:has(input[value=WEZWANIE])"); pg.wait_for_timeout(200)
+    if pg.locator("input[name=lmode][value=od]").is_visible() or not pg.locator("input[name=lmode][value=godz]").is_checked(): errors.append("wezwanie: tryb godzin nie wymuszony")
+    pg.click(".lv-opt:has(input[value=KREW])"); pg.wait_for_timeout(200)
+    if pg.locator("input[name=lmode][value=godz]").is_visible(): errors.append("krew: godziny dostępne, a kategoria w dniach")
+    # przyszły rok — limity z 2027
+    pg.check("input[name=lmode][value=od]"); pg.fill("input[name=date_from]", "2027-01-11"); pg.wait_for_timeout(900)
+    if "2027" not in pg.inner_text(".lv-year"): errors.append("limity nie przełączyły się na 2027")
+    pg.fill("input[name=date_from]", "2026-10-12"); pg.wait_for_timeout(300); pg.click(".lv-opt:has(input[value=URLOP_WYP])"); pg.check("input[name=lmode][value=dni]"); pg.fill("input[name=days]", "5"); pg.wait_for_timeout(200)
+    pg.click(".lv-opt:has(input[value=URLOP_WYP])"); pg.wait_for_timeout(200)
     shot(pg, "145-tel-zglos-urlop", full=False)
     if "16.10.2026" not in pg.inner_text(".leave-sum"): errors.append("zła data końca: " + pg.inner_text(".leave-sum"))
     pg.click("#reqF button[type=submit]"); pg.wait_for_timeout(900)

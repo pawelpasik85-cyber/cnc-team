@@ -13,13 +13,13 @@ VIEWS.pracownicy = async (main) => {
   // programista: jego prośby o urlop czekające na decyzję kierownika
   const pendingReq = isEmployee() ? (await api('/requests').catch(() => [])).filter(r => r.kind === 'nieobecnosc' && r.status === 'nowe') : [];
   const yearNav = leave.length ? `<span class="lc-yearnav"><span class="muted small">Urlopy</span><a class="btn" href="#/pracownicy?rok=${year - 1}" aria-label="Poprzedni rok">‹</a><span class="btn lc-year">${year}</span><a class="btn" href="#/pracownicy?rok=${year + 1}" aria-label="Następny rok">›</a></span>` : '';
-  main.innerHTML = peopleTabs('pracownicy') + head(isEmployee() ? 'Mój profil i urlopy' : 'Pracownicy', isEmployee() ? 'Saldo do odrobienia oraz ile urlopu wykorzystałeś i ile zostało. Urlop wpisuje kierownik — o urlop poproś w „Zgłoś kierownikowi” (nieobecność).' : 'Przy każdym pracowniku: saldo do odrobienia, urlopy i nieobecności w roku.', yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
+  main.innerHTML = peopleTabs('pracownicy') + head(isEmployee() ? 'Mój profil' : 'Pracownicy', isEmployee() ? 'Saldo do odrobienia oraz ile urlopu wykorzystałeś i ile zostało. Urlop wpisuje kierownik — o urlop poproś w „Zgłoś kierownikowi” → Urlop.' : 'Przy każdym pracowniku: saldo do odrobienia, urlopy i nieobecności w roku.', yearNav + (isAdmin() ? btn('addEmp', 'Dodaj pracownika') : '')) +
     `<div class="cols">${emps.map(e => {
       const t = e.current_terms; const b = balances.find(x => x.employee_id === e.id);
       return `<section class="panel"><div class="page-head" style="margin:0 0 var(--sp-2)"><h3>${person(e.id)}</h3>${e.active ? tag('aktywny', 'ok') : tag('nieaktywny')}</div>
         <div class="emp-balance ${b && b.remaining_min > 0 ? 'due' : ''}"><span>Saldo do odrobienia</span><b>${b ? hm(b.remaining_min) : '0:00'}</b><span class="small muted">${b && b.remaining_min > 0 ? 'do odrobienia w tym miesiącu' : 'nic do odrobienia'}</span></div>
         ${leaveBy.has(e.id) ? `<div class="lc-emp"><h4>Urlopy i nieobecności ${year}</h4>${leaveRows(leaveBy.get(e.id), year)}</div>` : ''}
-        ${isEmployee() ? `<div class="lc-emp"><h4>Moje prośby czekające na akceptację</h4>${pendingReq.length ? `<ul class="plain">${pendingReq.map(r => `<li>${tag('czeka na kierownika', 'warn')} ${r.wanted_code ? leaveChip(r.wanted_code) : '<b>Nieobecność</b>'} · ${reqWhen(r)}</li>`).join('')}</ul>` : '<p class="small muted">Brak. Urlop zaznaczasz w „Zgłoś kierownikowi” → Nieobecność; przyznaje go i wpisuje kierownik.</p>'}
+        ${isEmployee() ? `<div class="lc-emp"><h4>Moje prośby czekające na akceptację</h4>${pendingReq.length ? `<ul class="plain">${pendingReq.map(r => `<li>${tag('czeka na kierownika', 'warn')} ${r.wanted_code ? leaveChip(r.wanted_code) : '<b>Nieobecność</b>'} · ${reqWhen(r)}</li>`).join('')}</ul>` : '<p class="small muted">Brak. Urlop zaznaczasz w „Zgłoś kierownikowi” → Urlop; przyznaje go i wpisuje kierownik.</p>'}
           <p><a class="btn" href="#/zglos">${icon('summons')}Poproś o urlop / nieobecność</a></p></div>` : ''}
         ${isAdmin() ? `<div class="toolbar" style="margin-top:var(--sp-3)"><button data-edit="${e.id}">Edytuj</button><button data-terms="${e.id}">Zmiana etatu</button>${!e.initial_settlement_approved_at ? `<button data-approve="${e.id}">Zatwierdź dane początkowe</button>` : ''}</div>` : ''}
       </section>`;
@@ -250,7 +250,7 @@ VIEWS.absencje = async (main) => {
 // ---------- Kalendarz urlopów: kafelki dni z nieobecnościami, pod spodem karty programistów z wykorzystaniem ----------
 // Kolor kategorii według rodzaju (ikony) — ten sam w kalendarzu i na kartach
 const ABS_TONE = { leave: 'uw', medical: 'l4', care: 'care', force: 'force', family: 'family', event: 'event', unpaid: 'unpaid', training: 'train', blood: 'event', summons: 'other', military: 'other', exit: 'other', other: 'other', absence: 'other' };
-const absTone = (icon, code) => (code === 'URLOP_NA_ZADANIE' || code === 'UŻ' ? 'uz' : code === 'SILA_WYZSZA' || code === 'SW' ? 'force' : ABS_TONE[icon] || 'other');
+const absTone = (icon, code) => (code === 'URLOP_NA_ZADANIE' || code === 'UŻ' ? 'uz' : code === 'SILA_WYZSZA' || code === 'SW' ? 'force' : /^SPOZNIENIE|^SP[UN]$/.test(code || '') ? 'late' : ABS_TONE[icon] || 'other');
 const daysTxt = (d) => `${Number(d.toFixed ? d.toFixed(1) : d).toString().replace('.', ',')} ${Math.abs(d) === 1 ? 'dzień' : 'dni'}`;
 const minAsDays = (min, dayMin) => (dayMin ? daysTxt(Math.round((min / dayMin) * 10) / 10) : hShort(min));
 
@@ -322,7 +322,7 @@ function leaveRows(e, year) {
     ${row('uz', 'UŻ', 'Urlop na żądanie', `wykorzystano ${daysTxt(e.on_demand.used_days)}${e.on_demand.planned_days ? ` · zaplanowano ${daysTxt(e.on_demand.planned_days)}` : ''}`, `zostało ${daysTxt(uzLeft)}`, `z ${e.on_demand.limit_days} (w ramach UW)`, undefined)}
     ${unitRow(e.force, 'SW', 'Siła wyższa (art. 148¹)')}
     ${unitRow(e.care188, '188', 'Opieka nad dzieckiem (art. 188)')}
-    ${e.other.map(o => row(absTone(o.icon, ''), o.short || '•', o.name, `${o.used_days || o.used_min ? `wykorzystano ${dh(o.used_days, o.used_min)}` : 'tylko zaplanowane'}${o.planned_days || o.planned_min ? ` · zaplanowano ${dh(o.planned_days, o.planned_min)}` : ''}`, `${o.count} ${o.count === 1 ? 'wpis' : o.count < 5 ? 'wpisy' : 'wpisów'}`, `w ${year}`, undefined)).join('')}
+    ${e.other.map(o => row(absTone(o.icon, o.code || o.short), o.short || '•', o.name, `${o.used_days || o.used_min ? `wykorzystano ${dh(o.used_days, o.used_min)}` : 'tylko zaplanowane'}${o.planned_days || o.planned_min ? ` · zaplanowano ${dh(o.planned_days, o.planned_min)}` : ''}`, `${o.count} ${o.count === 1 ? 'wpis' : o.count < 5 ? 'wpisy' : 'wpisów'}`, `w ${year}`, undefined)).join('')}
     <p class="small muted lc-note">Zostało = zaległy na początek roku + wymiar − wykorzystano (zaplanowane nie są odejmowane); dni wg przelicznika dnia urlopu. Limity — do potwierdzenia przez kadry.</p>`;
 }
 

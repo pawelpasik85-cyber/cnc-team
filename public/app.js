@@ -28,6 +28,9 @@ const NAV = [
 ];
 // Programista: zgłoszenia, kalendarz, plan pracy, wykaz narzędzi (tylko podgląd) i własne konto — reszta dla kierownika
 const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'pracownicy', 'narzedzia', 'ustawienia']);
+// Kolejność menu programisty: Mój profil, Kalendarz, Plan pracy, Zgłoś kierownikowi, Narzędzia i oprawki, Moje konto
+const EMP_ORDER = ['pracownicy', 'kalendarz', 'plan', 'zglos', 'narzedzia', 'ustawienia'];
+const navLabel = (id, label) => (id === 'ustawienia' && !isAdmin() ? 'Moje konto' : id === 'pracownicy' && isEmployee() ? 'Mój profil' : label);
 
 // Nie w menu bocznym: urlopy i wyjścia są zakładkami w „Pracownicy”; tablica maszyn powielała Centrum programowania.
 const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny', 'zdarzenia']);
@@ -170,16 +173,17 @@ function renderLogin() {
 function renderShell() {
   const roleName = { admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik', guest: 'Gość' }[S.me.role];
   const tabs = isGuest() ? [['status', 'Status', 'project']]
-    : isEmployee() ? [['plan', 'Polecenia', 'list'], ['kalendarz', 'Kalendarz', 'calendar'], ['zglos', 'Zgłoś', 'summons']]
+    : isEmployee() ? [['pracownicy', 'Profil', 'users'], ['kalendarz', 'Kalendarz', 'calendar'], ['plan', 'Plan', 'list'], ['zglos', 'Zgłoś', 'summons']]
       : [['dzisiaj', 'Dzisiaj', 'today'], ['plan', 'Plan pracy', 'list'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']];
-  const nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => !RAIL_HIDDEN.has(n[0]) && (typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3]))));
+  let nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => !RAIL_HIDDEN.has(n[0]) && (typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3]))));
+  if (isEmployee()) nav = EMP_ORDER.map(id => nav.find(n => n[0] === id)).filter(Boolean);
   $('#app').innerHTML = `<div class="shell">
     <header class="appbar"><button type="button" class="appbar-menu" id="menuBtn" aria-label="Otwórz menu" aria-expanded="false" aria-controls="rail">${icon('list')}</button>
       <span class="appbar-title" id="appbarTitle">CNC Team</span>${appLogo(30)}</header>
     <div class="scrim" id="scrim" hidden></div>
     <nav class="rail" id="rail" aria-label="Menu główne">
     <div class="brand">${appLogo(40)}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
-    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(id === 'ustawienia' && !isAdmin() ? 'Moje konto' : id === 'pracownicy' && isEmployee() ? 'Mój profil i urlopy' : label)}</span></a>`).join('')}
+    ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(navLabel(id, label))}</span></a>`).join('')}
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
       <button type="button" id="installBtn" class="link ${document.documentElement.dataset.installable ? '' : 'mobile-only'}">${icon('download')}Skrót na telefonie</button>
@@ -213,7 +217,7 @@ async function route() {
   if (isEmployee() && !EMP_ROUTES.has(name)) name = 'plan';
   $$('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === (NAV_PARENT[name] || name)));
   const navItem = isGuest() ? (name === 'status' ? ['status', 'Status projektów'] : ['ustawienia', 'Moje konto']) : NAV.find(n => n[0] === name);
-  if ($('#appbarTitle')) $('#appbarTitle').textContent = navItem ? navItem[1] : 'CNC Team';
+  if ($('#appbarTitle')) $('#appbarTitle').textContent = navItem ? navLabel(navItem[0], navItem[1]) : 'CNC Team';
   const main = $('#main');
   main.innerHTML = '<p class="muted">Wczytywanie…</p>';
   try { await (VIEWS[name] || VIEWS.dzisiaj)(main, rest); } catch (e) {
@@ -381,7 +385,7 @@ VIEWS.kalendarz = async (main) => {
      <label class="field">Osoba<select id="calEmp"><option value="">wszyscy</option>${empOptions().map(([v, l]) => `<option value="${v}" ${String(v) === empF ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
      ${isAdmin() ? btn('addShift', 'Zmiana w grafiku') + btn('extraShift', 'Dzień dodatkowy / nadgodziny', 'plus', '') + btn('bulkMode', 'Zmiana trybu pracy', 'calendar', '') + btn('genShift', 'Generuj grafik', 'calendar', '') : ''}`) +
     `<h2>${esc(title)}</h2><div class="cal ${mode === 'tydzien' ? 'week' : ''}">${cells}</div>
-     <p class="small muted">Legenda: na górze każdego dnia — oba tematy: co idzie na Hartford i na Grimme. Pełne tło ze zmianami I / II / III — praca tego dnia (z wpisów czasu pracy); przerywana ramka — projekt w toku bez wpisów tego dnia albo obecnie na maszynie (dziś i dalej, z karty maszyny); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby (godziny zmiany przekreślone przy nieobecności) — kolor wg rodzaju: <span class="leave-legend"><span class="ev-tag tone-uw">UW</span> urlop wypoczynkowy <span class="ev-tag tone-uz">UŻ</span> na żądanie <span class="ev-tag tone-l4">L4</span> chorobowe <span class="ev-tag tone-care">OP</span> opieka <span class="ev-tag tone-force">SW</span> siła wyższa <span class="ev-tag tone-family">UR</span> rodzicielski <span class="ev-tag tone-event">OK</span> okolicznościowy <span class="ev-tag tone-train">SZ</span> szkolenie <span class="ev-tag tone-other">•</span> inna nieobecność <span class="ev-tag tone-unpaid">WP</span> wyjście prywatne <span class="ev-tag tone-train">OD</span> odrabianie <span class="ev-tag tone-event">PZ</span> przekazanie zmiany.</span> <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
+     <p class="small muted">Legenda: na górze każdego dnia — oba tematy: co idzie na Hartford i na Grimme. Pełne tło ze zmianami I / II / III — praca tego dnia (z wpisów czasu pracy); przerywana ramka — projekt w toku bez wpisów tego dnia albo obecnie na maszynie (dziś i dalej, z karty maszyny); ${icon('spindle')} zmiana z grafiku (inicjały i kolor pracownika); za godzinami zmiany — co zmieniło dzień tej osoby (godziny zmiany przekreślone przy nieobecności) — kolor wg rodzaju: <span class="leave-legend"><span class="ev-tag tone-uw">UW</span> urlop wypoczynkowy <span class="ev-tag tone-uz">UŻ</span> na żądanie <span class="ev-tag tone-l4">L4</span> chorobowe <span class="ev-tag tone-care">OP</span> opieka <span class="ev-tag tone-force">SW</span> siła wyższa <span class="ev-tag tone-family">UR</span> rodzicielski <span class="ev-tag tone-event">OK</span> okolicznościowy <span class="ev-tag tone-train">SZ</span> szkolenie <span class="ev-tag tone-late">SPU</span> spóźnienie <span class="ev-tag tone-other">•</span> inna nieobecność <span class="ev-tag tone-unpaid">WP</span> wyjście prywatne <span class="ev-tag tone-train">OD</span> odrabianie <span class="ev-tag tone-event">PZ</span> przekazanie zmiany.</span> <span class="mode-badge dod">DOD</span> dzień dodatkowy / nadgodziny (pole kreskowane), <span class="mode-badge">12h</span> zmiana wydłużona, <span class="mode-badge">NR</span> czas nieregularny. Wpis osoby bez zmiany w tym dniu — osobny kafelek z ikoną. Zmiana nocna należy do dnia rozpoczęcia.</p>`;
   $('#calEmp').onchange = (e) => { location.hash = link({ osoba: e.target.value }); };
   $('#calView').onchange = (e) => { location.hash = link({ widok: e.target.value }); };
   on('addShift', () => shiftForm(anchor));

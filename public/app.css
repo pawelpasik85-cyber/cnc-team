@@ -738,3 +738,25 @@ fieldset.seg { border: 1px solid var(--c-line); border-radius: var(--r-md); padd
 fieldset.seg legend { padding: 0 4px; font-size: var(--fs-sm); color: var(--c-ink-soft); }
 fieldset.seg label.inline { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .leave-sum { margin: 0; padding: 8px 10px; border-radius: var(--r-md); background: color-mix(in srgb, #1e9e5a 10%, var(--c-surface)); border-left: 4px solid #1e9e5a; }
+
+/* ---- Zgłoś kierownikowi: kafelki z grafiką w kolorach kalendarza ---- */
+.tone-late { --tone: #a0522d; }
+.kind-pick .kind { border-top: 4px solid var(--tone, var(--c-line)); }
+.kind-pick .kind .kind-ico { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; margin-bottom: 4px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tone, #888) 30%, #fff), color-mix(in srgb, var(--tone, #888) 85%, #000)); color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35); }
+.kind-pick .kind .kind-ico svg { width: 22px !important; height: 22px !important; color: #fff; }
+.kind-pick .kind.active { background: color-mix(in srgb, var(--tone, var(--c-accent)) 12%, var(--c-surface)); border-color: var(--tone, var(--c-accent)); }
+/* rodzaje urlopu — karty w kolorach zestawienia z profilu */
+fieldset.lv-pick { border: 0; padding: 0; margin: 0; display: grid; gap: var(--sp-2); }
+fieldset.lv-pick legend { font-size: var(--fs-sm); color: var(--c-ink-soft); margin-bottom: 4px; }
+.lv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; margin-top: 2px; }
+.lv-opt { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--tone) 45%, var(--c-line)); border-left: 5px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 8%, var(--c-surface)); cursor: pointer; }
+.lv-opt input { accent-color: var(--tone); margin: 0; }
+.lv-opt .lc-badge { flex: none; }
+.lv-opt .lv-txt { display: grid; line-height: 1.25; }
+.lv-opt .lv-txt .small { color: var(--c-ink-soft); }
+.lv-opt:has(input:checked) { background: color-mix(in srgb, var(--tone) 20%, var(--c-surface)); box-shadow: 0 0 0 2px var(--tone); }
+.lv-opt.off { opacity: .45; cursor: not-allowed; filter: grayscale(.7); }
+.lv-opt.off .lv-txt .small { color: #a51d14; font-weight: 600; }
+.leave-sum.bad { border-left-color: #c62e25; background: color-mix(in srgb, #c62e25 10%, var(--c-surface)); }
