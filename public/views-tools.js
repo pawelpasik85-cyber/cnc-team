@@ -343,32 +343,38 @@ VIEWS.narzedzia = async (main) => {
   on('addTool', () => toolForm(kind, null, list));
   $$('[data-tool]', main).forEach(el => el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const t = byId.get(Number(el.dataset.tool)); if (t) toolDetail(t, byId); }));
   // cały wiersz klikalny myszą/palcem; z klawiatury — przycisk z nazwą (czytniki ekranu ogłaszają go jako przycisk)
-  $$('tr[data-row]', main).forEach(el => el.addEventListener('click', () => toolDetail(byId.get(Number(el.dataset.row)), byId)));
+  $$('.tl-row[data-row]', main).forEach(el => el.addEventListener('click', () => toolDetail(byId.get(Number(el.dataset.row)), byId)));
 };
 
 // Widok katalogowy: jedno narzędzie w wierszu — rysunek, najważniejsze dane, na końcu stan; reszta parametrów po kliknięciu
-const CATALOG_COLS = {
-  oprawka: [['Interfejs', p => p.interface], ['Rodzaj', p => HOLDER_LABEL[p.type] || p.type],
-    ['Zacisk / trzpień', p => (p.type === 'trzpieniowa' ? `trzpień Ø${mm(p.arbor)}` : p.clamp_min != null ? `Ø${mm(p.clamp_min)}${p.clamp_max && p.clamp_max !== p.clamp_min ? `–${mm(p.clamp_max)}` : ''}` : '')],
-    ['Wysięg', p => (p.gauge ? `${mm(p.gauge)} mm` : '')]],
-  glowica: [['Średnica', p => `Ø${mm(p.D)}`], ['Ostrza', p => mm(p.z)], ['Gniazdo płytki', p => p.insert_code || ''], ['Kąt', p => (p.lead ? `${mm(p.lead)}°` : '')]],
-  plytka: [['Kształt', p => p.shape || ''], ['Wielkość', p => `${mm(p.size)} mm${p.radius ? ` · r${mm(p.radius)}` : ''}`], ['Gatunek', p => p.grade || ''], ['Pokrycie', p => p.coating || '']],
-  frez: [['Średnica', p => (THREADED(p.type) && p.thread ? `${p.thread} · Ø${mm(p.D)}` : `Ø${mm(p.D)}`)],
-    ['Ostrza', p => (p.type === 'gwintownik' ? `skok ${mm(p.pitch)}` : `${mm(p.z)}${p.type === 'frez-gwintowy' && p.pitch ? ` · skok ${mm(p.pitch)}` : ''}`)],
-    ['Materiał', p => [p.material, p.coating].filter(Boolean).join(' · ')]],
+// Widok katalogowy, zwarty: rysunek z lewej; obok nazwa, a w tej samej linii po prawej stan (szt);
+// pod nazwą jedna linia z najważniejszymi danymi (np. Ø12 · 4 ostrza · VHM · TiN); reszta po kliknięciu
+const ostrza = (z) => {
+  if (!z) return '';
+  const n = Number(z), d = n % 10, h = n % 100;
+  return `${mm(z)} ${n === 1 ? 'ostrze' : d >= 2 && d <= 4 && !(h >= 12 && h <= 14) ? 'ostrza' : 'ostrzy'}`;
+};
+const fi = (D) => (D !== null && D !== undefined && D !== '' ? `Ø${mm(D)}` : '');
+const CATALOG_SPEC = {
+  oprawka: (p) => [p.interface, HOLDER_LABEL[p.type] || p.type, p.type === 'trzpieniowa' ? (p.arbor ? `trzpień Ø${mm(p.arbor)}` : '') : p.clamp_min != null ? `zacisk Ø${mm(p.clamp_min)}${p.clamp_max && p.clamp_max !== p.clamp_min ? `–${mm(p.clamp_max)}` : ''}` : '', p.gauge ? `wysięg ${mm(p.gauge)} mm` : ''],
+  glowica: (p) => [fi(p.D), ostrza(p.z), p.insert_code ? `płytki ${p.insert_code}` : '', p.lead ? `${mm(p.lead)}°` : ''],
+  plytka: (p) => [p.shape ? `kształt ${p.shape}` : '', p.size ? `${mm(p.size)} mm` : '', p.radius ? `r${mm(p.radius)}` : '', p.grade, p.coating],
+  frez: (p) => [THREADED(p.type) && p.thread ? [p.thread, fi(p.D)].filter(Boolean).join(' · ') : fi(p.D), p.type === 'gwintownik' ? (p.pitch ? `skok ${mm(p.pitch)}` : '') : [ostrza(p.z), p.type === 'frez-gwintowy' && p.pitch ? `skok ${mm(p.pitch)}` : ''].filter(Boolean).join(' · '), [p.material, p.coating].filter(Boolean).join(' · ')],
 };
 function toolCatalog(kind, items) {
-  const cols = CATALOG_COLS[kind];
-  const picW = kind === 'frez' ? 190 : kind === 'glowica' ? 120 : kind === 'oprawka' ? 44 : 56; // rysunek mniejszy — na pierwszym planie dane
-  return `<table class="tl-table k-${kind}"><thead><tr><th class="tl-c-pic">Rysunek</th><th>Nazwa</th>${cols.map(([l]) => `<th>${esc(l)}</th>`).join('')}<th class="tl-c-st">Stan</th></tr></thead>
-    <tbody>${items.map(t => {
-      const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';
-      return `<tr data-row="${t.id}" class="${theme ? `theme-${theme}` : 'tl-neutral'} ${t.active ? '' : 'tl-off'}">
-        <td class="tl-c-pic"><div class="tl-pic-row">${drawTool(t, { w: picW, horizontal: true })}</div></td>
-        <td class="tl-c-name" data-l="Nazwa"><button type="button" class="link tl-open mono" data-tool="${t.id}">${esc(t.name)}</button><span class="small muted">${[t.machine_id ? machineShort(t.machine_id) : 'uniwersalne', t.location, t.active ? '' : 'wycofane'].filter(Boolean).map(esc).join(' · ')}</span></td>
-        ${cols.map(([l, f]) => `<td data-l="${esc(l)}">${esc(f(t.params || {}) || '—')}</td>`).join('')}
-        <td class="tl-c-st" data-l="Stan">${stockTag(t)}</td></tr>`;
-    }).join('')}</tbody></table>`;
+  const picW = kind === 'frez' ? 170 : kind === 'glowica' ? 110 : kind === 'oprawka' ? 40 : 52;
+  return `<div class="tl-list k-${kind}">${items.map(t => {
+    const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';
+    const p = t.params || {};
+    const spec = CATALOG_SPEC[kind](p).filter(Boolean);
+    return `<article class="tl-row ${theme ? `theme-${theme}` : 'tl-neutral'} ${t.active ? '' : 'tl-off'}" data-row="${t.id}">
+      <div class="tl-pic-row">${drawTool(t, { w: picW, horizontal: true })}</div>
+      <div class="tl-main">
+        <div class="tl-top"><button type="button" class="link tl-open mono" data-tool="${t.id}">${esc(t.name)}</button><span class="tl-stock-wrap">${stockTag(t)}</span></div>
+        <div class="tl-spec">${spec.map(x => `<span>${esc(x)}</span>`).join('<i>·</i>') || '—'}</div>
+        <div class="small muted">${[t.machine_id ? machineShort(t.machine_id) : 'uniwersalne', t.location, t.active ? '' : 'wycofane'].filter(Boolean).map(esc).join(' · ')}</div>
+      </div></article>`;
+  }).join('')}</div>`;
 }
 
 function toolDetail(t, byId) {

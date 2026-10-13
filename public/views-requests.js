@@ -102,6 +102,17 @@ function leaveModes(code, sum) {
   return { days, hours };
 }
 
+// Symbol zgłoszenia w kolorze rodzaju — ten sam na liście programisty i u kierownika
+const REQ_TONE = { spoznienie: 'late', wyjscie: 'unpaid', odrobienie: 'train', inne: 'event', nieobecnosc: 'other' };
+function reqBadge(r) {
+  const code = r.wanted_code;
+  const tone = code ? leaveTone(code) : REQ_TONE[r.kind] || 'other';
+  const ic = code ? (LEAVE_CODES.includes(code) ? 'leave' : 'absence') : REQ_KIND[r.kind][1];
+  const short = code && LEAVE_META[code] ? LEAVE_META[code][0] : '';
+  return `<span class="req-badge tone-${tone}" title="${esc(code ? (WANTED_LABEL[code] || code) : REQ_KIND[r.kind][0])}"><span class="kind-ico">${icon(ic)}</span>${short ? `<b>${esc(short)}</b>` : ''}</span>`;
+}
+const reqTitle = (r) => (r.wanted_code ? (LEAVE_CODES.includes(r.wanted_code) ? 'Urlop' : 'Zwolnienie / nieobecność') : REQ_KIND[r.kind][0]);
+
 // ---------- Pracownik: „Zgłoś” ----------
 VIEWS.zglos = async (main) => {
   const year = Number(S.me.today.slice(0, 4));
@@ -143,10 +154,10 @@ VIEWS.zglos = async (main) => {
         <div class="form-error wide" role="alert"></div>
       </form></section>
       <section class="panel"><h3>Moje zgłoszenia</h3>${table([
-        { key: r => r, label: 'Zgłoszenie', fmt: r => `${icon(REQ_KIND[r.kind][1])} <b>${esc(LEAVE_CODES.includes(r.wanted_code) ? 'Urlop' : REQ_KIND[r.kind][0])}</b>${r.wanted_code ? ` ${leaveChip(r.wanted_code)}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}` },
+        { key: r => r, label: 'Zgłoszenie', fmt: r => `<div class="req-cell">${reqBadge(r)}<div><b>${esc(reqTitle(r))}</b>${r.wanted_code ? ` ${leaveChip(r.wanted_code)}` : ''}<br><span class="small">${reqWhen(r)}</span>${r.note ? `<br><span class="small muted">${esc(r.note)}</span>` : ''}</div></div>` },
         { key: r => r, label: 'Decyzja', fmt: r => `${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small">${esc(r.decision_note)}</span>` : ''}${r.decided_at ? `<br><span class="small muted">${new Date(r.decided_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })}</span>` : ''}` },
         { key: r => r, label: '', fmt: r => r.status === 'nowe' ? `<button class="link" data-withdraw="${r.id}">Wycofaj</button>` : '' },
-      ], list, { empty: 'Nie masz jeszcze zgłoszeń.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section></div>`;
+      ], list, { empty: 'Nie masz jeszcze zgłoszeń.', rowClass: r => `req-row tone-${r.wanted_code ? leaveTone(r.wanted_code) : REQ_TONE[r.kind] || 'other'}${r.status === 'wycofane' ? ' row-cancel' : ''}` })}</section></div>`;
   let kind = null;
   const f = $('#reqF');
   $$('[data-kind]').forEach(b => b.onclick = () => {
@@ -254,13 +265,13 @@ async function localRequestsSection() {
   const list = await api('/requests');
   const html = `<section class="panel"><h3>Zgłoszenia pracowników</h3>${table([
     { key: r => r, label: 'Pracownik', fmt: r => person(r.employee_id) },
-    { key: r => r, label: 'Rodzaj', fmt: r => `${icon(REQ_KIND[r.kind][1])} ${esc(LEAVE_CODES.includes(r.wanted_code) ? 'Urlop' : REQ_KIND[r.kind][0])}${r.wanted_code ? `<br><span class="small">prośba: ${leaveChip(r.wanted_code)}</span>` : ''}` },
+    { key: r => r, label: 'Rodzaj', fmt: r => `<div class="req-cell">${reqBadge(r)}<div><b>${esc(reqTitle(r))}</b>${r.wanted_code ? `<br><span class="small">prośba: ${leaveChip(r.wanted_code)}</span>` : ''}</div></div>` },
     { key: r => r, label: 'Kiedy', fmt: r => reqWhen(r) },
     { key: 'note', label: 'Uwaga pracownika' },
     { key: r => new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' }), label: 'Zgłoszono' },
     { key: r => r, label: 'Status', fmt: r => `${tag(...REQ_STATUS[r.status])}${r.decision_note ? `<br><span class="small">${esc(r.decision_note)}</span>` : ''}${r.decided_by_name ? `<br><span class="small muted">${esc(r.decided_by_name)}</span>` : ''}${r.result_ref ? `<br><span class="small muted">wpis: ${esc(r.result_ref)}</span>` : ''}` },
     { key: r => r, label: '', fmt: r => r.status === 'nowe' && isAdmin() ? `<button data-racc="${r.id}" class="primary">Przyjmij</button> <button data-rrej="${r.id}" class="link">Odrzuć</button>` : '' },
-  ], list, { empty: 'Brak zgłoszeń.', rowClass: r => r.status === 'wycofane' ? 'row-cancel' : '' })}</section>`;
+  ], list, { empty: 'Brak zgłoszeń.', rowClass: r => `req-row tone-${r.wanted_code ? leaveTone(r.wanted_code) : REQ_TONE[r.kind] || 'other'}${r.status === 'wycofane' ? ' row-cancel' : ''}` })}</section>`;
   const bind = () => {
     $$('[data-racc]').forEach(b => b.onclick = () => requestAcceptForm(list.find(r => r.id === Number(b.dataset.racc))));
     $$('[data-rrej]').forEach(b => b.onclick = () => openForm({

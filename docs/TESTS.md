@@ -94,6 +94,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 25 — menu programisty, prośba o urlop / zwolnienie (13.10.2026)
 **66 / 66 zaliczonych.** Menu programisty: Mój profil, Kalendarz, Plan pracy, Zgłoś kierownikowi, Narzędzia i oprawki, Moje konto. „Zgłoś”: zamiast „Nieobecność” — „Urlop / zwolnienie” ze wszystkimi rodzajami jako kolorowe karty (kolory jak w profilu), przy każdym ile zostało; wykorzystane wyszarzone i niedostępne, ponad pozostałą pulę nie da się wysłać; dni albo godziny zgodnie z jednostką rodzaju (SW / art. 188 — jednostka ustalona po pierwszym użyciu), limity na rok z daty początku. Kafelki z grafiką w kolorach kalendarza; spóźnienie — osobny kolor. Przegląd niezależny: 6 uwag, poprawione. Skrypt `scripts/screenshots-r24.py` sprawdza to klikaniem (UŻ ponad limit, wezwanie tylko w godzinach, krew tylko w dniach, limity 2027). Zrzuty `145`, `147`, `148`.
 
+### Runda 26 — zwarty katalog narzędzi, symbole zgłoszeń (13.10.2026)
+**66 / 66 zaliczonych** (zmiany w interfejsie). Narzędzia: wiersz z rysunkiem z lewej, nazwą i stanem w prawym górnym rogu, pod spodem jedna linia danych (np. Ø12 · 4 ostrza · VHM · TiN); tak samo oprawki, głowice i płytki. Zgłoszenia: kolorowy symbol rodzaju (jak na kafelkach i w kalendarzu) i pasek koloru w wierszu — u programisty („Moje zgłoszenia”) i u kierownika. Przegląd niezależny: 3 uwagi (ostrzeżenie „poniżej minimum”, odmiana „ostrza”, puste wartości), poprawione. Zrzuty `113`, `116`, `150`, `151`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

@@ -1,4 +1,4 @@
-"""Zrzuty: Narzędzia i oprawki (rundy 18–22). Użycie: python scripts/screenshots-tools.py http://127.0.0.1:3000 docs/screenshots — kod 1 przy błędach."""
+"""Zrzuty: Narzędzia i oprawki (rundy 18–26). Użycie: python scripts/screenshots-tools.py http://127.0.0.1:3000 docs/screenshots"""
 import sys
 from playwright.sync_api import sync_playwright
 base, out = sys.argv[1], sys.argv[2]
@@ -20,7 +20,7 @@ with sync_playwright() as p:
     for k, n in [("oprawka", "110-narzedzia-oprawki"), ("glowica", "111-narzedzia-glowice"), ("plytka", "112-narzedzia-plytki"), ("frez", "113-narzedzia-frezy")]:
         shot(pg, n, f"#/narzedzia?rodzaj={k}")
     pg.goto(base + "/#/narzedzia?rodzaj=glowica"); pg.wait_for_timeout(500)
-    pg.click("tr[data-row] >> nth=0"); pg.wait_for_selector("dialog[open]"); shot(pg, "114-narzedzia-szczegoly", full=False)
+    pg.click(".tl-row[data-row] >> nth=0"); pg.wait_for_selector("dialog[open]"); shot(pg, "114-narzedzia-szczegoly", full=False)
     pg.click("dialog[open] [data-act=edit]"); pg.wait_for_selector("dialog[open] .tl-preview svg"); shot(pg, "115-narzedzia-edycja", full=False)
     pg.fill("dialog[open] input[name=location]", "Szafa G / półka 5"); pg.fill("dialog[open] input[name=reason]", "przeniesiona"); pg.click("dialog[open] button[type=submit]"); pg.wait_for_timeout(800)
     if pg.locator("dialog[open]").count(): errors.append("edycja nie zapisała: " + pg.inner_text("dialog[open] .form-error"))
@@ -31,12 +31,12 @@ with sync_playwright() as p:
     pg.dispatch_event("dialog[open] form", "change"); pg.wait_for_timeout(200); shot(pg, "117-narzedzia-nowy-podglad", full=False)
     pg.click("dialog[open] button[type=submit]"); pg.wait_for_timeout(800)
     if pg.locator("dialog[open]").count(): errors.append("dodanie nie zapisało: " + pg.inner_text("dialog[open] .form-error"))
-    pg.goto(base + "/#/narzedzia?rodzaj=frez&szukaj=szyjka"); pg.wait_for_timeout(500); pg.click("tr[data-row] >> nth=0"); pg.wait_for_selector("dialog[open]"); shot(pg, "118-narzedzia-frez-wymiary", full=False)
+    pg.goto(base + "/#/narzedzia?rodzaj=frez&szukaj=szyjka"); pg.wait_for_timeout(500); pg.click(".tl-row[data-row] >> nth=0"); pg.wait_for_selector("dialog[open]"); shot(pg, "118-narzedzia-frez-wymiary", full=False)
     pg.click("dialog[open] [data-act=edit]"); pg.wait_for_selector("dialog[open] .tl-preview svg"); shot(pg, "119-narzedzia-frez-formularz", full=False)
     pg.locator("dialog[open] [data-f=holder_ids]").scroll_into_view_if_needed(); pg.wait_for_timeout(200); shot(pg, "120-narzedzia-frez-oprawki", full=False)
     if pg.locator("dialog[open] input[name=holder_ids]").count() < 5: errors.append("brak listy oprawek w formularzu frezu")
     if pg.locator("dialog[open] input[name=holder_ids]:checked").count() != 1: errors.append("zaznaczone przypisanie nie wczytane")
-    pg.goto(base + "/#/narzedzia?rodzaj=frez&szukaj=gwint"); pg.reload(); pg.wait_for_selector("tr[data-row]"); pg.wait_for_timeout(400); shot(pg, "121-narzedzia-gwintowniki", full=False)
+    pg.goto(base + "/#/narzedzia?rodzaj=frez&szukaj=gwint"); pg.reload(); pg.wait_for_selector(".tl-row[data-row]"); pg.wait_for_timeout(400); shot(pg, "121-narzedzia-gwintowniki", full=False)
     pg.click("#addTool"); pg.wait_for_selector("dialog[open]")
     pg.fill("dialog[open] input[name=name]", "Gwintownik M12"); pg.select_option("dialog[open] select[name=p_type]", "gwintownik"); pg.wait_for_timeout(150)
     if pg.locator("dialog[open] [data-f=p_z]").is_visible(): errors.append("gwintownik: pole liczby ostrzy widoczne")
@@ -47,6 +47,9 @@ with sync_playwright() as p:
     ctx.close()
     ctx, pg = mk(b, True); login(pg, "adam")
     shot(pg, "116-narzedzia-programista-telefon", "#/narzedzia?rodzaj=frez", full=False)
+    shot(pg, "116b-tel-oprawki", "#/narzedzia?rodzaj=oprawka", full=False)
+    shot(pg, "116c-tel-glowice", "#/narzedzia?rodzaj=glowica", full=False)
+    shot(pg, "116d-tel-plytki", "#/narzedzia?rodzaj=plytka", full=False)
     if pg.locator("#addTool").count(): errors.append("programista widzi przycisk dodawania")
     if pg.locator('a[data-nav="narzedzia"]').count() == 0: errors.append("brak w menu programisty")
     ctx.close(); b.close()
