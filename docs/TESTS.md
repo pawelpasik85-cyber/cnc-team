@@ -97,6 +97,9 @@ Zrzuty: `docs/screenshots/50…66` (kierownik, pracownik na komputerze i telefon
 ### Runda 26 — zwarty katalog narzędzi, symbole zgłoszeń (13.10.2026)
 **66 / 66 zaliczonych** (zmiany w interfejsie). Narzędzia: wiersz z rysunkiem z lewej, nazwą i stanem w prawym górnym rogu, pod spodem jedna linia danych (np. Ø12 · 4 ostrza · VHM · TiN); tak samo oprawki, głowice i płytki. Zgłoszenia: kolorowy symbol rodzaju (jak na kafelkach i w kalendarzu) i pasek koloru w wierszu — u programisty („Moje zgłoszenia”) i u kierownika. Przegląd niezależny: 3 uwagi (ostrzeżenie „poniżej minimum”, odmiana „ostrza”, puste wartości), poprawione. Zrzuty `113`, `116`, `150`, `151`.
 
+### Runda 27 — filtr rodzaju narzędzi, gwintowniki maszynowe / do otworów przelotowych (13.10.2026)
+**66 / 66 zaliczonych** (test gwintownika rozszerzony: wykonanie maszynowy / ręczny, otwory przelotowe / nieprzelotowe / uniwersalny, nieznana wartość → 400, frez do gwintów bez rodzaju otworu). Filtr „Rodzaj” w wyszukiwarce narzędzi: frezy (walcowo-czołowy, kulisty, torusowy, fazownik, wiertło, gwintownik, frez do gwintów), oprawki (ER, Weldon, termo, hydrauliczna, trzpieniowa), płytki (kształt) — z liczbą pozycji. Przegląd niezależny: 2 uwagi, poprawione. Zrzuty `152`–`154`.
+
 ## Pokrycie wymaganych scenariuszy
 
 | Wymagany scenariusz | Test (plik → nazwa) |

@@ -757,3 +757,4 @@ fieldset.lv-pick legend { font-size: var(--fs-sm); color: var(--c-ink-soft); mar
 .req-badge .kind-ico svg { width: 18px !important; height: 18px !important; color: #fff; }
 .req-badge b { font-size: 10px; font-weight: 800; color: #fff; background: var(--tone); border-radius: 4px; padding: 0 4px; line-height: 1.5; }
 tr.req-row > td:first-child { box-shadow: inset 4px 0 0 var(--tone, transparent); }
+.tl-spec span { white-space: nowrap; }

@@ -152,6 +152,11 @@ test('narzędzia: gwintownik bez liczby ostrzy, ze skokiem gwintu; frez do gwint
   const oldMill = ins({ type: 'gwintownik', D: 7.8, z: 3 }), oldTap = ins({ type: 'gwintownik', D: 8, z: null });
   w.db.exec(require('fs').readFileSync(require('path').join(__dirname, '../server/migrations/014_thread_mills.sql'), 'utf8'));
   assert.equal(pr(oldMill).type, 'frez-gwintowy'); assert.equal(pr(oldTap).type, 'gwintownik');
+  // gwintownik: maszynowy / ręczny, otwory przelotowe / nieprzelotowe / uniwersalny
+  const tap2 = save({ type: 'gwintownik', pitch: 1.5, tap_kind: 'maszynowy', hole: 'przelotowe' });
+  assert.deepEqual([pr(tap2).tap_kind, pr(tap2).hole], ['maszynowy', 'przelotowe']);
+  throwsStatus(assert, () => save({ type: 'gwintownik', pitch: 1.5, hole: 'kwadratowe' }), 400);
+  assert.equal(pr(tm).hole, null, 'frez do gwintów bez rodzaju otworu');
   // inne frezy nie mają skoku ani oznaczenia gwintu
   const em = save({ type: 'walcowo-czolowy', z: 4, pitch: 1.5, thread: 'M10' });
   assert.equal(pr(em).pitch, null); assert.equal(pr(em).thread, null);

@@ -10,6 +10,8 @@ const KINDS = ['oprawka', 'glowica', 'plytka', 'frez'];
 const HOLDER_TYPES = ['tulejkowa', 'weldon', 'termo', 'hydrauliczna', 'trzpieniowa'];
 const MILL_TYPES = ['walcowo-czolowy', 'kulisty', 'torusowy', 'fazownik', 'wiertlo', 'gwintownik', 'frez-gwintowy'];
 const THREAD_TYPES = ['gwintownik', 'frez-gwintowy'];
+const TAP_KINDS = ['maszynowy', 'reczny'];
+const HOLE_KINDS = ['przelotowe', 'nieprzelotowe', 'uniwersalny'];
 const SHAPES = ['A', 'C', 'D', 'R', 'S', 'T', 'V', 'W', 'O'];
 
 const num = (v, label, { min = 0, max = 2000, optional = true, int = false, decimals = 2 } = {}) => {
@@ -57,6 +59,9 @@ function normParams(kind, p = {}) {
   // skok z 4 miejscami po przecinku — gwinty calowe (np. 13 TPI = 1,9538 mm)
   const pitch = threaded ? num(p.pitch, 'Skok gwintu P (mm)', { min: 0.1, max: 12, optional: false, decimals: 4 }) : null;
   const thread = threaded ? txt(p.thread, 'Oznaczenie gwintu (np. M10, M10x1, G1/4)', 30) : null;
+  // gwintownik: maszynowy / ręczny oraz do otworów przelotowych / nieprzelotowych (ślepych) / uniwersalny
+  const tapKind = type === 'gwintownik' ? oneOf(p.tap_kind || null, 'Wykonanie gwintownika', TAP_KINDS, { optional: true }) : null;
+  const hole = type === 'gwintownik' ? oneOf(p.hole || null, 'Rodzaj otworu', HOLE_KINDS, { optional: true }) : null;
   const L = num(p.L, 'Długość całkowita L (mm)', { min: 1, max: 500, optional: false });
   const Lc = num(p.Lc, 'Długość ostrza Lc (mm)', { min: 0.1, max: 300, optional: type === 'fazownik' });
   const reach = type === 'fazownik' ? null : num(p.reach, 'Długość użyteczna l1 (mm)', { min: 0.1, max: 500 });
@@ -64,7 +69,7 @@ function normParams(kind, p = {}) {
   if (reach !== null && reach > L) throw bad('Długość użyteczna nie może być większa niż długość całkowita.');
   if (reach !== null && Lc !== null && reach < Lc) throw bad('Długość użyteczna (z szyjką) nie może być krótsza niż długość ostrza.');
   return {
-    type, D, z, pitch, thread, shank: num(p.shank, 'Chwyt Ø (mm)', { min: 1, max: 50 }), Lc, reach, L,
+    type, D, z, pitch, thread, tap_kind: tapKind, hole, shank: num(p.shank, 'Chwyt Ø (mm)', { min: 1, max: 50 }), Lc, reach, L,
     r, angle: type === 'fazownik' || type === 'wiertlo' ? num(p.angle, 'Kąt (fazownik / wiertło, °)', { min: 30, max: 180 }) : null,
     material: txt(p.material, 'Materiał (VHM, HSS…)', 20), coating: txt(p.coating, 'Pokrycie', 30),
   };

@@ -12,6 +12,9 @@ const TOOL_KIND = Object.fromEntries(TOOL_TABS.map(([k, l, s]) => [k, { label: l
 const HOLDER_LABEL = { tulejkowa: 'tulejkowa (ER)', weldon: 'Weldon', termo: 'termokurczliwa', hydrauliczna: 'hydrauliczna', trzpieniowa: 'trzpieniowa (do głowic)' };
 const MILL_LABEL = { 'walcowo-czolowy': 'walcowo-czołowy', kulisty: 'kulisty', torusowy: 'torusowy', fazownik: 'fazownik', wiertlo: 'wiertło', gwintownik: 'gwintownik', 'frez-gwintowy': 'frez do gwintów' };
 const THREADED = (type) => type === 'gwintownik' || type === 'frez-gwintowy';
+const TAP_KIND_LABEL = { maszynowy: 'maszynowy', reczny: 'ręczny' };
+const HOLE_LABEL = { przelotowe: 'do otworów przelotowych', nieprzelotowe: 'do otworów nieprzelotowych (ślepych)', uniwersalny: 'uniwersalny (przelotowe i nieprzelotowe)' };
+const HOLE_SHORT = { przelotowe: 'otw. przelotowe', nieprzelotowe: 'otw. nieprzelotowe', uniwersalny: 'otw. uniwersalny' };
 const SHAPE_LABEL = { A: 'A — równoległobok 85°', C: 'C — romb 80°', D: 'D — romb 55°', R: 'R — okrągła', S: 'S — kwadrat', T: 'T — trójkąt', V: 'V — romb 35°', W: 'W — trygon 80°', O: 'O — ośmiokąt' };
 
 let toolUid = 0;
@@ -280,7 +283,7 @@ function toolFacts(t) {
     add('Kształt', SHAPE_LABEL[p.shape] || p.shape); add('Wielkość', p.size, ' mm'); add('Promień naroża', p.radius, ' mm'); add('Liczba krawędzi', p.edges);
     add('Gatunek', p.grade); add('Pokrycie', p.coating); add('Materiały', p.materials);
   } else {
-    add('Rodzaj', MILL_LABEL[p.type] || p.type); add('Średnica D', p.D, ' mm'); add('Gwint', p.thread); add('Skok gwintu P', p.pitch, ' mm'); if (p.type !== 'gwintownik') add('Liczba ostrzy z', p.z); add('Chwyt', p.shank != null ? `Ø${mm(p.shank)}` : null, ' mm');
+    add('Rodzaj', MILL_LABEL[p.type] || p.type); add('Średnica D', p.D, ' mm'); add('Gwint', p.thread); add('Skok gwintu P', p.pitch, ' mm'); add('Wykonanie', TAP_KIND_LABEL[p.tap_kind]); add('Otwory', HOLE_LABEL[p.hole]); if (p.type !== 'gwintownik') add('Liczba ostrzy z', p.z); add('Chwyt', p.shank != null ? `Ø${mm(p.shank)}` : null, ' mm');
     add('Długość ostrza Lc', p.Lc, ' mm'); add('Długość użyteczna l1', p.reach, ' mm'); add('Długość całkowita L', p.L, ' mm'); add('Promień naroża', p.r, ' mm'); add('Kąt', p.angle, '°');
     add('Materiał', p.material); add('Pokrycie', p.coating);
   }
@@ -291,7 +294,7 @@ function toolKeyLine(t) {
   if (t.kind === 'oprawka') return [p.interface, HOLDER_LABEL[p.type], p.type === 'trzpieniowa' ? `trzpień Ø${mm(p.arbor)}` : p.clamp_min != null ? `Ø${mm(p.clamp_min)}${p.clamp_max && p.clamp_max !== p.clamp_min ? `–${mm(p.clamp_max)}` : ''}` : null].filter(Boolean).join(' · ');
   if (t.kind === 'glowica') return [`Ø${mm(p.D)}`, `z${mm(p.z)}`, p.insert_code, p.lead && p.lead !== 90 ? `${mm(p.lead)}°` : null].filter(Boolean).join(' · ');
   if (t.kind === 'plytka') return [p.grade, p.coating, p.materials ? `materiały ${p.materials}` : null].filter(Boolean).join(' · ');
-  return [MILL_LABEL[p.type], p.thread || null, `Ø${mm(p.D)}`, p.pitch ? `P ${mm(p.pitch)}` : null, p.z && p.type !== 'gwintownik' ? `z${mm(p.z)}` : null, p.Lc ? `Lc ${mm(p.Lc)}` : null, p.reach ? `l1 ${mm(p.reach)}` : null, p.L ? `L ${mm(p.L)}` : null, p.material, p.coating].filter(Boolean).join(' · ');
+  return [MILL_LABEL[p.type], p.thread || null, `Ø${mm(p.D)}`, p.pitch ? `P ${mm(p.pitch)}` : null, TAP_KIND_LABEL[p.tap_kind] || null, HOLE_SHORT[p.hole] || null, p.z && p.type !== 'gwintownik' ? `z${mm(p.z)}` : null, p.Lc ? `Lc ${mm(p.Lc)}` : null, p.reach ? `l1 ${mm(p.reach)}` : null, p.L ? `L ${mm(p.L)}` : null, p.material, p.coating].filter(Boolean).join(' · ');
 }
 function machineShort(id) {
   const m = S.boot.machines.find(x => x.id === id);
@@ -316,7 +319,11 @@ VIEWS.narzedzia = async (main) => {
   const match = (t) => (!machine || (machine === 'brak' ? !t.machine_id : t.machine_id === machine))
     && (!text || [t.name, t.code, t.manufacturer, t.catalog_no, t.location, toolKeyLine(t)].filter(Boolean).join(' ').toLowerCase().includes(text));
   const counts = Object.fromEntries(TOOL_TABS.map(([k]) => [k, list.filter(t => t.kind === k && match(t)).length]));
-  const items = list.filter(t => t.kind === kind && match(t));
+  // filtr rodzaju w zakładce: frezy (walcowo-czołowy, kulisty, fazownik, wiertło, gwintownik…), oprawki (ER, Weldon, termo…), płytki (kształt)
+  const TYPE_FILTER = { frez: ['type', MILL_LABEL], oprawka: ['type', HOLDER_LABEL], plytka: ['shape', SHAPE_LABEL] }[kind];
+  const typ = TYPE_FILTER && Object.hasOwn(TYPE_FILTER[1], q.get('typ') || '') ? q.get('typ') : '';
+  const inTab = list.filter(t => t.kind === kind && match(t));
+  const items = typ ? inTab.filter(t => (t.params || {})[TYPE_FILTER[0]] === typ) : inTab;
   const low = list.filter(t => t.active && (t.qty <= 2 || t.low)).sort((a, b) => a.qty - b.qty);
   const link = (patch) => { const n = new URLSearchParams(q); for (const [k, v] of Object.entries(patch)) { if (v) n.set(k, v); else n.delete(k); } return `#/narzedzia?${n}`; };
 
@@ -324,9 +331,10 @@ VIEWS.narzedzia = async (main) => {
     admin ? 'Wykaz oprawek, głowic, płytek i frezów z rysunkiem, stanem i tym, co do czego pasuje. Głowice i płytki dobierane są z parametrów (trzpień, gniazdo płytki); oprawki do frezów przypisujesz ręcznie w edycji frezu.'
       : 'Wykaz narzędzi prowadzi kierownik — tu możesz sprawdzić parametry, stan i co do czego pasuje.',
     admin ? btn('addTool', `Dodaj: ${TOOL_KIND[kind].single.toLowerCase()}`) : '') +
-    `<nav class="section-tabs" aria-label="Rodzaj narzędzi">${TOOL_TABS.map(([k, l]) => `<a href="${link({ rodzaj: k })}" class="${k === kind ? 'active' : ''}" ${k === kind ? 'aria-current="page"' : ''}>${icon('cutter')}<span>${esc(l)}</span><span class="count">${counts[k]}</span></a>`).join('')}</nav>
+    `<nav class="section-tabs" aria-label="Rodzaj narzędzi">${TOOL_TABS.map(([k, l]) => `<a href="${link({ rodzaj: k, typ: '' })}" class="${k === kind ? 'active' : ''}" ${k === kind ? 'aria-current="page"' : ''}>${icon('cutter')}<span>${esc(l)}</span><span class="count">${counts[k]}</span></a>`).join('')}</nav>
     <form class="panel toolbar tl-filter" id="tlf">
       <label class="field">Maszyna<select name="maszyna"><option value="">wszystkie</option>${S.boot.machines.map(m => `<option value="${esc(m.id)}" ${machine === m.id ? 'selected' : ''}>${esc(m.name)}${m.name === 'Hartford' ? ' (BT50)' : m.name === 'Grimme' ? ' (HSK40)' : ''}</option>`).join('')}<option value="brak" ${machine === 'brak' ? 'selected' : ''}>uniwersalne (bez przypisania)</option></select></label>
+      ${TYPE_FILTER ? `<label class="field">Rodzaj<select name="typ" id="tlTyp"><option value="">wszystkie (${inTab.length})</option>${Object.entries(TYPE_FILTER[1]).map(([v, l]) => { const n = inTab.filter(t => (t.params || {})[TYPE_FILTER[0]] === v).length; return `<option value="${esc(v)}" ${typ === v ? 'selected' : ''} ${n ? '' : 'disabled'}>${esc(l)} (${n})</option>`; }).join('')}</select></label>` : ''}
       <label class="field">Szukaj<input name="szukaj" type="search" value="${esc(q.get('szukaj') || '')}" placeholder="np. APMT, Ø12, ER32, Sandvik"></label>
       ${admin ? `<label class="field inline"><input type="checkbox" name="wycofane" value="1" ${showAll ? 'checked' : ''}> pokaż wycofane</label>` : ''}
       <button class="primary">Filtruj</button>
@@ -338,9 +346,10 @@ VIEWS.narzedzia = async (main) => {
   $('#tlf').onsubmit = (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    location.hash = link({ maszyna: fd.get('maszyna'), szukaj: (fd.get('szukaj') || '').trim(), wycofane: fd.get('wycofane') });
+    location.hash = link({ maszyna: fd.get('maszyna'), typ: fd.get('typ'), szukaj: (fd.get('szukaj') || '').trim(), wycofane: fd.get('wycofane') });
   };
   on('addTool', () => toolForm(kind, null, list));
+  const typSel = $('#tlTyp'); if (typSel) typSel.onchange = () => $('#tlf').requestSubmit(); // wybór rodzaju filtruje od razu
   $$('[data-tool]', main).forEach(el => el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const t = byId.get(Number(el.dataset.tool)); if (t) toolDetail(t, byId); }));
   // cały wiersz klikalny myszą/palcem; z klawiatury — przycisk z nazwą (czytniki ekranu ogłaszają go jako przycisk)
   $$('.tl-row[data-row]', main).forEach(el => el.addEventListener('click', () => toolDetail(byId.get(Number(el.dataset.row)), byId)));
@@ -359,14 +368,14 @@ const CATALOG_SPEC = {
   oprawka: (p) => [p.interface, HOLDER_LABEL[p.type] || p.type, p.type === 'trzpieniowa' ? (p.arbor ? `trzpień Ø${mm(p.arbor)}` : '') : p.clamp_min != null ? `zacisk Ø${mm(p.clamp_min)}${p.clamp_max && p.clamp_max !== p.clamp_min ? `–${mm(p.clamp_max)}` : ''}` : '', p.gauge ? `wysięg ${mm(p.gauge)} mm` : ''],
   glowica: (p) => [fi(p.D), ostrza(p.z), p.insert_code ? `płytki ${p.insert_code}` : '', p.lead ? `${mm(p.lead)}°` : ''],
   plytka: (p) => [p.shape ? `kształt ${p.shape}` : '', p.size ? `${mm(p.size)} mm` : '', p.radius ? `r${mm(p.radius)}` : '', p.grade, p.coating],
-  frez: (p) => [THREADED(p.type) && p.thread ? [p.thread, fi(p.D)].filter(Boolean).join(' · ') : fi(p.D), p.type === 'gwintownik' ? (p.pitch ? `skok ${mm(p.pitch)}` : '') : [ostrza(p.z), p.type === 'frez-gwintowy' && p.pitch ? `skok ${mm(p.pitch)}` : ''].filter(Boolean).join(' · '), [p.material, p.coating].filter(Boolean).join(' · ')],
+  frez: (p) => [THREADED(p.type) && p.thread ? [p.thread, fi(p.D)].filter(Boolean).join(' · ') : fi(p.D), p.type === 'gwintownik' ? [p.pitch ? `skok ${mm(p.pitch)}` : '', TAP_KIND_LABEL[p.tap_kind] || '', HOLE_SHORT[p.hole] || ''].filter(Boolean).join(' · ') : [ostrza(p.z), p.type === 'frez-gwintowy' && p.pitch ? `skok ${mm(p.pitch)}` : ''].filter(Boolean).join(' · '), [p.material, p.coating].filter(Boolean).join(' · ')],
 };
 function toolCatalog(kind, items) {
   const picW = kind === 'frez' ? 170 : kind === 'glowica' ? 110 : kind === 'oprawka' ? 40 : 52;
   return `<div class="tl-list k-${kind}">${items.map(t => {
     const theme = t.machine_id ? machineTheme(S.boot.machines.find(m => m.id === t.machine_id)) : '';
     const p = t.params || {};
-    const spec = CATALOG_SPEC[kind](p).filter(Boolean);
+    const spec = CATALOG_SPEC[kind](p).flatMap(x => String(x || '').split(' · ')).filter(Boolean); // każda dana osobno — ładne łamanie linii
     return `<article class="tl-row ${theme ? `theme-${theme}` : 'tl-neutral'} ${t.active ? '' : 'tl-off'}" data-row="${t.id}">
       <div class="tl-pic-row">${drawTool(t, { w: picW, horizontal: true })}</div>
       <div class="tl-main">
@@ -465,6 +474,8 @@ function toolForm(kind, t = null, all = []) {
       num('D', 'Średnica D (mm)', { required: true }), num('z', 'Liczba ostrzy z', { required: true, show: v => v.p_type !== 'gwintownik' }), num('shank', 'Chwyt Ø (mm)', { help: 'puste = jak D' }),
       num('pitch', 'Skok gwintu P (mm)', { required: true, show: v => THREADED(v.p_type), help: 'np. M10 → 1,5; M10x1 → 1' }),
       txt('thread', 'Oznaczenie gwintu', { show: v => THREADED(v.p_type), help: 'np. M10, M10x1, G1/4, UNC 1/4-20' }),
+      { name: 'p_tap_kind', label: 'Wykonanie', type: 'select', value: t ? (p.tap_kind || '') : 'maszynowy', placeholder: '— nie podano —', options: Object.entries(TAP_KIND_LABEL), show: v => v.p_type === 'gwintownik' },
+      { name: 'p_hole', label: 'Otwory', type: 'select', value: p.hole || '', placeholder: '— nie podano —', options: Object.entries(HOLE_LABEL), show: v => v.p_type === 'gwintownik', help: 'przelotowe — wiór do przodu; nieprzelotowe — wiór do tyłu (rowek śrubowy)' },
       num('Lc', 'Długość ostrza Lc (mm)', { required: true, show: v => v.p_type !== 'fazownik', help: 'część skrawająca; przy gwintowniku — długość gwintu' }),
       num('reach', 'Długość użyteczna l1 (mm)', { show: v => v.p_type !== 'fazownik', help: 'ostrze + szyjka (frez z podciętą szyjką); puste = jak Lc' }),
       num('L', 'Długość całkowita L (mm)', { required: true }),
