@@ -16,6 +16,17 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+"%NODE%" -e "const [a,b]=process.versions.node.split('.').map(Number);process.exit(a>22||(a===22&&b>=13)?0:1)"
+if errorlevel 1 (
+  echo.
+  echo  Za stara wersja Node.js - potrzebna 22.13 lub nowsza ^(najlepiej aktualna LTS z nodejs.org^).
+  "%NODE%" -v
+  echo.
+  pause
+  exit /b 1
+)
+rem Dane przykladowe sa ulozone wokol 06.10.2026 - aplikacja testowa "zyje" w tym dniu, zeby plan, kalendarz i projekty byly wypelnione.
+set "CNC_TODAY=2026-10-06"
 set "CNC_DB=%~dp0dane-testowe\cnc-team.db"
 if not exist "%CNC_DB%" (
   echo Tworze dane przykladowe...
@@ -29,6 +40,7 @@ echo  ==========================================================
 echo   CNC Team - TEST.  Adres:  http://localhost:%PORT%
 echo   Logowanie: kierownik / demo-cnc-2026
 echo   (programisci: adam, bartosz, celina; gosc: gosc - to samo haslo)
+echo   Data w wersji testowej: 06.10.2026 ^(dane przykladowe^).
 echo   NIE ZAMYKAJ tego okna - zamkniecie wylacza aplikacje.
 echo  ==========================================================
 echo.
