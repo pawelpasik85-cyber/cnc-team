@@ -10,6 +10,7 @@ const O = require('../server/domain/orders');
 
 function world() {
   const w = makeWorld({ today: '2026-10-06' });
+  w.db.run(`UPDATE settings SET value='tak' WHERE key='employee_work_plan'`); // plan pracy programisty włączony w tych testach
   const e = w.emp('Jan'); w.shifts(e, '2026-10-05', '2026-10-09');
   const e2 = w.emp('Ewa'); w.shifts(e2, '2026-10-05', '2026-10-09', 'II');
   People.saveUser(w.db, w.admin, { login: 'jan', display_name: 'Jan', role: 'employee', employee_id: e, password: 'haslo-testowe-1' });

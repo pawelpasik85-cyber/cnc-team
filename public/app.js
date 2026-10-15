@@ -8,16 +8,20 @@ const isEmployee = () => S.me && S.me.role === 'employee';
 const isGuest = () => S.me && S.me.role === 'guest';
 
 const notEmp = () => S.me && S.me.role !== 'employee' && S.me.role !== 'guest';
+// Zgłoszenia programistów i plan pracy z poleceniami — włączane w Ustawieniach (domyślnie wyłączone, egzekwowane na serwerze)
+const feat = (key) => !!(S.boot && S.boot.settings && S.boot.settings[key] === 'tak');
+const reqOn = () => feat('employee_requests');
+const planOn = () => feat('employee_work_plan');
 const NAV = [
   ['dzisiaj', 'Centrum programowania', 'today', notEmp],
   ['kalendarz', 'Kalendarz', 'calendar', null],
-  ['plan', 'Plan pracy', 'list', () => S.me && S.me.role !== 'guest'],
-  ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee()],
+  ['plan', 'Plan pracy', 'list', () => S.me && S.me.role !== 'guest' && planOn()],
+  ['zglos', 'Zgłoś kierownikowi', 'summons', () => isEmployee() && reqOn()],
   ['pracownicy', 'Pracownicy', 'users', () => S.me && S.me.role !== 'guest'],
   ['zdarzenia', 'Lista zdarzeń', 'list', notEmp],
   ['wyjscia', 'Wyjścia i odrabianie', 'exit', notEmp],
   ['absencje', 'Urlopy i absencje', 'leave', 'view.leave.all'],
-  ['zgloszenia', 'Zgłoszenia pracowników', 'summons', 'write'],
+  ['zgloszenia', 'Zgłoszenia pracowników', 'summons', () => isAdmin() && reqOn()],
   ['projekty', 'Projekty i zadania', 'project', notEmp],
   ['maszyny', 'Tablica maszyn', 'board', notEmp],
   ['narzedzia', 'Narzędzia i oprawki', 'cutter', () => S.me && S.me.role !== 'guest'],
@@ -26,15 +30,18 @@ const NAV = [
   ['analiza', 'Analiza i raporty', 'report', () => S.me && (S.me.role === 'admin' || S.me.role === 'supervisor')],
   ['ustawienia', 'Ustawienia', 'settings', null],
 ];
-// Programista: zgłoszenia, kalendarz, plan pracy, wykaz narzędzi (tylko podgląd) i własne konto — reszta dla kierownika
-const EMP_ROUTES = new Set(['plan', 'kalendarz', 'zglos', 'pracownicy', 'narzedzia', 'ustawienia']);
-// Kolejność menu programisty: Mój profil, Kalendarz, Plan pracy, Zgłoś kierownikowi, Narzędzia i oprawki, Moje konto
+// Programista: mój profil, kalendarz, wykaz narzędzi (tylko podgląd) i własne konto; plan pracy i zgłoszenia — gdy włączone
+const empRoutes = () => new Set(['kalendarz', 'pracownicy', 'narzedzia', 'ustawienia', ...(planOn() ? ['plan'] : []), ...(reqOn() ? ['zglos'] : [])]);
+// Kolejność menu programisty: Mój profil, Kalendarz, (Plan pracy), (Zgłoś kierownikowi), Narzędzia i oprawki, Moje konto
 const EMP_ORDER = ['pracownicy', 'kalendarz', 'plan', 'zglos', 'narzedzia', 'ustawienia'];
 const navLabel = (id, label) => (id === 'ustawienia' && !isAdmin() ? 'Moje konto' : id === 'pracownicy' && isEmployee() ? 'Mój profil' : label);
 
 // Nie w menu bocznym: urlopy i wyjścia są zakładkami w „Pracownicy”; tablica maszyn powielała Centrum programowania.
-const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny', 'zdarzenia']);
-const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy', zdarzenia: 'pracownicy', zestaw: 'analiza', raport: 'analiza' };
+// Kierownik: w menu tylko Centrum, Kalendarz, Pracownicy, Projekty, Narzędzia, Raporty kierownicze, Analiza.
+// Przekazanie zmiany jest w szczegółach projektu, Ustawienia — pod nazwą konta na dole menu.
+const RAIL_HIDDEN = new Set(['wyjscia', 'absencje', 'maszyny', 'zdarzenia', 'przekazanie']);
+const railHidden = (id) => RAIL_HIDDEN.has(id) || (id === 'ustawienia' && !isEmployee());
+const NAV_PARENT = { wyjscia: 'pracownicy', absencje: 'pracownicy', zdarzenia: 'pracownicy', zestaw: 'analiza', raport: 'analiza', przekazanie: 'projekty' };
 // Zakładki widoku Pracownicy (przełączane w tym samym menu)
 function peopleTabs(active) {
   if (isEmployee()) return '';
@@ -60,8 +67,9 @@ async function loadBoot() {
 
 // ---------- Start / logowanie ----------
 async function start() {
+  // motyw „Industrial” (ciemny) jest domyślny; jasny — z przycisku „Motyw” (zapamiętany na urządzeniu)
   const theme = localStorageGet('cnc-theme');
-  if (theme) document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
   try { S.me = await api('/me'); } catch (e) {
     if (e.status === 0) {
       $('#app').innerHTML = `<div class="login"><div class="panel" style="max-width:380px"><h3>${icon('alert')} Brak połączenia</h3><p class="small">${esc(e.message)}</p><button class="primary" id="retryBtn">Spróbuj ponownie</button></div></div>`;
@@ -85,6 +93,7 @@ async function pollNotify(first = false) {
   let d;
   try { d = await api('/notify'); } catch { return; }
   NOTIFY.data = d;
+  if (!reqOn()) { d = { ...d, pending_requests: [], decided: [] }; NOTIFY.data = d; }
   const ids = d.role === 'admin' ? d.pending_requests.map(r => r.id) : d.decided.map(r => `${r.id}:${r.status}`);
   let seen;
   try { seen = new Set(JSON.parse(localStorageGet(notifySeenKey()) || '[]')); } catch { seen = new Set(); }
@@ -155,12 +164,20 @@ function localStorageSet(k, v) { try { localStorage.setItem(k, v); } catch { /* 
 window.addEventListener('cnc-logout', () => { S.me = null; renderLogin(); });
 
 function renderLogin() {
-  $('#app').innerHTML = `<div class="login"><form>
-    <div class="brand">${appLogo(44)}<div>CNC Team<small>Zespół programistów CNC</small></div></div>
+  $('#app').innerHTML = `<div class="login"><div class="login-wrap">
+    <div class="login-hero"><h1>CNC Team<span>Centrum programowania</span></h1>
+      <p>Hartford 3X · Grimme 5X — projekty, ludzie, narzędzia i analiza pracy w jednym miejscu.</p>
+      <div class="login-feats">
+        <div>${icon('today')}<b>Maszyny na żywo</b><span>projekt, postęp, termin</span></div>
+        <div>${icon('project')}<b>Projekty i zadania</b><span>plan i wykonanie</span></div>
+        <div>${icon('cutter')}<b>Narzędzia i oprawki</b><span>katalog i stany</span></div>
+        <div>${icon('report')}<b>Analiza i raporty</b><span>PDF i obraz do wysłania</span></div>
+      </div></div><form>
+    <div class="brand">${appLogo(44)}<div>Zaloguj się<small>CNC Team</small></div></div>
     <label class="field">Login<input name="login" autocomplete="username" required></label>
     <label class="field">Hasło<input name="password" type="password" autocomplete="current-password" required></label>
     <div class="form-error" role="alert"></div>
-    <button class="primary" type="submit">Zaloguj</button></form></div>`;
+    <button class="primary" type="submit">Zaloguj</button></form></div></div>`;
   $('.login form').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
@@ -173,9 +190,9 @@ function renderLogin() {
 function renderShell() {
   const roleName = { admin: 'Administrator', supervisor: 'Przełożony', employee: 'Pracownik', guest: 'Gość' }[S.me.role];
   const tabs = isGuest() ? [['status', 'Status', 'project']]
-    : isEmployee() ? [['pracownicy', 'Profil', 'users'], ['kalendarz', 'Kalendarz', 'calendar'], ['plan', 'Plan', 'list'], ['zglos', 'Zgłoś', 'summons']]
-      : [['dzisiaj', 'Dzisiaj', 'today'], ['plan', 'Plan pracy', 'list'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project']];
-  let nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => !RAIL_HIDDEN.has(n[0]) && (typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3]))));
+    : isEmployee() ? [['pracownicy', 'Profil', 'users'], ['kalendarz', 'Kalendarz', 'calendar'], ...(planOn() ? [['plan', 'Plan', 'list']] : []), ...(reqOn() ? [['zglos', 'Zgłoś', 'summons']] : []), ['narzedzia', 'Narzędzia', 'cutter']]
+      : [['dzisiaj', 'Centrum', 'today'], ['kalendarz', 'Kalendarz', 'calendar'], ['projekty', 'Projekty', 'project'], ['analiza', 'Analiza', 'report']];
+  let nav = isGuest() ? [['status', 'Status projektów', 'project', null], ['ustawienia', 'Moje konto', 'settings', null]] : NAV.filter(n => !railHidden(n[0]) && (typeof n[3] === 'function' ? n[3]() : (!n[3] || can(n[3]))));
   if (isEmployee()) nav = EMP_ORDER.map(id => nav.find(n => n[0] === id)).filter(Boolean);
   $('#app').innerHTML = `<div class="shell">
     <header class="appbar"><button type="button" class="appbar-menu" id="menuBtn" aria-label="Otwórz menu" aria-expanded="false" aria-controls="rail">${icon('list')}</button>
@@ -185,6 +202,7 @@ function renderShell() {
     <div class="brand">${appLogo(40)}<div>CNC Team<small>${esc(S.boot.settings.company_name || '')}</small></div></div>
     ${nav.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${esc(navLabel(id, label))}</span></a>`).join('')}
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
+      ${!isEmployee() && !isGuest() ? `<a href="#/ustawienia" data-nav="ustawienia" class="who-link">${icon('settings')}${isAdmin() ? 'Ustawienia' : 'Moje konto'}</a>` : ''}
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
       <button type="button" id="installBtn" class="link ${document.documentElement.dataset.installable ? '' : 'mobile-only'}">${icon('download')}Skrót na telefonie</button>
       <button type="button" id="logoutBtn" class="link">${icon('logout')}Wyloguj</button></div>
@@ -203,7 +221,7 @@ function renderShell() {
   window.addEventListener('hashchange', () => setDrawer(false));
   $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' }); S.me = null; renderLogin(); };
   $('#themeBtn').onclick = () => {
-    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const cur = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
     const next = cur === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next; localStorageSet('cnc-theme', next);
   };
@@ -212,9 +230,11 @@ function renderShell() {
 const VIEWS = {};
 async function route() {
   if (!S.me) return;
-  let [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || (isGuest() ? 'status' : isEmployee() ? 'plan' : 'dzisiaj')).split('/');
+  let [name, ...rest] = (location.hash.replace(/^#\/?/, '').split('?')[0] || (isGuest() ? 'status' : isEmployee() ? 'pracownicy' : 'dzisiaj')).split('/');
   if (isGuest() && name !== 'ustawienia') name = 'status';
-  if (isEmployee() && !EMP_ROUTES.has(name)) name = 'plan';
+  if (isEmployee() && !empRoutes().has(name)) name = 'pracownicy';
+  // wyłączone moduły: plan pracy i zgłoszenia — kierownik trafia do Centrum
+  if (!isEmployee() && ((name === 'plan' && !planOn()) || (name === 'zgloszenia' && !reqOn()))) name = 'dzisiaj';
   $$('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === (NAV_PARENT[name] || name)));
   const navItem = isGuest() ? (name === 'status' ? ['status', 'Status projektów'] : ['ustawienia', 'Moje konto']) : NAV.find(n => n[0] === name);
   if ($('#appbarTitle')) $('#appbarTitle').textContent = navItem ? navLabel(navItem[0], navItem[1]) : 'CNC Team';
@@ -256,8 +276,8 @@ VIEWS.dzisiaj = async (main) => {
       ${d.my_balance ? `<section class="panel"><h3>Moje saldo do odrobienia (${plMonth(d.today.slice(0, 7))})</h3><div class="stat-row"><div class="stat"><b>${hm(d.my_balance.remaining_min)}</b><span>pozostało</span></div><div class="stat"><b>${d.my_balance.remaining_shifts}</b><span>zmian do końca miesiąca</span></div></div></section>` : ''}
       <section class="panel"><h3>Alerty rozliczeń</h3><ul class="plain">${alerts || '<li class="muted">Brak aktywnych alertów.</li>'}</ul>
         ${d.pending_makeups ? `<p class="notice">Odrabiania oczekujące na zatwierdzenie: ${d.pending_makeups}. <a href="#/wyjscia">Przejdź</a></p>` : ''}
-        ${d.pending_requests ? `<p class="notice">Zgłoszenia pracowników do decyzji: ${d.pending_requests}. <a href="#/zgloszenia">Przejdź</a></p>` : ''}
-        ${d.orders_today ? `<p class="notice info">Plan pracy na dziś: ${d.orders_today.n} poleceń${d.orders_today.unread ? `, nieprzeczytane: <b>${d.orders_today.unread}</b>` : ''}. <a href="#/plan">Przejdź</a></p>` : ''}</section>
+        ${d.pending_requests && reqOn() ? `<p class="notice">Zgłoszenia pracowników do decyzji: ${d.pending_requests}. <a href="#/zgloszenia">Przejdź</a></p>` : ''}
+        ${d.orders_today && planOn() ? `<p class="notice info">Plan pracy na dziś: ${d.orders_today.n} poleceń${d.orders_today.unread ? `, nieprzeczytane: <b>${d.orders_today.unread}</b>` : ''}. <a href="#/plan">Przejdź</a></p>` : ''}</section>
       ${d.leave_reminders ? `<section class="panel"><h3>Zaległy urlop</h3><ul class="plain">${reminders || '<li class="muted">Brak zaległych pul.</li>'}</ul></section>` : ''}
       <section class="panel"><h3>Ostatnie przekazania zmian</h3><ul class="plain">${d.handovers.map(h => `<li><span class="mono">${esc(h.order_no)}</span> ${esc(h.part_no)} · ${plDate(h.shift_date)} · ${person(h.from_employee_id, { name: false })} → ${person(h.to_employee_id, { name: false })}<br><span class="muted">${esc(h.remaining_text)}</span></li>`).join('') || '<li class="muted">Brak.</li>'}</ul></section>
     </div>`;

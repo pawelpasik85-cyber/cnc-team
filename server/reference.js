@@ -18,6 +18,8 @@ const SETTINGS = [
   ['project_delay_alert_pct', '15', 'Opóźnienie projektu (punkty %) powyżej którego projekt jest „zagrożony” (także po terminie)'],
   ['login_max_failures', '5', 'Liczba błędnych haseł, po której konto jest czasowo blokowane'],
   ['login_lock_min', '15', 'Czas blokady logowania po serii błędnych haseł (minuty)'],
+  ['employee_requests', 'nie', 'Czy programiści wysyłają z aplikacji zgłoszenia do kierownika (urlop, spóźnienie, odrabianie) (tak/nie); domyślnie nie — wpisy robi kierownik'],
+  ['employee_work_plan', 'nie', 'Czy programiści mają w aplikacji plan pracy z poleceniami na zmianę (tak/nie); domyślnie nie'],
   ['cnc_process_url_template', '', 'Szablon odnośnika „Otwórz w CNC Process”, np. http://localhost:3001/projekty/{project_id} (puste = brak integracji)'],
 ];
 

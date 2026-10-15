@@ -1,28 +1,31 @@
 /* CNC Team — wspólne tokeny stylistyczne (do odtworzenia w CNC Process).
    Opis zasad: docs/DESIGN_TOKENS.md. Zmieniaj wartości tutaj, nie w komponentach. */
 :root {
-  /* Kolory bazowe */
-  --c-graphite: #23282d;
-  --c-graphite-2: #2e353b;
-  --c-steel: #8a949e;
-  --c-steel-light: #dde2e6;
-  --c-paper: #f3f5f6;
-  --c-surface: #ffffff;
-  --c-ink: #1b1f23;
-  --c-ink-soft: #4d5760;
-  --c-line: #cfd6db;
-  --c-accent: #0f8b8d;          /* „chłodziwo” — akcent turkusowy */
-  --c-accent-ink: #ffffff;
-  --c-accent-soft: #dff1f1;
-  --c-info: #2563a8;
-  --c-warn: #b86e00;
-  --c-warn-soft: #fbefd9;
-  --c-danger: #b3261e;
-  --c-danger-soft: #f9e1df;
-  --c-ok: #2e7d4f;
-  --c-ok-soft: #e1f2e7;
-  --c-grid: rgba(35, 40, 45, 0.045);
-  --c-focus: #0f8b8d;
+  /* Motyw „Industrial” (domyślny): granat hali, panele HUD, pomarańczowy akcent, błękitna poświata */
+  --c-graphite: #060b15;        /* menu boczne */
+  --c-graphite-2: #0f1b2e;
+  --c-steel: #7d8ea6;
+  --c-steel-light: #18263b;
+  --c-paper: #08101d;           /* tło strony */
+  --c-surface: #0f1a2c;         /* panele */
+  --c-surface-2: #13223a;
+  --c-ink: #e9f0f8;
+  --c-ink-soft: #94a6be;
+  --c-line: #22344e;
+  --c-accent: #ff7a1a;          /* pomarańczowy akcent */
+  --c-accent-ink: #1a0c00;
+  --c-accent-soft: #3a1f0a;
+  --c-glow: #2f8cff;            /* błękitna poświata HUD */
+  --c-info: #4aa3ff;
+  --c-warn: #f2a33a;
+  --c-warn-soft: #3a2a10;
+  --c-danger: #ff6257;
+  --c-danger-soft: #3d1717;
+  --c-ok: #3ccf86;
+  --c-ok-soft: #0f2e1f;
+  --c-grid: rgba(70, 130, 220, 0.07);
+  --c-focus: #ff7a1a;
+  color-scheme: dark;
 
   /* Typografia: DIN-podobny krój systemowy (Bahnschrift w Windows) */
   --f-sans: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Segoe UI", system-ui, sans-serif;
@@ -31,38 +34,36 @@
   --lh: 1.45;
 
   /* Geometria */
-  --r-sm: 3px; --r-md: 6px;
+  --r-sm: 4px; --r-md: 10px;
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
-  --rail-w: 220px;
-  --grid-step: 24px;
+  --rail-w: 232px;
+  --grid-step: 40px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --c-paper: #16191c; --c-surface: #1f2428; --c-ink: #e6eaed; --c-ink-soft: #a3adb6; --c-line: #353d44;
-    --c-steel-light: #2b3238; --c-accent: #2bb3b1; --c-accent-ink: #0d1213; --c-accent-soft: #163536;
-    --c-warn: #e0a243; --c-warn-soft: #3a2c14; --c-danger: #ef6b62; --c-danger-soft: #3b1d1b;
-    --c-ok: #5cbf86; --c-ok-soft: #173326; --c-info: #6ea8e8; --c-grid: rgba(220, 230, 235, 0.035); --c-graphite: #111417; --c-graphite-2: #1a1e22;
-  }
+/* Motyw jasny (przycisk „Motyw”) oraz wydruk: jasne tło, ten sam pomarańczowy akcent i granatowe menu */
+:root[data-theme="light"] {
+  --c-graphite: #0b1424; --c-graphite-2: #16243b; --c-steel: #8a949e; --c-steel-light: #e3e8ef;
+  --c-paper: #eef2f7; --c-surface: #ffffff; --c-surface-2: #f6f8fb; --c-ink: #14202f; --c-ink-soft: #4d5b6c; --c-line: #d3dbe5;
+  --c-accent: #e2620c; --c-accent-ink: #ffffff; --c-accent-soft: #fde9da; --c-glow: #1d6fd6; --c-info: #2563a8;
+  --c-warn: #b86e00; --c-warn-soft: #fbefd9; --c-danger: #b3261e; --c-danger-soft: #f9e1df; --c-ok: #2e7d4f; --c-ok-soft: #e1f2e7;
+  --c-grid: rgba(35, 60, 100, 0.05); --c-focus: #e2620c; color-scheme: light;
 }
-:root[data-theme="dark"] {
-  --c-paper: #16191c; --c-surface: #1f2428; --c-ink: #e6eaed; --c-ink-soft: #a3adb6; --c-line: #353d44;
-  --c-steel-light: #2b3238; --c-accent: #2bb3b1; --c-accent-ink: #0d1213; --c-accent-soft: #163536;
-  --c-warn: #e0a243; --c-warn-soft: #3a2c14; --c-danger: #ef6b62; --c-danger-soft: #3b1d1b;
-  --c-ok: #5cbf86; --c-ok-soft: #173326; --c-info: #6ea8e8; --c-grid: rgba(220, 230, 235, 0.035); --c-graphite: #111417; --c-graphite-2: #1a1e22;
+@media print {
+  :root, :root[data-theme] {
+    --c-graphite: #0b1424; --c-graphite-2: #16243b; --c-steel: #8a949e; --c-steel-light: #e3e8ef;
+    --c-paper: #ffffff; --c-surface: #ffffff; --c-surface-2: #f6f8fb; --c-ink: #14202f; --c-ink-soft: #4d5b6c; --c-line: #d3dbe5;
+    --c-accent: #e2620c; --c-accent-ink: #ffffff; --c-accent-soft: #fde9da; --c-info: #2563a8;
+    --c-warn: #b86e00; --c-warn-soft: #fbefd9; --c-danger: #b3261e; --c-danger-soft: #f9e1df; --c-ok: #2e7d4f; --c-ok-soft: #e1f2e7; color-scheme: light;
+  }
 }
 
 /* Motywy maszyn: Hartford 3X — stal/szarości, Grimme 5X — błękit. Używane w emblematach, paskach i kartach maszyn. */
-.theme-hartford { --m-dark: #3c434b; --m-mid: #77818c; --m-light: #c9d0d7; --m-glow: #eef1f4; --m-ink: #39414a; --m-soft: #eceff2; }
-.theme-grimme { --m-dark: #0c3a78; --m-mid: #1d6fd6; --m-light: #74b6fb; --m-glow: #dcedff; --m-ink: #0f4c9c; --m-soft: #e3f0ff; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .theme-hartford { --m-ink: #cfd6dd; --m-soft: #262c32; }
-  :root:not([data-theme="light"]) .theme-grimme { --m-ink: #8fc3ff; --m-soft: #142a44; }
-}
-:root[data-theme="dark"] .theme-hartford { --m-ink: #cfd6dd; --m-soft: #262c32; }
-:root[data-theme="dark"] .theme-grimme { --m-ink: #8fc3ff; --m-soft: #142a44; }
+.theme-hartford { --m-dark: #3c434b; --m-mid: #8a949e; --m-light: #c9d0d7; --m-glow: #eef1f4; --m-ink: #d3dae2; --m-soft: #172231; }
+.theme-grimme { --m-dark: #0c3a78; --m-mid: #2a7de0; --m-light: #74b6fb; --m-glow: #dcedff; --m-ink: #8fc3ff; --m-soft: #0f2442; }
+:root[data-theme="light"] .theme-hartford { --m-mid: #77818c; --m-ink: #39414a; --m-soft: #eceff2; }
+:root[data-theme="light"] .theme-grimme { --m-mid: #1d6fd6; --m-ink: #0f4c9c; --m-soft: #e3f0ff; }
+@media print { .theme-hartford { --m-ink: #39414a; --m-soft: #eceff2; } .theme-grimme { --m-ink: #0f4c9c; --m-soft: #e3f0ff; } }
 
 /* Kolory serii wykresów (sprawdzone walidatorem palety: CVD, kontrast). Rok ma stały kolor: --series-(rok mod 4 + 1). */
-:root { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #c98500; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; } }
-:root[data-theme="dark"] { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; }
+:root { --series-1: #3987e5; --series-2: #e8680f; --series-3: #199e70; --series-4: #b88208; }
+:root[data-theme="light"] { --series-1: #2a78d6; --series-2: #e2620c; --series-3: #1baf7a; --series-4: #c98500; }

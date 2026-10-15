@@ -271,22 +271,27 @@ VIEWS.analiza = async (main) => {
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const admin = isAdmin();
   const tab = admin ? (q.get('t') || 'maszyny') : (q.get('t') === 'zestawienia' ? 'zestawienia' : 'raporty');
-  const tabs = admin ? [['maszyny', 'Przegląd maszyn'], ['miesiac', 'Miesiąc'], ['rok', 'Rok'], ['raporty', 'Zapisane raporty'], ['zestawienia', 'Zestawienia do druku']] : [['raporty', 'Raporty od kierownika'], ['zestawienia', 'Zestawienia']];
+  const tabs = admin ? [['maszyny', 'Przegląd maszyn'], ['programisci', 'Programiści'], ['detale', 'Detale'], ['struktura', 'Struktura czasu'], ['miesiac', 'Miesiąc'], ['rok', 'Rok'], ['raporty', 'Zapisane raporty'], ['zestawienia', 'Zestawienia do druku']] : [['raporty', 'Raporty od kierownika'], ['zestawienia', 'Zestawienia']];
   const tabsHtml = `<div class="tabs no-print">${tabs.map(([id, l]) => `<button class="${tab === id ? 'active' : ''}" data-at="${id}">${esc(l)}</button>`).join('')}</div>`;
-  let body = '', tools = '';
-  if (tab === 'maszyny') {
+  let body = '', tools = '', docFn = null, bindTab = null;
+  if (TEAM_TABS[tab] && admin) {
+    const tt = await teamTab(tab, q);
+    tools = tt.tools + exportTools(); body = tt.body; docFn = tt.doc; bindTab = tt.bind;
+  } else if (tab === 'maszyny') {
     const yQ = q.get('y') || '';
     const year = /^\d{4}$/.test(yQ) ? yQ : S.me.today.slice(0, 4);
     const d = await api(`/analytics/machines?year=${year}`);
-    tools = `<label class="field no-print">Rok<select id="moYear">${d.available.map(y => `<option ${String(y) === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label><button id="aprint" class="no-print">${icon('print')}Drukuj / PDF</button>`;
+    tools = `<label class="field no-print">Rok<select id="moYear">${d.available.map(y => `<option ${String(y) === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>${exportTools()}`;
     body = `<h2 class="print-title">Przegląd maszyn ${esc(year)}</h2>${renderMachines(d)}`;
+    docFn = () => docMachines(d);
   } else if (tab === 'miesiac') {
     const ymQ = q.get('ym') || '';
     const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ymQ) && ymQ <= S.me.today.slice(0, 7) ? ymQ : S.me.today.slice(0, 7);
     const d = await api(`/analytics/month?ym=${ym}`);
     tools = `<label class="field no-print">Miesiąc<input type="month" id="amonth" value="${ym}"></label>
-      <a class="btn no-print" href="/api/analytics/export.csv?kind=miesiac&ref=${ym}">${icon('download')}CSV</a><button id="aprint" class="no-print">${icon('print')}Drukuj / PDF</button><button id="asave" class="primary no-print">Zapisz jako raport</button>`;
+      <a class="btn no-print" href="/api/analytics/export.csv?kind=miesiac&ref=${ym}">${icon('download')}CSV</a>${exportTools()}<button id="asave" class="primary no-print">Zapisz jako raport</button>`;
     body = `<h2 class="print-title">${esc(plMonth(ym))} wobec ${esc(plMonth(d.previous.year_month))}</h2>${renderMonth(d)}`;
+    docFn = () => docMonth(d);
   } else if (tab === 'rok') {
     const yQ = q.get('y') || '';
     const year = /^\d{4}$/.test(yQ) ? yQ : S.me.today.slice(0, 4);
@@ -296,7 +301,8 @@ VIEWS.analiza = async (main) => {
     tools = `<label class="field no-print">Rok<select id="ayear">${d.available.map(y => `<option ${String(y) === year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
       <fieldset class="field no-print years-pick"><legend>Porównaj z</legend>${d.available.filter(y => String(y) !== year).map(y => `<label class="inline"><input type="checkbox" value="${y}" ${compare.includes(String(y)) ? 'checked' : ''}> ${y}</label>`).join('') || '<span class="muted small">brak innych lat</span>'}</fieldset>
       <label class="field no-print">Wskaźnik<select id="ametric">${d.kpi.map(k => `<option value="${k.key}" ${k.key === metric ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select></label>
-      <a class="btn no-print" href="/api/analytics/export.csv?kind=rok&ref=${year}&compare=${compare.join(',')}">${icon('download')}CSV</a><button id="aprint" class="no-print">${icon('print')}Drukuj / PDF</button><button id="asave" class="primary no-print">Zapisz jako raport</button>`;
+      <a class="btn no-print" href="/api/analytics/export.csv?kind=rok&ref=${year}&compare=${compare.join(',')}">${icon('download')}CSV</a>${exportTools()}<button id="asave" class="primary no-print">Zapisz jako raport</button>`;
+    docFn = () => docYear(d, metric);
     body = `<h2 class="print-title">Rok ${esc(year)}${compare.length ? ` wobec ${compare.join(', ')}` : ''}</h2>${renderYear(d, metric)}`;
     main.dataset.yearCompare = JSON.stringify(compare);
   } else if (tab === 'zestawienia') {
@@ -313,6 +319,8 @@ VIEWS.analiza = async (main) => {
   }
   main.innerHTML = head(admin ? 'Analiza i raporty' : 'Raporty od kierownika', admin ? 'Dane widoczne tylko dla Ciebie. Zapisz raport, aby wydrukować go lub udostępnić przełożonemu.' : 'Raporty udostępnione przez kierownika.', tools) + tabsHtml + body;
   bindCharts(main);
+  if (docFn) bindExport(main, docFn);
+  if (bindTab) bindTab(main);
   $$('[data-at]').forEach(b => b.onclick = () => { location.hash = `#/analiza?t=${b.dataset.at}`; });
   const moY = $('#moYear'); if (moY) moY.onchange = () => { location.hash = `#/analiza?t=maszyny&y=${moY.value}`; };
   const m = $('#amonth'); if (m) m.onchange = () => { location.hash = `#/analiza?t=miesiac&ym=${m.value}`; };
@@ -321,7 +329,6 @@ VIEWS.analiza = async (main) => {
     location.hash = `#/analiza?t=rok&y=${y}&c=${c}&m=${mt}`;
   };
   if ($('#ayear')) { $('#ayear').onchange = yearNav; $('#ametric').onchange = yearNav; $$('.years-pick input').forEach(i => i.onchange = yearNav); }
-  on('aprint', () => window.print());
   on('asave', () => {
     if (tab === 'miesiac') { const ym = $('#amonth').value; saveReportForm('miesiac', ym, `Miesiąc ${plMonth(ym)} wobec roku wcześniej`); }
     else { const y = $('#ayear').value, c = JSON.parse(main.dataset.yearCompare || '[]'); saveReportForm('rok', y, `Rok ${y}${c.length ? ` wobec ${c.join(', ')}` : ''}`, { compare: c }); }
@@ -341,9 +348,11 @@ VIEWS.raport = async (main, rest) => {
   }
   else body = `<section class="panel">${processCharts(r.data.process)}</section><section class="panel"><h3>Podobne projekty</h3>${similarSection(r.data.similar, { editable: false })}</section>`;
   main.innerHTML = head(r.title, `Zapisano ${new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })} · ${esc(r.author || '')} · dane z chwili zapisu`,
-    `<a class="btn no-print" href="#/analiza?t=raporty">‹ Raporty</a><button id="rprint" class="primary no-print">${icon('print')}Drukuj / PDF</button>`) +
+    `<a class="btn no-print" href="#/analiza?t=raporty">‹ Raporty</a>${exportTools()}`) +
     (r.note ? `<section class="panel note-box"><h3>Komentarz kierownika</h3><p style="white-space:pre-wrap">${esc(r.note)}</p></section>` : '') + body;
   bindCharts(main);
+  const metricNow = /^[a-z_]+$/.test(new URLSearchParams(location.hash.split('?')[1] || '').get('m') || '') ? new URLSearchParams(location.hash.split('?')[1]).get('m') : 'worked_min';
+  bindExport(main, () => ({ ...(r.kind === 'miesiac' ? docWithNote(docMonth(r.data), r.note) : r.kind === 'rok' ? docWithNote(docYear(r.data, metricNow), r.note) : docProject(r)), title: r.title,
+    meta: `zapisano ${new Date(r.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' })} · dane z chwili zapisu` }));
   const rm = $('#rmetric'); if (rm) rm.onchange = () => { location.hash = `#/raport/${r.id}?m=${rm.value}`; };
-  on('rprint', () => window.print());
 };

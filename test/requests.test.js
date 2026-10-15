@@ -38,8 +38,31 @@ function world() {
   People.saveUser(w.db, w.admin, { login: 'ewa', display_name: 'Ewa', role: 'employee', employee_id: e2, password: 'haslo-testowe-1' });
   People.saveUser(w.db, w.admin, { login: 'szef', display_name: 'Przełożony', role: 'supervisor', password: 'haslo-testowe-1' });
   const tt = Object.fromEntries(w.db.all('SELECT id, code FROM task_types').map(t => [t.code, t.id]));
+  // zgłoszenia i plan pracy programisty są domyślnie wyłączone — w tych testach włączone
+  w.db.run(`UPDATE settings SET value='tak' WHERE key IN ('employee_requests','employee_work_plan')`);
   return { ...w, e, e2, tt };
 }
+
+test('zgłoszenia i plan pracy programisty: domyślnie wyłączone (403 na serwerze), włączane w ustawieniach', async () => {
+  const w = world();
+  w.db.run(`UPDATE settings SET value='nie' WHERE key IN ('employee_requests','employee_work_plan')`);
+  const { srv, base } = await startServer(w.db);
+  try {
+    const jan = client(base); await jan.login('jan');
+    const adm = client(base); await adm.login('admin');
+    const r1 = await jan.call('POST', '/requests', { kind: 'spoznienie', date_from: '2026-10-06', minutes: 10 });
+    assert.equal(r1.status, 403);
+    assert.match(r1.data.error, /wyłączone/);
+    assert.equal((await jan.call('GET', '/work-orders/my')).status, 403);
+    assert.equal((await jan.call('GET', '/employees')).status, 200, 'profil działa');
+    assert.equal((await jan.call('GET', '/tools')).status, 200, 'narzędzia działają');
+    const boot = (await jan.call('GET', '/bootstrap')).data;
+    assert.equal(boot.settings.employee_requests, 'nie');
+    assert.equal((await adm.call('PUT', '/settings/employee_requests', { value: 'tak', reason: 'test' })).status, 200);
+    assert.notEqual((await jan.call('POST', '/requests', { kind: 'spoznienie', date_from: '2026-10-06', minutes: 10 })).status, 403);
+    assert.equal((await adm.call('PUT', '/settings/employee_requests', { value: 'moze' })).status, 400);
+  } finally { srv.close(); }
+});
 
 test('zgłoszenia: pracownik tylko zgłasza, kierownik przyjmuje (wyjście, odrobienie) lub odrzuca; brak bezpośrednich zapisów', async () => {
   const w = world();

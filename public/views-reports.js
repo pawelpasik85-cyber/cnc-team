@@ -23,7 +23,7 @@ VIEWS.raporty = async (main) => {
   const filters = def[2] === 'range' ? `<label class="field">Od<input type="date" name="from" value="${params.get('from')}"></label><label class="field">Do<input type="date" name="to" value="${params.get('to')}"></label>`
     : def[2] === 'month' ? `<label class="field">Miesiąc<input type="month" name="month" value="${params.get('month')}"></label>` : '';
   main.innerHTML = head('Raporty kierownicze', 'Tylko administrator i przełożony. Raporty służą do wskazywania problemów do wyjaśnienia, nie do ukrytego monitorowania.',
-    `<a class="btn" href="/api/reports/${name}.csv?${params}">${icon('download')}CSV</a><button type="button" id="printR">${icon('print')}Drukuj / PDF</button>`) +
+    `<a class="btn" href="/api/reports/${name}.csv?${params}">${icon('download')}CSV</a>${exportTools()}`) +
     `<div class="tabs no-print">${REPORT_TABS.map(t => `<button class="${t[0] === name ? 'active' : ''}" data-r="${t[0]}">${esc(t[1])}</button>`).join('')}</div>
     ${filters ? `<form class="toolbar no-print" id="rf">${filters}<button class="primary">Pokaż</button></form>` : ''}
     <section class="panel"><h2 style="margin-top:0">${esc(rep.title)}${rep.from ? ` <span class="muted small">${plDate(rep.from)} – ${plDate(rep.to)}</span>` : ''}</h2>
@@ -35,7 +35,7 @@ VIEWS.raporty = async (main) => {
     </section>`;
   $$('[data-r]').forEach(b => b.onclick = () => { location.hash = `#/raporty?r=${b.dataset.r}`; });
   if ($('#rf')) $('#rf').onsubmit = (e) => { e.preventDefault(); location.hash = `#/raporty?r=${name}&${new URLSearchParams([...new FormData(e.target)])}`; };
-  on('printR', () => window.print());
+  bindExport(main, () => docReport(rep, def));
 };
 
 // ---------- Ustawienia ----------

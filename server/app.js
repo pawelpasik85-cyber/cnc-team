@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { HttpError, userFromSession } = require('./core');
 const { buildRoutes } = require('./routes');
+const { getSetting } = require('./domain/common');
 const T = require('./time');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -37,6 +38,7 @@ const EMPLOYEE_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POS
   'GET /work-orders/my', 'POST /work-orders/:id/ack',
   'GET /requests', 'POST /requests', 'POST /requests/:id/withdraw', 'GET /balances',
   'GET /employees', 'GET /leave/summary', 'GET /notify', 'GET /tools']); // tylko własny profil i własne urlopy (filtr w trasach)
+const EMPLOYEE_FEATURE = { 'POST /requests': 'employee_requests', 'POST /requests/:id/withdraw': 'employee_requests', 'GET /work-orders/my': 'employee_work_plan', 'POST /work-orders/:id/ack': 'employee_work_plan' };
 // Adres bez portu: IIS (ARR) dopisuje do X-Forwarded-For „adres:port” — port zmienia się przy każdym połączeniu.
 const normIp = (x) => {
   let a = String(x || '').trim();
@@ -102,7 +104,10 @@ function createApp(db, opts = {}) {
       if (!route.public && !user) throw new HttpError(401, 'Wymagane zalogowanie.');
       // Gość ma dostęp wyłącznie do statusu swoich projektów — każda inna trasa jest zablokowana.
       if (user && user.role === 'guest' && !GUEST_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Konto gościa ma dostęp tylko do statusu projektów.');
-      if (user && user.role === 'employee' && !EMPLOYEE_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Programista ma dostęp do zgłoszeń, kalendarza i planu pracy — pozostałe dane są dla kierownika.');
+      if (user && user.role === 'employee' && !EMPLOYEE_ALLOWED.has(`${req.method} ${route.path}`)) throw new HttpError(403, 'Programista ma dostęp do swojego profilu, kalendarza i wykazu narzędzi — pozostałe dane są dla kierownika.');
+      // Zgłoszenia i plan pracy programisty — tylko gdy kierownik włączy je w ustawieniach (domyślnie wyłączone)
+      const feature = user && user.role === 'employee' ? EMPLOYEE_FEATURE[`${req.method} ${route.path}`] : null;
+      if (feature && getSetting(db, feature, 'nie') !== 'tak') throw new HttpError(403, feature === 'employee_requests' ? 'Zgłoszenia z aplikacji są wyłączone — zgłoś sprawę kierownikowi bezpośrednio.' : 'Plan pracy w aplikacji jest wyłączony.');
       // Nagłówki proxy honorowane tylko od zaufanego proxy (lokalnie lub z listy CNC_PROXY_IPS); adres klienta = ostatni wpis
       // X-Forwarded-For (dopisany przez nasze proxy) — wcześniejsze wpisy może podać sam klient.
       const peer = req.socket.remoteAddress || '';

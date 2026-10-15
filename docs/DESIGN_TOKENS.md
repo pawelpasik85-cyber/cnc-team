@@ -2,22 +2,26 @@
 
 Źródło prawdy: `public/tokens.css`. CNC Process powinien skopiować ten plik i używać tych samych zmiennych.
 
-## Charakter
-Centrum programowania w narzędziowni: chłodna, stalowa paleta, grafitowy panel nawigacji, jeden akcent w kolorze chłodziwa (turkus). Delikatna siatka techniczna 24 px w tle treści. Bez gradientów ozdobnych, bez cieni pod kartami, animacji brak (poza standardowymi stanami przycisków). Element charakterystyczny: **karta maszyny jak tabliczka znamionowa** — grafitowa kolumna z dużym oznaczeniem osi (3X / 5X), nazwą sterowania i ikoną, obok dane w układzie etykieta–wartość oddzielone przerywaną linią.
+## Charakter (od 0.17 — motyw „Industrial”)
+Wzór: grafika kierownika „CNC Trends” — hala w granacie, panele HUD z błękitną poświatą, pomarańczowy akcent. Tło: granat z siatką 40 px i dwiema poświatami (błękit u góry, pomarańcz u dołu). Panele: półprzezroczysty granat z obrysem i cieniem. Duże białe tytuły z pomarańczową kreską pod spodem, etykiety wersalikami. Karta maszyny zachowuje kolumnę osi (3X / 5X) w kolorze maszyny i delikatną poświatę tego koloru. Motyw jasny (przycisk „Motyw”) — te same zasady na jasnym tle; wydruk zawsze jasny. Warstwa wyglądu dotyczy tylko ekranu (`@media screen`).
 
-## Kolory (jasny / ciemny)
-| Token | Jasny | Ciemny | Użycie |
+## Kolory
+| Token | Industrial (domyślny) | Jasny | Użycie |
 |---|---|---|---|
-| `--c-graphite` | #23282d | #111417 | panel nawigacji, kolumna osi |
-| `--c-steel` | #8a949e | #8a949e | drugorzędne słupki, obrysy |
-| `--c-steel-light` | #dde2e6 | #2b3238 | nagłówki tabel, tory pasków |
-| `--c-paper` | #f3f5f6 | #16191c | tło treści |
-| `--c-surface` | #ffffff | #1f2428 | panele |
-| `--c-accent` | #0f8b8d | #2bb3b1 | akcent, przyciski główne, postęp przygotowania |
-| `--c-info` | #2563a8 | #6ea8e8 | postęp wykonania |
-| `--c-warn` / `--c-danger` / `--c-ok` | #b86e00 / #b3261e / #2e7d4f | jaśniejsze | stany |
+| `--c-graphite` | #060b15 | #0b1424 | menu boczne |
+| `--c-paper` | #08101d | #eef2f7 | tło strony |
+| `--c-surface` | #0f1a2c | #ffffff | panele |
+| `--c-line` | #22344e | #d3dbe5 | obrysy, linie tabel |
+| `--c-ink` / `--c-ink-soft` | #e9f0f8 / #94a6be | #14202f / #4d5b6c | tekst |
+| `--c-accent` | #ff7a1a | #e2620c | akcent: przyciski główne, aktywne menu, kreski tytułów |
+| `--c-glow` | #2f8cff | #1d6fd6 | poświata HUD, ikony menu |
+| `--c-warn` / `--c-danger` / `--c-ok` | #f2a33a / #ff6257 / #3ccf86 | #b86e00 / #b3261e / #2e7d4f | stany |
+| `--series-1..4` | #3987e5, #e8680f, #199e70, #b88208 | #2a78d6, #e2620c, #1baf7a, #c98500 | serie wykresów (sprawdzone walidatorem palety: CVD, kontrast, jasność) |
 
-Tryb ciemny: automatycznie wg systemu albo przełącznik „Motyw” (atrybut `data-theme` na `<html>`).
+Maszyny bez zmian: Hartford — szarości (`--m-mid` #8a949e), Grimme — błękit (#2a7de0). Motyw zapamiętywany na urządzeniu (`localStorage`, atrybut `data-theme` na `<html>`).
+
+## Raporty w plikach (PDF / PNG)
+Rysowane na płótnie w tym samym stylu: granatowy nagłówek z pomarańczową linią, białe tło treści (czytelne po wydruku), kafelki z kolorowym paskiem, słupki w kolorach maszyn i serii, tabele z granatowym nagłówkiem. Kod: `public/report-export.js`.
 
 ## Typografia
 - `--f-sans`: Bahnschrift (Windows, krój DIN-podobny) → DIN Alternate → Roboto Condensed → Segoe UI → system-ui. Bez pobierania czcionek (praca offline).

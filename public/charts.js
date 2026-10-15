@@ -57,7 +57,8 @@ function svgBarChart({ categories, series, fmt = (v) => String(v), height = 240,
   const id = `ch${++CHART_SEQ}`;
   const W = 720, H = height, L = 56, R = 12, Tp = 12, B = 40;
   const all = series.flatMap(s => s.values).filter(v => v !== null && v !== undefined);
-  const hi = niceMax(Math.max(0, ...all)), lo = niceMin(Math.min(0, ...all));
+  // podziałka co 1/4 zakresu w „okrągłych” krokach (np. 0, 4, 8, 12, 16 h zamiast 3,8 / 11,3)
+  const hi = niceMax(Math.max(0, ...all) / 4) * 4, lo = Math.min(0, ...all) < 0 ? -niceMax(-Math.min(...all) / 4) * 4 : 0;
   const y = (v) => Tp + (H - Tp - B) * (1 - (v - lo) / (hi - lo || 1));
   const groupW = (W - L - R) / Math.max(1, categories.length);
   const gap = 2, inner = Math.min(46, (groupW * 0.72 - gap * (series.length - 1)) / series.length);

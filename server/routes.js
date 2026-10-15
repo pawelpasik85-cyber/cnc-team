@@ -12,6 +12,7 @@ const R = require('./domain/reports');
 const I = require('./domain/integration');
 const Req = require('./domain/requests');
 const A = require('./domain/analytics');
+const TA = require('./domain/team-analytics');
 const Ret = require('./domain/returns');
 const B = require('./domain/bundles');
 const Tools = require('./domain/tools');
@@ -91,7 +92,7 @@ function projectForUser(user, p) {
   if (user.role === 'employee') delete out.contributions;
   return out;
 }
-const TAK_NIE = ['employee_sees_team_balances', 'employee_sees_all_projects', 'employee_sees_project_hours'];
+const TAK_NIE = ['employee_sees_team_balances', 'employee_sees_all_projects', 'employee_sees_project_hours', 'employee_requests', 'employee_work_plan'];
 // Godziny projektu (przepracowane / plan / wynik): kierownik i przełożony; pracownik — gdy firma włączy ustawienie.
 function seesHours(db, user) {
   if (can(user, 'view.efficiency')) return true;
@@ -179,7 +180,7 @@ function buildRoutes() {
       : c),
     employees: People.listEmployees(db).map(e => redactEmployee(user, e)),
     holidays: db.all('SELECT * FROM holidays ORDER BY date'),
-    settings: Object.fromEntries(db.all('SELECT key, value FROM settings').filter(s => isAdmin(user) || ['company_name', 'exit_settlement_period', 'cnc_process_url_template'].includes(s.key)).map(s => [s.key, s.value])),
+    settings: Object.fromEntries(db.all('SELECT key, value FROM settings').filter(s => isAdmin(user) || ['company_name', 'exit_settlement_period', 'cnc_process_url_template', 'employee_requests', 'employee_work_plan'].includes(s.key)).map(s => [s.key, s.value])),
     months: db.all('SELECT year_month, status, version FROM months'),
     causes: P.CAUSES,
   }));
@@ -565,6 +566,12 @@ function buildRoutes() {
   add('POST', '/analytics/projects/:id/similar/:other/restore', ({ db, user, params }) => { requireAdmin(user); A.restoreSimilar(db, user, params.id, params.other); });
   add('GET', '/analytics/month', ({ db, user, query }) => { requireAdmin(user); return A.monthCompare(db, query.ym || T.today().slice(0, 7)); });
   add('GET', '/analytics/machines', ({ db, user, query }) => { requireAdmin(user); return A.machineOverview(db, query.year || T.today().slice(0, 4)); });
+  // Analiza zespołu w okresie: programiści, detale (praca jednostkowa), struktura czasu — tylko kierownik
+  add('GET', '/analytics/team', ({ db, user, query }) => {
+    requireAdmin(user);
+    const to = query.to || T.today(), from = query.from || `${to.slice(0, 4)}-01-01`;
+    return TA.teamAnalysis(db, String(query.kind || ''), from, to);
+  });
   add('GET', '/analytics/year', ({ db, user, query }) => {
     requireAdmin(user);
     const compare = String(query.compare || '').split(',').filter(x => /^\d{4}$/.test(x));

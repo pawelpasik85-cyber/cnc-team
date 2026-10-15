@@ -5,7 +5,10 @@ Egzekwowane na serwerze (`server/core.js` → `CAPS`, `server/routes.js`). Inter
 | Obszar | Administrator | Przełożony | Pracownik | Gość |
 |---|---|---|---|---|
 | Wszystkie zapisy (dodawanie, edycja, anulowanie, zatwierdzanie, zamykanie miesięcy, konta, ustawienia) | ✔ | ✘ (403) | ✘ (403) | ✘ |
-| Zgłoszenie do weryfikacji (spóźnienie, nieobecność, wyjście, odrobienie, inne) | ✘ | ✘ | ✔ tylko własne; wycofanie przed decyzją | ✘ |
+| Zgłoszenie do weryfikacji (spóźnienie, nieobecność, wyjście, odrobienie, inne) | ✘ | ✘ | ✔ tylko własne; wycofanie przed decyzją — **tylko gdy ustawienie `employee_requests` = tak** (domyślnie nie: 403 na serwerze, brak w menu) | ✘ |
+| Plan pracy (polecenia na zmianę) | ✔ (gdy `employee_work_plan` = tak) | ✔ podgląd (gdy włączony) | ✔ tylko własne — **tylko gdy `employee_work_plan` = tak** (domyślnie 403) | ✘ |
+| Analiza zespołu: programiści, detale, struktura czasu (`/analytics/team`) | ✔ | ✘ (403) | ✘ (403) | ✘ |
+| Zapis raportu do PDF / PNG | ✔ z widoków, które widzi | ✔ z raportów kierowniczych i udostępnionych raportów | ✘ | ✘ |
 | Decyzja w sprawie zgłoszenia | ✔ | ✘ (podgląd) | ✘ | ✘ |
 | Status przypisanych projektów w realizacji (postęp, opóźnienie, etapy) | ✔ (pełny widok) | ✔ | ✔ | ✔ tylko przypisane; bez osób, czasów, notatek, powodów blokad |
 | Kalendarz, grafik, lista zdarzeń | ✔ | ✔ | ✔ (kategorie poza „pełnymi” jako etykieta ogólna, np. „Nieobecność”; bez minut, notatek, dokumentów; anulowane ukryte) | ✘ |

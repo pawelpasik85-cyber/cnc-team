@@ -38,7 +38,9 @@
 - Porównania z poprzednimi latami mają sens od chwili, gdy zespół wpisuje czas pracy w aplikacji — wcześniejszych danych aplikacja nie ma (ewentualny import historii — do ustalenia).
 - „Podobne projekty” to punktacja według rodziny detali, maszyny, typów zadań i skali planu — propozycje trzeba ocenić (dlatego można je odrzucać).
 - Nieobecności na przełomie miesięcy dzielone proporcjonalnie do dni kalendarzowych (przybliżenie).
-- PDF powstaje funkcją drukowania przeglądarki („Zapisz jako PDF”).
+- Raporty zapisuje się przyciskami **PDF** (strony A4) i **Obraz PNG** (jedna długa strona) — bez bibliotek. W PDF strony są obrazami: tekstu nie da się zaznaczać ani przeszukiwać. Obraz PNG ma limit długości (ok. 12 000 px ≈ 250 wierszy tabeli) — dłuższy raport tylko jako PDF. „Wyślij” działa tam, gdzie urządzenie pozwala udostępniać pliki (telefony, część przeglądarek); w innych zapisuje PDF.
+- Zestawienia do druku (Analiza → Zestawienia) dalej drukuje się funkcją przeglądarki („Zapisz jako PDF”).
+- Analizy „Programiści”, „Detale”, „Struktura czasu” liczone są na żywo dla wybranego okresu — nie zapisuje się ich jako migawek w „Zapisanych raportach” (zapis do PDF / PNG — tak).
 
 ## Telefony
 - Aplikacja na telefon to skrót/instalacja ze strony (PWA) — bez APK i sklepu z aplikacjami. Wymaga ważnego certyfikatu HTTPS.

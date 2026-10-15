@@ -36,7 +36,9 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - **Centrum programowania**: jedna karta na maszynę — parametry maszyny i aktualny projekt: postęp (wykonano / pozostało, plan na dziś), rozpoczęcie, czas trwania, termin, priorytet, przewidywany koniec, czas przewidywany i rzeczywisty, zgodność z planem, etap, program NC, osoba, blokada. Niżej „Terminy, priorytety i opóźnienia” wszystkich aktywnych projektów i pozostałe informacje.
 - **Kalendarz**: maszyny i projekty na każdej zmianie danego dnia + grafik ludzi i zdarzenia.
 - **Pracownicy**: zakładki Pracownicy · Urlopy i absencje · Wyjścia i odrabianie · Lista zdarzeń.
-- **Programiści** widzą tylko: Zgłoś kierownikowi, Kalendarz, Plan pracy, Mój profil i urlopy (własne), Narzędzia i oprawki (podgląd), Moje konto.
+- **Menu kierownika** (od 0.17): Centrum programowania, Kalendarz, Pracownicy, Projekty i zadania, Narzędzia i oprawki, Raporty kierownicze, Analiza i raporty. Ustawienia — pod nazwą konta na dole menu; przekazanie zmiany — w szczegółach projektu.
+- **Programiści** widzą tylko: Mój profil (saldo, urlopy), Kalendarz, Narzędzia i oprawki (podgląd), Moje konto. Zgłoszenia do kierownika i plan pracy są **wyłączone** — kierownik może je włączyć w Ustawieniach (`employee_requests`, `employee_work_plan`); wyłączenie egzekwuje serwer.
+- **Wygląd** (od 0.17): motyw „Industrial” — granat, panele HUD, pomarańczowy akcent; jasny motyw przyciskiem „Motyw”.
 
 ## Pracownicy, urlopy, wyjścia
 - Menu boczne: **Pracownicy** ma zakładki *Pracownicy · Urlopy i absencje · Wyjścia i odrabianie*. Tablica maszyn usunięta z menu (te same dane są w Centrum programowania).
@@ -52,6 +54,10 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 
 ## Analiza i raporty (tylko kierownik)
 - **Przegląd maszyn** (pierwsza zakładka): godziny na projektach Hartford i Grimme oraz zakończone projekty — miesiące i lata, wykresy 3D z wartościami, porównanie z rokiem wcześniej.
+- **Programiści**: godziny każdej osoby na Hartford / Grimme, udział w czasie zespołu, zakończone zadania i plan wobec wykonania, poprawki, blokady, średnio na zadanie — w wybranym okresie (szybkie: ten miesiąc, kwartał, rok…).
+- **Detale (praca jednostkowa)**: zakończone detale — średnio godzin i dni na detal, wobec planu, terminowość, poprawki i powroty; rodziny detali na maszynach; czasy maszyny z CAM (NX) wobec rzeczywistych.
+- **Struktura czasu**: na co idzie czas — typy zadań na maszynach, przygotowanie programu wobec wykonania detalu, aktywna praca / weryfikacja / poprawki / blokady, przyczyny poprawek i blokad.
+- **Zapis do pliku**: przy każdej analizie i raporcie kierowniczym przyciski **PDF**, **Obraz PNG** i na telefonie **Wyślij** (udostępnianie pliku np. mailem lub komunikatorem).
 - **Zestawienia do druku**: kilka tematów (projekty, zapisane raporty, własne) z przyczyną i notatką, np. dlaczego było opóźnienie — druk / PDF, e-mail, udostępnienie przełożonemu.
 - **Powrót do projektu (poprawki)** — przy zakończonym projekcie; analiza projektu pokazuje czas przed poprawkami, ile doszło w każdej rundzie (i o ile %), same poprawki łącznie i razem.
 
