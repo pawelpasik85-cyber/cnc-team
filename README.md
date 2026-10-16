@@ -30,7 +30,7 @@ Dane demonstracyjne są ustawione na „dzisiaj” = 6.10.2026. Aby zobaczyć je
 
 ## Serwer firmowy
 
-Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewnętrznych. Kierownik, programiści (także z domu, z telefonu) i goście wchodzą pod jeden adres HTTPS w domenie firmy. Instalacja, wymagania i zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`, paczka: `npm run package` → `dist/cnc-team-serwer.zip`.
+Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewnętrznych. Wersja **stacjonarna**: kierownik, przełożony i programiści wchodzą z komputerów w sieci firmowej pod jeden adres HTTPS (bez internetu, bez telefonów). Instalacja, wymagania i zabezpieczenia: **`docs/DEPLOY.md`** (instrukcja dla IT), skrypty w `deploy/`, paczka: `npm run package` → `dist/cnc-team-serwer.zip`.
 
 ## Organizacja (od 0.11)
 - **Centrum programowania**: jedna karta na maszynę — parametry maszyny i aktualny projekt: postęp (wykonano / pozostało, plan na dziś), rozpoczęcie, czas trwania, termin, priorytet, przewidywany koniec, czas przewidywany i rzeczywisty, zgodność z planem, etap, program NC, osoba, blokada. Niżej „Terminy, priorytety i opóźnienia” wszystkich aktywnych projektów i pozostałe informacje.
@@ -57,7 +57,7 @@ Aplikacja działa wyłącznie na serwerze firmowym — bez chmury i usług zewn�
 - **Programiści**: godziny każdej osoby na Hartford / Grimme, udział w czasie zespołu, zakończone zadania i plan wobec wykonania, poprawki, blokady, średnio na zadanie — w wybranym okresie (szybkie: ten miesiąc, kwartał, rok…).
 - **Detale (praca jednostkowa)**: zakończone detale — średnio godzin i dni na detal, wobec planu, terminowość, poprawki i powroty; rodziny detali na maszynach; czasy maszyny z CAM (NX) wobec rzeczywistych.
 - **Struktura czasu**: na co idzie czas — typy zadań na maszynach, przygotowanie programu wobec wykonania detalu, aktywna praca / weryfikacja / poprawki / blokady, przyczyny poprawek i blokad.
-- **Zapis do pliku**: przy każdej analizie i raporcie kierowniczym przyciski **PDF**, **Obraz PNG** i na telefonie **Wyślij** (udostępnianie pliku np. mailem lub komunikatorem).
+- **Zapis do pliku**: przy każdej analizie i raporcie kierowniczym przyciski **PDF** i **Obraz PNG** — plik zapisuje się na komputerze (można go dołączyć do maila).
 - **Zestawienia do druku**: kilka tematów (projekty, zapisane raporty, własne) z przyczyną i notatką, np. dlaczego było opóźnienie — druk / PDF, e-mail, udostępnienie przełożonemu.
 - **Powrót do projektu (poprawki)** — przy zakończonym projekcie; analiza projektu pokazuje czas przed poprawkami, ile doszło w każdej rundzie (i o ile %), same poprawki łącznie i razem.
 
@@ -66,15 +66,13 @@ Po zakończeniu projektu: wykres przebiegu (godziny narastająco i postęp wobec
 ## Narzędzia i oprawki
 Wykaz oprawek (BT50 — Hartford, HSK40 — Grimme), głowic frezujących, płytek i frezów w układzie katalogowym (wiersz: rysunek z wymiarami, nazwa, średnica, ostrza, materiał, stan — 0–1 szt czerwony, 2 szt żółty) i listą „pasuje do” (głowice i płytki — z parametrów; oprawki do frezów — przypisywane ręcznie). Wpisuje i zmienia kierownik (przyjęcie / wydanie, wycofanie — z powodem w historii); programiści i przełożony przeglądają.
 
-## Telefony
+## Komputery w sieci firmowej
 
-Programista otwiera adres firmowy w telefonie i dodaje skrót na ekran główny (PWA). Zgłasza spóźnienie, nieobecność, wyjście lub odrobienie — wpis powstaje dopiero po decyzji kierownika (Zgłoszenia pracowników). Szczegóły: **`docs/MOBILE.md`**.
-
-Próba bez serwera (telefony w tej samej sieci Wi-Fi co komputer):
+Aplikacja działa tylko na komputerach stacjonarnych (od 0.18 bez wersji na telefon). Próba bez serwera na kilku komputerach w tej samej sieci:
 
 ```bash
-npm run start:siec     # dostęp z telefonów w sieci firmowej (wypisuje adresy)
-npm run make-cert      # opcjonalnie: https dla pełnej aplikacji na telefonie (wymaga openssl)
+npm run start:siec     # dostęp z innych komputerów w sieci firmowej (wypisuje adresy)
+npm run make-cert      # opcjonalnie: lokalny certyfikat https (wymaga openssl)
 ```
 
 ## Uruchomienie — baza produkcyjna (pusta)
@@ -92,7 +90,7 @@ Następnie w aplikacji: Ustawienia → Konta i role, Pracownicy, Kalendarz → G
 | Zmienna | Domyślnie | Znaczenie |
 |---|---|---|
 | `PORT` | `3000` | Port HTTP |
-| `HOST` | `127.0.0.1` | Adres nasłuchu. Domyślnie tylko ten komputer; `npm run start:siec` ustawia `0.0.0.0` (telefony w sieci firmowej). |
+| `HOST` | `127.0.0.1` | Adres nasłuchu. Domyślnie tylko ten komputer; `npm run start:siec` ustawia `0.0.0.0` (inne komputery w sieci firmowej). |
 | `CNC_TLS_CERT`, `CNC_TLS_KEY` | `data/tls/cert.pem`, `key.pem` | Certyfikat HTTPS; jeśli pliki istnieją, serwer działa na https (`CNC_HTTPS=0` wyłącza) |
 | `CNC_DB` | `data/cnc-team.db` | Plik bazy |
 | `CNC_TODAY` | — | Stała data „dzisiaj” (testy, demonstracja) |
@@ -102,9 +100,9 @@ Następnie w aplikacji: Ustawienia → Konta i role, Pracownicy, Kalendarz → G
 | Polecenie | Działanie |
 |---|---|
 | `npm start` | Serwer aplikacji |
-| `npm run start:siec` | Serwer dostępny dla telefonów w sieci lokalnej |
-| `npm run make-cert` | Lokalny certyfikat HTTPS dla telefonów |
-| `npm test` | Testy automatyczne (41 scenariuszy) |
+| `npm run start:siec` | Serwer dostępny dla innych komputerów w sieci lokalnej |
+| `npm run make-cert` | Lokalny certyfikat HTTPS dla sieci firmowej |
+| `npm test` | Testy automatyczne (70 scenariuszy) |
 | `npm run package` | Paczka instalacyjna dla IT: `dist/cnc-team-serwer.zip` |
 | `npm run seed -- --reset` | Baza demonstracyjna od nowa (usuwa plik bazy!) |
 | `npm run init-admin` | Pierwsze konto administratora w pustej bazie |
@@ -134,8 +132,7 @@ docs/              dokumentacja i zrzuty ekranów
 - `docs/BACKUP.md` — kopia zapasowa i odtworzenie
 - `docs/LIMITATIONS.md` — znane ograniczenia
 - `docs/INTEGRATION_JSON.md` — format wymiany z CNC Process
-- `docs/DEPLOY.md` — instalacja na serwerze firmowym, dostęp z domu, zabezpieczenia (dla IT)
-- `docs/MOBILE.md` — telefony: skrót na ekranie głównym, prywatność
+- `docs/DEPLOY.md` — instalacja na serwerze firmowym (tylko sieć wewnętrzna), zabezpieczenia (dla IT)
 - `docs/DESIGN_TOKENS.md` — wygląd do odtworzenia w CNC Process
 - `docs/screenshots/` — zrzuty kluczowych ekranów
 - `DEPENDENCIES.md`, `INTEGRATIONS.md`, `REVIEW.md`

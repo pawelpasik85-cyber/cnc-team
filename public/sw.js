@@ -1,42 +1,11 @@
-// CNC Team — service worker.
-// Zasada prywatności: w pamięci telefonu przechowywany jest WYŁĄCZNIE szkielet aplikacji (HTML/CSS/JS/ikony).
-// Odpowiedzi API (/api/*) — dane osobowe, absencje, rozliczenia — nigdy nie są buforowane.
+// CNC Team działa tylko na komputerach stacjonarnych (od 0.18) — bez instalacji na telefonach (PWA).
+// Ten plik zostaje wyłącznie po to, żeby przeglądarki, które wcześniej zainstalowały aplikację,
+// usunęły zapamiętany szkielet i wyrejestrowały service worker. Nic nie jest buforowane.
 'use strict';
-const VERSION = 'cnc-team-shell-v35';
-const SHELL = [
-  '/', '/index.html', '/tokens.css', '/app.css', '/icons.js', '/brand.js', '/charts.js', '/ui.js', '/app.js', '/views-people.js', '/views-projects.js',
-  '/views-reports.js', '/views-requests.js', '/views-analytics.js', '/views-bundles.js', '/views-tools.js', '/views-plan.js', '/report-export.js', '/views-team.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
-});
-
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
-});
-
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/api/')) return; // zawsze sieć, bez kopii
-  if (event.request.method !== 'GET') return;
-  // Szkielet: najpierw sieć (aktualna wersja), przy braku połączenia — kopia.
-  event.respondWith(
-    fetch(event.request).then((res) => {
-      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(event.request, copy)); }
-      return res;
-    }).catch(() => caches.match(event.request).then(r => r || caches.match('/index.html')))
-  );
-});
-
-// Kliknięcie powiadomienia — otwórz aplikację na właściwej zakładce
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const hash = (event.notification.data && event.notification.data.hash) || '#/';
-  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-    for (const c of list) { if ('focus' in c) { c.navigate ? c.navigate('/' + hash).catch(() => {}) : null; return c.focus(); } }
-    return self.clients.openWindow('/' + hash);
-  }));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+    .then(() => self.registration.unregister())
+    .then(() => self.clients.matchAll({ type: 'window' }))
+    .then(list => list.forEach(c => c.navigate && c.navigate(c.url).catch(() => {}))));
 });

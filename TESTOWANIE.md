@@ -11,7 +11,7 @@ Do testów nie jest potrzebny serwer ani informatyk — wystarczy zwykły komput
 5. Czarnego okna nie zamykaj — zamknięcie wyłącza aplikację.
 6. Wersja testowa „żyje” w dniu **06.10.2026**, bo wokół tej daty są ułożone dane przykładowe (plan pracy, urlopy, projekty). Zapisywanie działa normalnie — możesz dodawać, zatwierdzać i usuwać; nic nie wychodzi poza ten komputer.
 
-**Telefon w tej samej sieci Wi‑Fi:** czarne okno pokazuje dodatkowe adresy typu `http://192.168.x.x:3000` — wpisz taki adres w telefonie. Jeśli Windows zapyta o zaporę, zezwól na sieć prywatną (w firmie może to być zablokowane — wtedy testuj na komputerze).
+**Tylko ten komputer:** wersja testowa działa wyłącznie na komputerze, na którym ją uruchomisz (adres `localhost`) — nie otwiera dostępu z sieci, więc Windows nie pyta o zaporę. Dostęp z innych komputerów w firmie zapewni dopiero wersja na serwerze (`docs/DEPLOY.md`).
 
 **Od nowa:** `TEST-RESET.cmd` usuwa dane testowe; następny `TEST-START.cmd` tworzy świeże dane przykładowe.
 

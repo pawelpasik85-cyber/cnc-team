@@ -16,7 +16,7 @@ Serwer Node.js (server/app.js — node:http)
 data/cnc-team.db (plik SQLite, tryb WAL)
 ```
 
-Wdrożenie: **wyłącznie serwer firmowy** (`docs/DEPLOY.md`) — jedna usługa Node.js, jeden plik bazy, dostęp z firmy i z domu przez firmowy adres HTTPS (reverse proxy). Aplikacja nie łączy się z żadną usługą zewnętrzną (bez chmury, bez GitHuba, bez CDN).
+Wdrożenie: **wyłącznie serwer firmowy** (`docs/DEPLOY.md`) — jedna usługa Node.js, jeden plik bazy, dostęp tylko z komputerów w sieci firmowej przez wewnętrzny adres HTTPS (reverse proxy); bez internetu i telefonów. Aplikacja nie łączy się z żadną usługą zewnętrzną (bez chmury, bez GitHuba, bez CDN).
 
 Wybór stosu: jeden proces Node.js i jeden plik bazy. Zero zależności npm (mniej licencji, brak łańcucha dostaw, łatwa instalacja na stanowisku kierownika). Interfejs bez frameworka — kilka plików JS ładowanych bezpośrednio, bez budowania.
 

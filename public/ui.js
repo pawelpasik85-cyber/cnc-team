@@ -20,8 +20,8 @@ async function api(path, { method = 'GET', body, raw, idem } = {}) {
   try {
     res = await fetch('/api' + path, { method, headers, body: payload, credentials: 'same-origin' });
   } catch {
-    // Telefon poza siecią firmową lub serwer wyłączony — dane nie są przechowywane offline.
-    throw new ApiError(0, 'Brak połączenia z serwerem CNC Team. Sprawdź, czy telefon jest w sieci firmowej, a komputer z aplikacją jest włączony.');
+    // Komputer poza siecią firmową lub serwer wyłączony — dane nie są przechowywane w przeglądarce.
+    throw new ApiError(0, 'Brak połączenia z serwerem CNC Team. Sprawdź, czy komputer jest w sieci firmowej i czy serwer CNC Team jest włączony.');
   }
   const ct = res.headers.get('content-type') || '';
   const data = ct.includes('json') ? await res.json() : await res.text();

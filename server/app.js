@@ -10,7 +10,7 @@ const { getSetting } = require('./domain/common');
 const T = require('./time');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json; charset=utf-8' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.ico': 'image/x-icon' };
 const MAX_BODY = 5 * 1024 * 1024;
 
 function parseCookies(h) {
@@ -28,7 +28,7 @@ function compile(pattern) {
   return { re, keys };
 }
 
-// opts.tls = { cert, key } → serwer HTTPS (wymagany przez telefon dla pełnej aplikacji PWA); opts.secure → cookie z flagą Secure
+// opts.tls = { cert, key } → serwer HTTPS (szyfrowanie w sieci firmowej); opts.secure → cookie z flagą Secure
 // opts.trustProxy → aplikacja stoi za firmowym serwerem pośredniczącym (reverse proxy) z HTTPS:
 // adres klienta z X-Forwarded-For (do blokady logowania), cookie Secure gdy X-Forwarded-Proto = https.
 const GUEST_ALLOWED = new Set(['GET /me', 'POST /login', 'POST /logout', 'POST /me/password', 'GET /guest/projects']);

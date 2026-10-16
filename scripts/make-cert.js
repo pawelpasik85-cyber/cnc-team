@@ -1,9 +1,9 @@
 'use strict';
-// Tworzy lokalny urząd certyfikacji (CA) i certyfikat HTTPS dla komputera z aplikacją — do użytku w sieci firmowej,
-// aby telefony mogły zainstalować CNC Team jako pełną aplikację (PWA). Wymaga programu openssl
+// Tworzy lokalny urząd certyfikacji (CA) i certyfikat HTTPS dla komputera z aplikacją — do użytku w sieci firmowej
+// (szyfrowane połączenie z innych komputerów, gdy IT nie wystawi certyfikatu firmowego). Wymaga programu openssl
 // (w Windows dostępny np. z Git for Windows: C:\Program Files\Git\usr\bin\openssl.exe — dodaj do PATH lub ustaw OPENSSL).
 // Użycie: npm run make-cert -- [dodatkowa-nazwa-lub-IP ...]
-// Wynik: data/tls/cert.pem, key.pem (serwer), cnc-team-ca.crt (do zainstalowania na telefonach), ca.key (chroń!).
+// Wynik: data/tls/cert.pem, key.pem (serwer), cnc-team-ca.crt (do zainstalowania na komputerach w sieci), ca.key (chroń!).
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -29,7 +29,7 @@ const san = [...new Set(names.filter(n => !/^\d+\.\d+\.\d+\.\d+$/.test(n)))].map
 if (!fs.existsSync(f('ca.key'))) {
   run(['req', '-x509', '-newkey', 'rsa:3072', '-nodes', '-keyout', f('ca.key'), '-out', f('cnc-team-ca.crt'), '-days', '3650',
     '-subj', '/CN=CNC Team - lokalny CA/O=CNC Team', '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign']);
-  console.log('Utworzono lokalny CA: data/tls/cnc-team-ca.crt (zainstaluj na telefonach), data/tls/ca.key (NIE udostępniaj).');
+  console.log('Utworzono lokalny CA: data/tls/cnc-team-ca.crt (zainstaluj na komputerach, które łączą się z aplikacją), data/tls/ca.key (NIE udostępniaj).');
 } else console.log('Używam istniejącego CA z data/tls.');
 
 const ext = f('server.ext');

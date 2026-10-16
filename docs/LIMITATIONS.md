@@ -21,12 +21,12 @@
 - Narzędzia i oprawki: rysunki są schematyczne (generowane z parametrów), nie są rysunkami katalogowymi; dopasowanie głowic i płytek liczone z wpisanych parametrów (trzpień, chwyt, gniazdo płytki, interfejs maszyny), oprawki do frezów przypisywane ręcznie — nie sprawdza wysięgu, kolizji ani danych skrawania. Stan magazynowy prowadzony ręcznie (przyjęcie / wydanie), bez powiązania z zamówieniami i bez przypisania narzędzi do programów NC.
 - Zrzuty ekranów wymagają opcjonalnego Pythona + Playwright (`scripts/screenshots.py`) — nie są potrzebne do działania aplikacji.
 
-## Serwer firmowy i dostęp z domu
-- Wymaga serwera od IT (`docs/DEPLOY.md`): adres HTTPS w domenie firmy opublikowany z internetu. Bez tego dostęp jest tylko w sieci, w której działa aplikacja.
+## Serwer firmowy
+- Wymaga serwera od IT (`docs/DEPLOY.md`): adres HTTPS w sieci wewnętrznej. Od 0.18 aplikacja jest **tylko stacjonarna** — bez dostępu z internetu, z domu i z telefonów.
 - Brak logowania kontem Microsoft (SSO) — loginy i hasła są w aplikacji (zakłada je kierownik).
 - Powiadomienia o nowym zgłoszeniu i o decyzji działają, gdy aplikacja jest otwarta (pasek, licznik, dźwięk, powiadomienie systemowe). Przy zamkniętej aplikacji brak e-maila i Web Push — do uzgodnienia z IT (SMTP).
 - Opóźnienie projektu zakłada liniowy plan między datą rozpoczęcia a terminem; nie uwzględnia kalendarza pracy ani nierównych etapów.
-- Bez internetu zgłoszenia nie da się wysłać (telefon nie przechowuje danych) — trzeba spróbować ponownie, gdy jest zasięg.
+- Przeglądarka nie przechowuje danych — bez połączenia z serwerem aplikacja pokazuje „Brak połączenia z serwerem”.
 
 ## Grafik i nadgodziny
 - Nadgodziny liczone z grafiku (planu), nie z rzeczywistych godzin wejścia i wyjścia — brak integracji z RCP.
@@ -38,15 +38,12 @@
 - Porównania z poprzednimi latami mają sens od chwili, gdy zespół wpisuje czas pracy w aplikacji — wcześniejszych danych aplikacja nie ma (ewentualny import historii — do ustalenia).
 - „Podobne projekty” to punktacja według rodziny detali, maszyny, typów zadań i skali planu — propozycje trzeba ocenić (dlatego można je odrzucać).
 - Nieobecności na przełomie miesięcy dzielone proporcjonalnie do dni kalendarzowych (przybliżenie).
-- Raporty zapisuje się przyciskami **PDF** (strony A4) i **Obraz PNG** (jedna długa strona) — bez bibliotek. W PDF strony są obrazami: tekstu nie da się zaznaczać ani przeszukiwać. Obraz PNG ma limit długości (ok. 12 000 px ≈ 250 wierszy tabeli) — dłuższy raport tylko jako PDF. „Wyślij” działa tam, gdzie urządzenie pozwala udostępniać pliki (telefony, część przeglądarek); w innych zapisuje PDF.
+- Raporty zapisuje się przyciskami **PDF** (strony A4) i **Obraz PNG** (jedna długa strona) — bez bibliotek. W PDF strony są obrazami: tekstu nie da się zaznaczać ani przeszukiwać. Obraz PNG ma limit długości (ok. 12 000 px ≈ 250 wierszy tabeli) — dłuższy raport tylko jako PDF.
 - Zestawienia do druku (Analiza → Zestawienia) dalej drukuje się funkcją przeglądarki („Zapisz jako PDF”).
 - Analizy „Programiści”, „Detale”, „Struktura czasu” liczone są na żywo dla wybranego okresu — nie zapisuje się ich jako migawek w „Zapisanych raportach” (zapis do PDF / PNG — tak).
 
 ## Telefony
-- Aplikacja na telefon to skrót/instalacja ze strony (PWA) — bez APK i sklepu z aplikacjami. Wymaga ważnego certyfikatu HTTPS.
-- Brak trybu offline dla danych (celowo — dane osobowe nie są przechowywane na telefonach).
-- Sesja trwa 12 h — po tym czasie telefon poprosi o ponowne logowanie.
-- Nie testowano na fizycznych telefonach firmowych; zrzuty pochodzą z emulacji w przeglądarce.
+- Od 0.18 brak wersji na telefon (bez instalacji PWA i bez dostępu spoza sieci firmowej). Układ strony nadal dopasowuje się do węższego okna przeglądarki na komputerze.
 
 ## Technika
 - `node:sqlite` jest w Node 22 oznaczony jako eksperymentalny (stabilny interfejs w praktyce; ostrzeżenie wyciszone w skryptach npm). Przy aktualizacji Node uruchom `npm test`.

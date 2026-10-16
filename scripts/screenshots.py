@@ -84,12 +84,6 @@ with sync_playwright() as p:
             page.click("#addExit")
             page.wait_for_timeout(300)
             page.screenshot(path=f"{out}/37-telefon-formularz.png")
-            sw = page.evaluate("navigator.serviceWorker ? navigator.serviceWorker.ready.then(r => !!r.active) : false")
-            if not sw:
-                errors.append("service worker nie jest aktywny")
-            man = page.evaluate("fetch('/manifest.webmanifest').then(r => r.json()).then(m => m.display + '|' + m.icons.length)")
-            if man != "standalone|3":
-                errors.append(f"manifest: {man}")
         ctx.close()
     b.close()
 

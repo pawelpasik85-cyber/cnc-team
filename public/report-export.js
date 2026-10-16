@@ -245,7 +245,7 @@ function rxDownload(blob, name) {
 }
 async function rxMakeFile(doc, kind) {
   if (kind === 'pdf') return new File([await rxPdf(rxRender(doc, 'pages'), doc.title)], rxFileName(doc, 'pdf'), { type: 'application/pdf' });
-  // jeden obraz: limit wysokości płótna (telefony ~16 mln pikseli) — dłuższy raport tylko jako PDF
+  // jeden obraz: limit wysokości płótna w przeglądarkach — dłuższy raport tylko jako PDF
   if (rxLayout(doc, 'long')[0].height > 12000) throw new Error('raport jest za długi na jeden obraz — zapisz PDF (strony A4) albo zawęź okres');
   const [cv] = rxRender(doc, 'long');
   const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
@@ -258,9 +258,9 @@ function rxDocMeta(doc) {
     meta: `${doc.meta ? `${doc.meta} · ` : ''}wygenerowano ${now} · ${S.me ? S.me.display_name : ''}`,
     footer: doc.footer || 'CNC Team — raport wewnętrzny. Dane z aplikacji w chwili zapisu pliku.' };
 }
-// Przyciski w pasku narzędzi widoku: PDF, obraz PNG, „Wyślij” (telefon: udostępnianie systemowe)
+// Przyciski w pasku narzędzi widoku: PDF i obraz PNG (zapis na komputerze; plik można dołączyć do maila)
 function exportTools() {
-  return `<span class="export-tools no-print"><button type="button" class="btn-export" data-export="pdf">${icon('download')}PDF</button><button type="button" class="btn-export" data-export="png">${icon('download')}Obraz PNG</button>${navigator.canShare ? `<button type="button" class="btn-export" data-export="share">${icon('summons')}Wyślij</button>` : ''}</span>`;
+  return `<span class="export-tools no-print"><button type="button" class="btn-export" data-export="pdf">${icon('download')}PDF</button><button type="button" class="btn-export" data-export="png">${icon('download')}Obraz PNG</button></span>`;
 }
 function bindExport(root, getDoc) {
   $$('[data-export]', root).forEach(b => b.onclick = async () => {
@@ -268,16 +268,10 @@ function bindExport(root, getDoc) {
     const busy = $$('[data-export]', root); busy.forEach(x => { x.disabled = true; });
     try {
       const doc = rxDocMeta(getDoc());
-      if (kind === 'share') {
-        const f = await rxMakeFile(doc, 'pdf');
-        if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: doc.title, text: doc.subtitle || doc.title });
-        else { rxDownload(f, f.name); toast('To urządzenie nie wysyła plików bezpośrednio — zapisano PDF.', 'warn'); }
-      } else {
-        const f = await rxMakeFile(doc, kind);
-        rxDownload(f, f.name);
-        toast(kind === 'pdf' ? 'Zapisano PDF.' : 'Zapisano obraz PNG.');
-      }
-    } catch (e) { if (e && e.name !== 'AbortError') toast(`Nie udało się zapisać pliku: ${e.message || e}`, 'err'); }
+      const f = await rxMakeFile(doc, kind);
+      rxDownload(f, f.name);
+      toast(kind === 'pdf' ? 'Zapisano PDF.' : 'Zapisano obraz PNG.');
+    } catch (e) { if (e) toast(`Nie udało się zapisać pliku: ${e.message || e}`, 'err'); }
     finally { busy.forEach(x => { x.disabled = false; }); }
   });
 }

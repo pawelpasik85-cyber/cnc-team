@@ -10,7 +10,7 @@ Aplikacja **nie ma zależności npm** (`package.json` bez `dependencies`). Nie w
 | Krój Bahnschrift (Windows) | Typografia, jeśli dostępny w systemie | Część systemu Windows — nie jest dystrybuowany z aplikacją | 0 zł | Na innych systemach używany jest krój zastępczy |
 | Ikony SVG | Własne, w kodzie aplikacji (`public/icons.js`) | Kod projektu | 0 zł | — |
 
-## Opcjonalne — tylko dla https na telefonach
+## Opcjonalne — lokalny certyfikat https w sieci firmowej
 
 | Narzędzie | Zastosowanie | Licencja | Koszt |
 |---|---|---|---|

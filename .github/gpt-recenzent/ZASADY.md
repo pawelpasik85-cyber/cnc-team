@@ -19,8 +19,8 @@ Zasady konkretnego projektu są w jego pliku CLAUDE.md lub ZASADY-PROJEKTU.md.
 - W przeglądarce nie używać Alert z React Native (nie działa) — tylko własne okna dialogowe.
 
 ## CNC Team (zarządzanie zespołem programistów CNC)
-- Wersja firmowa działa wyłącznie na serwerze firmowym (bez chmury, bez GitHub Pages/APK). Aplikacja nie może łączyć się z usługami zewnętrznymi; telefony korzystają z firmowego adresu HTTPS (PWA).
-- Pracownik tylko zgłasza do weryfikacji (spóźnienie, nieobecność, wyjście, odrobienie); niczego nie wpisuje sam. Gość widzi wyłącznie status wskazanych projektów.
+- Wersja firmowa działa wyłącznie na serwerze firmowym (bez chmury, bez GitHub Pages/APK). Aplikacja nie może łączyć się z usługami zewnętrznymi; od 0.18 tylko komputery stacjonarne w sieci firmowej (wewnętrzny adres HTTPS) — bez telefonów, bez PWA, bez dostępu z internetu.
+- Pracownik niczego nie wpisuje sam; zgłoszenia do kierownika i plan pracy są domyślnie wyłączone (ustawienia `employee_requests`, `employee_work_plan`, egzekwowane na serwerze). Gość widzi wyłącznie status wskazanych projektów.
 - Uprawnienia egzekwuje serwer (API), nie interfejs. Każda zmiana w historii z autorem i opisem.
 - Przepisy prawa pracy bez weryfikacji w źródle urzędowym oznaczamy „do potwierdzenia przez kadry”; nie wymyślamy limitów.
 - Czas w minutach (liczby całkowite), strefa Europe/Warsaw, zmiana czasu i zmiany nocne obsłużone jawnie.

@@ -1,5 +1,5 @@
 'use strict';
-// Uruchomienie: npm start (tylko ten komputer) lub npm run start:siec (telefony w sieci firmowej).
+// Uruchomienie: npm start (tylko ten komputer) lub npm run start:siec (inne komputery w sieci firmowej).
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -40,7 +40,7 @@ function main() {
   const users = db.get('SELECT COUNT(*) n FROM users').n;
   const tls = loadTls();
   const scheme = tls ? 'https' : 'http';
-  // Za firmowym reverse proxy (HTTPS w internecie): CNC_TRUST_PROXY=1. Cookie Secure wymuszone: CNC_SECURE_COOKIE=1.
+  // Za firmowym reverse proxy (HTTPS w sieci wewnętrznej): CNC_TRUST_PROXY=1. Cookie Secure wymuszone: CNC_SECURE_COOKIE=1.
   // CNC_PROXY_IPS: adresy reverse proxy (po przecinku), gdy proxy jest na innym serwerze.
   const server = createApp(db, { tls, trustProxy: process.env.CNC_TRUST_PROXY === '1', proxyIps: String(process.env.CNC_PROXY_IPS || '').split(',').filter(Boolean),
     secure: process.env.CNC_SECURE_COOKIE === '1' });
@@ -50,9 +50,9 @@ function main() {
     console.log(`CNC Team: ${scheme}://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (baza: ${DB_FILE})`);
     if (HOST === '0.0.0.0') {
       const ips = lanAddresses();
-      console.log('Adresy dla telefonów w tej samej sieci:');
+      console.log('Adresy dla innych komputerów w sieci firmowej:');
       for (const ip of ips) console.log(`  ${scheme}://${ip}:${PORT}`);
-      if (!tls) console.log('Uwaga: połączenie bez szyfrowania (http). Telefon utworzy skrót do przeglądarki; pełna aplikacja wymaga https — patrz docs/MOBILE.md.');
+      if (!tls) console.log('Uwaga: połączenie bez szyfrowania (http) — w wersji firmowej adres HTTPS ustawia IT (docs/DEPLOY.md).');
     }
     if (created.length) console.log(`Nowe alerty po starcie: ${created.length}`);
     if (!users) console.log('Brak kont. Uruchom: npm run init-admin  (lub npm run seed dla danych demonstracyjnych)');

@@ -147,7 +147,7 @@ Dwa paski: przygotowanie programu i wykonanie detalu = Σ wag zakończonych zada
 - Brak daty rozpoczęcia, terminu albo zadań = „brak danych” (nie zero). Założenie liniowego planu jest uproszczeniem — przy nierównych etapach lepszą miarą są terminy zadań (pokazywane osobno).
 
 ### Powiadomienia
-- Kierownik: na każdej stronie czerwony pasek „Czeka na Twoją decyzję” (zgłoszenia, odrabiania) z przyciskiem „Rozpatrz”, licznik przy „Zgłoszenia pracowników” w menu, w telefonie na „Więcej”, liczba w tytule karty przeglądarki. Aplikacja sprawdza nowe zgłoszenia co 30 s; nowe zgłoszenie = komunikat w aplikacji, sygnał dźwiękowy i powiadomienie systemowe (po zgodzie w przeglądarce; kliknięcie otwiera zgłoszenia).
+- Kierownik: na każdej stronie czerwony pasek „Czeka na Twoją decyzję” (zgłoszenia, odrabiania) z przyciskiem „Rozpatrz”, licznik przy „Zgłoszenia pracowników” w menu, w wąskim oknie na „Więcej”, liczba w tytule karty przeglądarki. Aplikacja sprawdza nowe zgłoszenia co 30 s; nowe zgłoszenie = komunikat w aplikacji, sygnał dźwiękowy i powiadomienie systemowe (po zgodzie w przeglądarce; kliknięcie otwiera zgłoszenia).
 - Programista: komunikat i powiadomienie systemowe, gdy kierownik przyjmie lub odrzuci jego zgłoszenie.
 - Powiadomienia działają, gdy aplikacja jest otwarta (także w tle lub zminimalizowana). Przy zamkniętej aplikacji — wymaga e-maila (serwer SMTP firmy) albo usługi Web Push; nie wdrożone.
 

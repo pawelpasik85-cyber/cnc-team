@@ -124,9 +124,8 @@ function alertNew(d, fresh, { quiet = false } = {}) {
   } catch { /* przeglądarka zablokowała dźwięk */ }
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
-      const show = (reg) => (reg ? reg.showNotification(t.title, { body: t.body, tag: 'cnc-notify', renotify: true, icon: '/icons/icon-192.png', data: { hash: t.hash } })
-        : new Notification(t.title, { body: t.body, tag: 'cnc-notify', icon: '/icons/icon-192.png' }));
-      if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(show).catch(() => show(null)); else show(null);
+      const n = new Notification(t.title, { body: t.body, tag: 'cnc-notify', renotify: true, icon: '/icons/icon-192.png' });
+      n.onclick = () => { window.focus(); location.hash = t.hash; n.close(); };
     }
   } catch { /* brak obsługi powiadomień */ }
 }
@@ -204,7 +203,6 @@ function renderShell() {
     <div class="who"><strong>${esc(S.me.display_name)}</strong>${esc(roleName)}<br>
       ${!isEmployee() && !isGuest() ? `<a href="#/ustawienia" data-nav="ustawienia" class="who-link">${icon('settings')}${isAdmin() ? 'Ustawienia' : 'Moje konto'}</a>` : ''}
       <button type="button" id="themeBtn" class="link">${icon('theme')}Motyw</button>
-      <button type="button" id="installBtn" class="link ${document.documentElement.dataset.installable ? '' : 'mobile-only'}">${icon('download')}Skrót na telefonie</button>
       <button type="button" id="logoutBtn" class="link">${icon('logout')}Wyloguj</button></div>
   </nav><main class="main" id="main" tabindex="-1"></main>
     <nav class="tabbar" aria-label="Szybka nawigacja">${tabs.map(([id, label, ic]) => `<a href="#/${id}" data-nav="${id}">${icon(ic)}<span>${label}</span></a>`).join('')}

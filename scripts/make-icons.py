@@ -1,4 +1,4 @@
-"""Generuje ikony aplikacji (PWA / ekran główny telefonu) z logo w public/brand.js (frez w rzucie izometrycznym).
+"""Generuje ikonę karty przeglądarki i powiadomień (icon-192.png) oraz favicon z logo w public/brand.js (frez w rzucie izometrycznym).
 Narzędzie deweloperskie: wymaga Pythona + Playwright. Użycie: python scripts/make-icons.py → public/icons/*.png, public/favicon.svg"""
 import os, re, subprocess, json
 from playwright.sync_api import sync_playwright
@@ -24,7 +24,7 @@ def page_html(size, bleed):
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    for name, size, bleed, transparent in [("icon-192.png", 192, False, True), ("icon-512.png", 512, False, True), ("icon-maskable-512.png", 512, True, False), ("apple-touch-icon.png", 180, False, False)]:
+    for name, size, bleed, transparent in [("icon-192.png", 192, False, True)]:
         pg = b.new_page(viewport={"width": size, "height": size})
         html = page_html(size, bleed)
         if not transparent and not bleed:

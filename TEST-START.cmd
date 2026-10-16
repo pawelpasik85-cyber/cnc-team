@@ -34,7 +34,9 @@ if not exist "%CNC_DB%" (
   if errorlevel 1 ( pause & exit /b 1 )
 )
 if "%PORT%"=="" set "PORT=3000"
-set "HOST=0.0.0.0"
+rem Wersja testowa: tylko ten komputer (bez dostepu z sieci - nie pyta o zapore)
+set "HOST=127.0.0.1"
+set "CNC_HTTPS=0"
 echo.
 echo  ==========================================================
 echo   CNC Team - TEST.  Adres:  http://localhost:%PORT%
@@ -45,7 +47,7 @@ echo   NIE ZAMYKAJ tego okna - zamkniecie wylacza aplikacje.
 echo  ==========================================================
 echo.
 start "" cmd /c "timeout /t 3 >nul & start http://localhost:%PORT%"
-"%NODE%" --no-warnings scripts\start-lan.js
+"%NODE%" --no-warnings server\index.js
 echo.
 echo Aplikacja zatrzymana. Jesli wyzej jest blad EADDRINUSE - port zajety: zamknij inne okno CNC Team.
 pause
